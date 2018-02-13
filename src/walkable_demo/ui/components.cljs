@@ -3,17 +3,18 @@
     [fulcro.client.dom :as dom]
     [fulcro.client.primitives :as prim :refer [defsc]]))
 
-(defsc Person [this {:person/keys [number name age]} {:keys [onDelete]}]
+(defsc Person [this {:person/keys [number name age]}]
   {:query         [:person/number :person/name :person/age]
    :ident         [:person/by-id :person/number]
-   :initial-state (fn [{:keys [number name age]}] {:person/number number :person/name name :person/age age})}
+   :initial-state (fn [{:keys [number name age]}] #:person{:number number :name name :age age})}
   (dom/li nil
-    (dom/h5 nil name (str "(age: " age ")") (dom/button #js {} "X"))))
+    (dom/h5 nil name (str "(age: " age ")"))))
 
-(def ui-person (prim/factory Person))
+(def ui-person (prim/factory Person {:keyfn :person/number}))
 
 (defsc Root [this {:keys [ui/react-key]}]
-  {:initial-state (fn [params] {:xs []})}
+  {:query [:ui/react-key]
+   :initial-state {}}
   (dom/div #js {:key react-key}
     "Hello world"
     (ui-person {:person/number 1})))
