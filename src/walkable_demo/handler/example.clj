@@ -41,7 +41,8 @@
 
 (def pathom-parser
   (p/parser
-    {::p/plugins
+    {:mutate server-mutate
+     ::p/plugins
      [(p/env-plugin
         {::p/reader
          [guard-attributes sqb/sql-pull derive-attributes read-attributes]})]}))
