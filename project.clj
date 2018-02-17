@@ -33,6 +33,6 @@
                   :resource-paths ["dev/resources"]
                   :dependencies   [[integrant/repl "0.2.0"]
                                    [eftest "0.4.0"]
-                                   [org.postgresql/postgresql "42.1.4"]
+                                   [org.xerial/sqlite-jdbc "3.21.0.1"]
                                    [duct/database.sql.hikaricp "0.3.2"]
                                    [kerodon "0.9.0"]]}})
