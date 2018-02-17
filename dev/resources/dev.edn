@@ -1,4 +1,5 @@
 {:duct.core/environment :development
  :duct.core/include ["walkable_demo/config"]
  :duct.module/sql {}
- :duct.database.sql/hikaricp {:jdbc-url "jdbc:sqlite:db/example.sqlite"}}
+ :duct.database.sql/hikaricp {:jdbc-url "jdbc:sqlite:walkable_demo.sqlite"}
+ }
