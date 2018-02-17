@@ -12,3 +12,4 @@ pom.xml.asc
 /profiles.clj
 /dev/resources/local.edn
 /dev/src/local.clj
+/walkable_demo.sqlite
