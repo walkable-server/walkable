@@ -22,6 +22,9 @@
 (defn q [sql]
   (jdbc/query (db) sql))
 
+(defn e [sql]
+  (jdbc/execute! (db) sql))
+
 (derive ::devcards :duct/module)
 
 (defmethod ig/init-key ::devcards [_ {build-id :build-id :or {build-id 0}}]
@@ -44,4 +47,8 @@
 (integrant.repl/set-prep! (comp duct/prep read-config))
 
 (comment
-  (q "SELECT * from person"))
+  (e "CREATE TABLE `foo` (`id` INTEGER)")
+  (e "INSERT INTO `foo` (`id`) VALUES (1)")
+  (q "SELECT * from foo")
+  (e "DROP TABLE `foo`")
+  )
