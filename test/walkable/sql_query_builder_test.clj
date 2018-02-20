@@ -10,7 +10,7 @@
 
 (deftest keyword->column-name-test
   (is (= (sut/keyword->column-name :foo/bar)
-        "foo.bar")))
+        "`foo`.`bar`")))
 
 (deftest keyword->alias-test
   (is (= (sut/keyword->alias :foo/bar)
@@ -18,7 +18,7 @@
 
 (deftest ->column-names-test
   (is (= (sut/->column-names [:foo/bar :loo/lar])
-        {:foo/bar "foo.bar", :loo/lar "loo.lar"})))
+        {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"})))
 
 (deftest ->column-aliases-test
   (is (= (sut/->column-aliases [:foo/bar :loo/lar])
@@ -27,14 +27,14 @@
 (deftest selection-with-aliases-test
   (is (= (sut/selection-with-aliases
            [:foo/bar :loo/lar]
-           {:foo/bar "foo.bar", :loo/lar "loo.lar"} ;; output of `(->column-names [:foo/bar :loo/lar])`
+           {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"} ;; output of `(->column-names [:foo/bar :loo/lar])`
            {:foo/bar "foo/bar", :loo/lar "loo/lar"} ;; output of `(->column-aliases [:foo/bar :loo/lar])`
            )
-        "foo.bar AS \"foo/bar\", loo.lar AS \"loo/lar\"")))
+        "`foo`.`bar` AS \"foo/bar\", `loo`.`lar` AS \"loo/lar\"")))
 
 (deftest ->join-statement-test
   (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
-        " JOIN boo ON foo.bar = boo.far")))
+        " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
 
 (deftest ->join-pairs-tests
   (is (= (sut/->join-pairs [:pet/index :person/number])
@@ -50,11 +50,11 @@
 (deftest ->join-statements-tests
   (is (= (sut/->join-statements
            (sut/->join-pairs [:pet/index :person/number]))
-        " JOIN person ON pet.index = person.number"))
+        " JOIN `person` ON `pet`.`index` = `person`.`number`"))
   (is (= (sut/->join-statements
            (sut/->join-pairs [:pet/index :person-pet/pet-index
                               :person-pet/person-number :person/number]))
-        " JOIN person_pet ON pet.index = person_pet.pet_index JOIN person ON person_pet.person_number = person.number")))
+        " JOIN `person_pet` ON `pet`.`index` = `person_pet`.`pet_index` JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
 
 (deftest ->source-table-test
   (is (sut/->source-table

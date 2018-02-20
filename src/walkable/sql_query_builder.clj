@@ -10,6 +10,7 @@
 
 (defn keyword->column-name [k]
   (->> (split-keyword k)
+    (map #(str "`" % "`"))
     (clojure.string/join ".")))
 
 (defn keyword->alias [k]
@@ -35,8 +36,8 @@
 (defn ->join-statement
   [[[table-1 column-1] [table-2 column-2]]]
   (str
-    " JOIN " table-2
-    " ON "   table-1 "." column-1 " = " table-2 "." column-2))
+    " JOIN `" table-2
+    "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
 (defn ->join-pairs
   [join-spec]
@@ -53,7 +54,7 @@
             columns-to-query column-names column-aliases
             where-conditions offset limit order-by]}]
   (str "SELECT " (selection-with-aliases columns-to-query column-names column-aliases)
-    " FROM " source-table
+    " FROM `" source-table "`"
     join-statement
 
     (when where-conditions
