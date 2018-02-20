@@ -14,7 +14,9 @@
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [integrant.repl :refer [clear halt go init prep reset]]
-            [integrant.repl.state :refer [config system]]))
+            [integrant.repl.state :refer [config system]]
+            [walkable-demo.handler.example :as example]
+            [walkable.sql-query-builder :as sqb]))
 
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
@@ -52,3 +54,57 @@
   (q "SELECT * from foo")
   (e "DROP TABLE `foo`")
   )
+
+(let [eg-1
+      '[{(:people/all {::sqb/limit 1
+                       ::sqb/offset 1
+                       ::sqb/order-by [[:person/name :desc]]})
+         [:person/number :person/name]}]
+
+      eg-2
+      '[{([:person/by-id 1] {::sqb/filters {:person/number [:= 1]}})
+         [:person/number
+          :person/name
+          :person/age
+          {:person/pet [:pet/index
+                        :pet/age
+                        :pet/color
+                        {:pet/owner [:person/name]}]}]}]
+      parser
+      example/pathom-parser]
+  (parser {:current-user 1
+           ::sqb/sql-db    (db)
+           ::sqb/run-query
+           (fn [& xs]
+             (let [[q & args] (rest xs)]
+               (println q)
+               (println args))
+             (apply jdbc/query xs))
+           ::sqb/sql-schema
+           (sqb/compile-schema
+             ;; which columns are available in SQL table?
+             {:columns          [:person/number
+                                 :person/name
+                                 :person/yob
+                                 :person/hidden
+                                 :person-pet/person-number
+                                 :person-pet/pet-index
+                                 :pet/index
+                                 :pet/name
+                                 :pet/yob
+                                 :pet/color]
+              ;; extra columns required when an attribute is being asked for
+              ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+              :required-columns {:pet/age    #{:pet/yob}
+                                 :person/age #{:person/yob}}
+              :idents           {:person/by-id [:= :person/number]
+                                 :people/all "person"}
+              :extra-conditions {[:pet/owner :person/by-id]
+                                 [:or {:person/hidden [:= true]}
+                                  {:person/hidden [:= false]}]}
+              :joins            {:person/pet [:person/number :person-pet/person-number
+                                              :person-pet/pet-index :pet/index]}
+              :reversed-joins   {:pet/owner :person/pet}
+              :join-cardinality {:person/by-id :one
+                                 :person/pet   :many}})}
+    eg-1))
