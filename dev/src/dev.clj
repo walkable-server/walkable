@@ -54,7 +54,7 @@
   (q "SELECT * from foo")
   (e "DROP TABLE `foo`")
   )
-
+#_
 (let [eg-1
       '[{(:people/all {::sqb/limit 1
                        ::sqb/offset 1
