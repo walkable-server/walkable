@@ -207,7 +207,7 @@
         :column-aliases   (->column-aliases columns)
         :join-statements  (compile-join-statements joins)}))
 
-(defn sql-pull
+(defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
   (let [{::keys [column-keywords
                  column-names
