@@ -23,12 +23,6 @@
       ::p/forbidden
       ::p/continue)))
 
-(defn read-attributes
-  [env]
-  (let [e (p/entity env)
-        k (get-in env [:ast :dispatch-key])]
-    (get e k)))
-
 (def derive-attributes
   {:pet/age
    (fn [env]
