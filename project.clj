@@ -1,6 +1,6 @@
-(defproject walkable "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject walkable "0.1.0"
+  :description "om.next/fulcro SQL engine for pathom queries."
+  :url "https://github.com/walkable-server/walkable"
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
@@ -18,7 +18,6 @@
                  [fulcrologic/fulcro "2.2.0" :exclusions [org.clojure/clojurescript]]
                  [fulcrologic/fulcro-spec "2.0.1" :scope "test" :exclusions [fulcrologic/fulcro]]]
   :plugins [[duct/lein-duct "0.10.6"]]
-  :main ^:skip-aot foo.main
   :resource-paths ["resources" "target/resources"]
   :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
   :profiles
