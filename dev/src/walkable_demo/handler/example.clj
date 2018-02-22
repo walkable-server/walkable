@@ -2,7 +2,6 @@
   (:require [ataraxy.core :as ataraxy]
             [ataraxy.response :as response]
             [clojure.java.jdbc :as jdbc]
-            [duct.database.sql]
             [walkable.sql-query-builder :as sqb]
             [walkable.sql-query-builder.filters :as sqbf]
             [hikari-cp.core :refer [close-datasource]]
