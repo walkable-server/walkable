@@ -122,18 +122,24 @@
                 (fn [env] (ident->condition env v)))))
     {} idents))
 
-(defn assoc-multi [m ks v]
-  (if (sequential? ks)
-    (merge m
-      (reduce (fn [result k]
-                (assoc result k v))
-        {} ks))
-    (assoc m ks v)))
+(defn expand-multi-keys [m]
+  (reduce (fn [result [ks v]]
+            (if (sequential? ks)
+              (let [new-pairs (mapv (fn [k] [k v]) ks)]
+                (vec (concat result new-pairs)))
+              (conj result [ks v])))
+    [] m))
 
 (defn flatten-multi-keys [m]
-  (reduce (fn [result [k v]]
-            (assoc-multi result k v))
-    {} m))
+  (let [expanded  (expand-multi-keys m)
+        key-set   (set (map first expanded))
+        keys+vals (mapv (fn [current-key]
+                          (let [current-vals (mapv second (filter (fn [[k v]] (= current-key k)) expanded))]
+                            [current-key (if (= 1 (count current-vals))
+                                           (first current-vals)
+                                           current-vals)]))
+                    key-set)]
+    (into {} keys+vals)))
 
 (defn compile-extra-conditions
   [extra-conditions]

@@ -62,18 +62,15 @@
                            :person-pet/pet-index :pet/index]))
     "person"))
 
-(deftest assoc-multi-tests
-  (is (= (sut/assoc-multi {:a 1} [:b :c :d] 2)
-        {:a 1, :b 2, :c 2, :d 2}))
-
-  (is (= (sut/assoc-multi {:a 1} [] 2)
-        {:a 1}))
-  (is (= (sut/assoc-multi {:a 1} :foo 2)
-        {:a 1, :foo 2})))
+(deftest expand-multi-keys-tests
+  (is (= (sut/expand-multi-keys {:a 1 [:a :b] 2})
+        [[:a 1] [:a 2] [:b 2]])))
 
 (deftest flatten-multi-keys-test
   (is (= (sut/flatten-multi-keys {:a 1 [:b :c] 2 :d 3})
-        {:a 1, :b 2, :c 2, :d 3})))
+        {:a 1, :b 2, :c 2, :d 3}))
+  (is (= (sut/flatten-multi-keys {:a 1 [:a :b] 2 :b 3 :c 4})
+        {:a [1, 2] :b [2, 3] :c 4})))
 
 (deftest expand-reversed-joins-test
   (is (= (sut/expand-reversed-joins {:pet/owner :person/pet}
