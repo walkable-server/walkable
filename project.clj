@@ -18,6 +18,7 @@
                  [fulcrologic/fulcro "2.2.0" :exclusions [org.clojure/clojurescript]]
                  [fulcrologic/fulcro-spec "2.0.1" :scope "test" :exclusions [fulcrologic/fulcro]]]
   :plugins [[duct/lein-duct "0.10.6"]]
+  :main ^:skip-aot walkable-demo.main
   :resource-paths ["resources" "target/resources"]
   :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
   :profiles
