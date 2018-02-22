@@ -13,7 +13,7 @@
 (def ui-person (prim/factory Person {:keyfn :person/number}))
 
 (defsc Root [this {:keys [ui/react-key]}]
-  {:query [:ui/react-key]
+  {:query [:ui/react-key {[:person/by-id 1] (prim/get-query Person)}]
    :initial-state {}}
   (dom/div #js {:key react-key}
     "Hello world"
