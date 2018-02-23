@@ -41,7 +41,7 @@
   :down ["DROP TABLE `cow`"]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.case-1/create-farmer-table]
- {:up   ["CREATE TABLE `farmer` (`number` SERIAL PRIMARY KEY, `cow_index` INTEGER REFERENCES cow(`index`), `name` TEXT)"
+ {:up   ["CREATE TABLE `farmer` (`number` SERIAL PRIMARY KEY, `cow_index` INTEGER REFERENCES `cow`(`index`), `name` TEXT)"
          "INSERT INTO `farmer` (`number`, `name`, `cow_index`) VALUES (1, 'jon', 10), (2, 'mary', 20)"]
   :down ["DROP TABLE `farmer`"]}
 
@@ -53,7 +53,7 @@
   :down ["DROP TABLE `human`"]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.case-2/create-toy-table]
- {:up   ["CREATE TABLE `toy` (`index` SERIAL PRIMARY KEY, `owner_number` INTEGER REFERENCES human(`number`), `color` TEXT)"
+ {:up   ["CREATE TABLE `toy` (`index` SERIAL PRIMARY KEY, `owner_number` INTEGER REFERENCES `human`(`number`), `color` TEXT)"
          "INSERT INTO `toy` (`index`, `color`, `owner_number`) VALUES (10, 'yellow', 1), (20, 'green', 2)"]
   :down ["DROP TABLE `toy`"]}
 
