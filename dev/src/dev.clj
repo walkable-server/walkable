@@ -65,7 +65,6 @@
 #_
 (let [eg-1
       '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            :farmer/cow-index
                             {:farmer/cow [:cow/index :cow/color]}]}]
 
       parser
