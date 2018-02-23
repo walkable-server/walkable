@@ -68,7 +68,7 @@
       (str " OFFSET " offset))))
 
 (defn children->columns-to-query
-  [{::keys [column-keywords required-columns source-table source-column]}
+  [{::keys [column-keywords required-columns source-columns]}
    all-child-keys]
   (let [child-column-keys
         (->> all-child-keys (filter #(contains? column-keywords %)) (into #{}))
@@ -77,10 +77,10 @@
         (->> all-child-keys (map #(get required-columns %)) (apply clojure.set/union))
 
         child-join-keys
-        (filter #(contains? source-table %) all-child-keys)
+        (filter #(contains? source-columns %) all-child-keys)
 
         child-source-columns
-        (->> child-join-keys (map #(get source-column %)) (into #{}))]
+        (->> child-join-keys (map #(get source-columns %)) (into #{}))]
     (clojure.set/union
       child-column-keys
       child-required-keys

@@ -95,9 +95,7 @@
                   #{:pet/yob}
                   :required-columns
                   {:pet/age #{:pet/yob}}
-                  :source-table
-                  {:pet/owner "does-not-matter"}
-                  :source-column
+                  :source-columns
                   {:pet/owner :person/number}}
            [:pet/age :pet/will-be-ignored :pet/owner])
         #{:pet/yob :person/number})))
