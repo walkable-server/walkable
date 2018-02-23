@@ -133,15 +133,19 @@
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
-                         :person-pet/person-number :person/number]})
-        {:person/pet "person"
-         :pet/owner  "pet"})))
+                         :person-pet/person-number :person/number]
+            :farmer/cow [:farmer/cow-index :cow/index]})
+        {:person/pet "person",
+         :pet/owner  "pet",
+         :farmer/cow "farmer"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
-                         :person-pet/person-number :person/number]})
-        {:person/pet :person/number
-         :pet/owner  :pet/index})))
+                         :person-pet/person-number :person/number]
+            :farmer/cow [:farmer/cow-index :cow/index]})
+        {:person/pet :person/number,
+         :pet/owner :pet/index,
+         :farmer/cow :farmer/cow-index})))
