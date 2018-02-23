@@ -56,13 +56,14 @@
   )
 #_
 (let [eg-1
-      '[{(:people/all {::sqb/limit 1
-                       ::sqb/offset 1
+      '[{(:people/all {::sqb/filters  {:person/number [:< 10]}
+                       ::sqb/limit    1
+                       ::sqb/offset   1
                        ::sqb/order-by [[:person/name :desc]]})
          [:person/number :person/name]}]
 
       eg-2
-      '[{([:person/by-id 1] {::sqb/filters {:person/number [:= 1]}})
+      '[{[:person/by-id 1]
          [:person/number
           :person/name
           :person/age
@@ -73,7 +74,7 @@
       parser
       example/pathom-parser]
   (parser {:current-user 1
-           ::sqb/sql-db    (db)
+           ::sqb/sql-db  (db)
            ::sqb/run-query
            (fn [& xs]
              (let [[q & args] (rest xs)]
@@ -98,7 +99,7 @@
               :required-columns {:pet/age    #{:pet/yob}
                                  :person/age #{:person/yob}}
               :idents           {:person/by-id [:= :person/number]
-                                 :people/all "person"}
+                                 :people/all   "person"}
               :extra-conditions {[:pet/owner :person/by-id]
                                  [:or {:person/hidden [:= true]}
                                   {:person/hidden [:= false]}]}
