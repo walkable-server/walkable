@@ -45,9 +45,13 @@
   (str
     " JOIN `" table-2
     "` ON `"   table-1-alias "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
+
+(defn split-join-seq [join-seq]
+  (map split-keyword join-seq))
+
 (defn ->join-pairs
-  [join-spec]
-  (partition 2 (map split-keyword join-spec)))
+  [join-seq]
+  (partition 2 (split-join-seq join-seq)))
 
 (defn ->join-statements [join-pairs]
   (apply str (map ->join-statement join-pairs)))
