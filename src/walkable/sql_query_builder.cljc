@@ -55,6 +55,10 @@
 
 (defn ->join-statements [join-pairs]
   (apply str (map ->join-statement join-pairs)))
+(defn ->join-tables
+  [join-seq]
+  (map first (split-join-seq join-seq)))
+
 
 
 (defn ->query-string

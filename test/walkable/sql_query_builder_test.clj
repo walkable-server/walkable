@@ -36,6 +36,10 @@
   (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
         " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
 
+(deftest ->join-tables-test
+  (is (= (sut/->join-tables [:pet/index :person/number])
+        ["pet" "person"])))
+
 (deftest ->join-statement-with-alias-test
   (is (= (sut/->join-statement-with-alias [["foo" "bar"] ["boo" "far"]] "foo_1")
         " JOIN `boo` ON `foo_1`.`bar` = `boo`.`far`")))
