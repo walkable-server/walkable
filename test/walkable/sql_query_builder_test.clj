@@ -62,12 +62,10 @@
         (sut/self-join? [:human/number :follow/human-1 :follow/human-2 :person/number]))))
 
 (deftest ->join-statements-tests
-  (is (= (sut/->join-statements
-           (sut/->join-pairs [:pet/index :person/number]))
+  (is (= (sut/->join-statements [:pet/index :person/number])
         " JOIN `person` ON `pet`.`index` = `person`.`number`"))
-  (is (= (sut/->join-statements
-           (sut/->join-pairs [:pet/index :person-pet/pet-index
-                              :person-pet/person-number :person/number]))
+  (is (= (sut/->join-statements [:pet/index :person-pet/pet-index
+                                 :person-pet/person-number :person/number])
         " JOIN `person_pet` ON `pet`.`index` = `person_pet`.`pet_index` JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
 
 (deftest expand-multi-keys-tests

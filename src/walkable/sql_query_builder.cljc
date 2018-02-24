@@ -53,8 +53,6 @@
   [join-seq]
   (partition 2 (split-join-seq join-seq)))
 
-(defn ->join-statements [join-pairs]
-  (apply str (map ->join-statement join-pairs)))
 (defn ->join-tables
   [join-seq]
   (map first (split-join-seq join-seq)))
@@ -71,6 +69,14 @@
   [join-seq]
   (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
     (keyword column-2 column-1)))
+
+(defn ->join-statements [join-seq]
+  (if (self-join? join-seq)
+    (let [[p1 p2] (->join-pairs join-seq)]
+      (str
+        (->join-statement-with-alias p1 (->table-1-alias p1))
+        (->join-statement p2)))
+    (apply str (map ->join-statement (->join-pairs join-seq)))))
 
 (defn ->query-string
   [{::keys [source-table join-statement
