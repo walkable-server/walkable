@@ -279,6 +279,9 @@
                  source-columns
                  source-tables
 
+                 self-join-source-table-aliases
+                 self-join-source-column-aliases
+
                  ident-conditions
                  extra-conditions]}
         sql-schema
@@ -291,9 +294,16 @@
             source-column
             (get source-columns k)
 
+            source-table-alias
+            (get self-join-source-table-aliases k)
+
+            source-column-alias
+            (get self-join-source-column-aliases k)
+
             source-condition
             (when source-column
-              {source-column [:= (get e source-column)]})
+              {(or source-column-alias source-column)
+               [:= (get e source-column)]})
 
             all-child-keys
             (->> env :ast :children (map :dispatch-key))
@@ -346,15 +356,16 @@
 
             sql-query
             (->query-string
-              #::{:source-table     source-table
-                  :join-statement   join-statement
-                  :columns-to-query columns-to-query
-                  :column-names     column-names
-                  :column-aliases   column-aliases
-                  :where-conditions where-conditions
-                  :offset           offset
-                  :limit            limit
-                  :order-by         order-by})
+              #::{:source-table       source-table
+                  :source-table-alias source-table-alias
+                  :join-statement     join-statement
+                  :columns-to-query   columns-to-query
+                  :column-names       column-names
+                  :column-aliases     column-aliases
+                  :where-conditions   where-conditions
+                  :offset             offset
+                  :limit              limit
+                  :order-by           order-by})
 
             query-result
             (run-query sql-db
