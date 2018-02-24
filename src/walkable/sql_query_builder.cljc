@@ -46,8 +46,6 @@
 (defn ->join-statements [join-pairs]
   (apply str (map ->join-statement join-pairs)))
 
-(defn ->source-table [join-pairs]
-  (doall (ffirst (first join-pairs))))
 
 (defn ->query-string
   [{::keys [source-table join-statement

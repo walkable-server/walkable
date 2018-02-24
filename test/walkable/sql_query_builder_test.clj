@@ -56,12 +56,6 @@
                               :person-pet/person-number :person/number]))
         " JOIN `person_pet` ON `pet`.`index` = `person_pet`.`pet_index` JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
 
-(deftest ->source-table-test
-  (is (sut/->source-table
-        (sut/->join-pairs [:person/number :person-pet/person-number
-                           :person-pet/pet-index :pet/index]))
-    "person"))
-
 (deftest expand-multi-keys-tests
   (is (= (sut/expand-multi-keys {:a 1 [:a :b] 2})
         [[:a 1] [:a 2] [:b 2]])))
