@@ -63,6 +63,14 @@
   (let [[from-table & other-tables] (->join-tables join-seq)]
     (contains? (set other-tables) from-table)))
 
+(defn ->table-1-alias
+  [[[table-1 column-1] [table-2 column-2]]]
+  column-2)
+
+(defn ->column-1-alias
+  [join-seq]
+  (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
+    (keyword column-2 column-1)))
 
 (defn ->query-string
   [{::keys [source-table join-statement
