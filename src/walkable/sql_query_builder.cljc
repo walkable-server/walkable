@@ -183,7 +183,7 @@
   [joins]
   (reduce (fn [result [k v]]
             (assoc result k
-              (->join-statements (->join-pairs v))))
+              (->join-statements v)))
     {} joins))
 
 (defn expand-reversed-joins [reversed-joins joins]
