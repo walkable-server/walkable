@@ -59,6 +59,9 @@
   [join-seq]
   (map first (split-join-seq join-seq)))
 
+(defn self-join? [join-seq]
+  (let [[from-table & other-tables] (->join-tables join-seq)]
+    (contains? (set other-tables) from-table)))
 
 
 (defn ->query-string

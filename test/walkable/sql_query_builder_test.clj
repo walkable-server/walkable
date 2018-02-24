@@ -55,6 +55,12 @@
           (("person_pet" "person_number")
            ("person" "number"))))))
 
+(deftest self-join?-tests
+  (is (sut/self-join?
+        [:human/number :follow/human-1 :follow/human-2 :human/number]))
+  (is (not
+        (sut/self-join? [:human/number :follow/human-1 :follow/human-2 :person/number]))))
+
 (deftest ->join-statements-tests
   (is (= (sut/->join-statements
            (sut/->join-pairs [:pet/index :person/number]))
