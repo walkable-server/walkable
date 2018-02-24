@@ -168,3 +168,30 @@
               :join-cardinality {:person/by-id :one
                                  :person/pet   :many}})}
     eg-1))
+
+;; self-join example
+#_
+(let [eg-1
+      '[{:world/all
+         [:human/number :human/name
+          {:human/follow [:human/number
+                          :human/name
+                          :human/yob]}]}]
+      parser
+      example/pathom-parser]
+  (parser {::sqb/sql-db    (db)
+           ::sqb/run-query run-print-query
+           ::sqb/sql-schema
+           (sqb/compile-schema
+             {:columns          [:human/number :human/name :human/yob
+                                 ;; :human-1/number :human-2/number
+                                 ]
+              :required-columns {}
+              :idents           {:human/by-id [:= :human/number]
+                                 :world/all   "human"}
+              :extra-conditions {}
+              :joins            {:human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]}
+              :reversed-joins   {}
+              :join-cardinality {:human/by-id  :one
+                                 :human/follow :many}})}
+    eg-1))
