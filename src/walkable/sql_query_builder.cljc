@@ -78,6 +78,20 @@
         (->join-statement p2)))
     (apply str (map ->join-statement (->join-pairs join-seq)))))
 
+(defn joins->self-join-source-table-aliases [joins]
+  (reduce (fn [result [k join-seq]]
+            (if (self-join? join-seq)
+              (assoc result k (->table-1-alias (first (->join-pairs join-seq))))
+              result))
+    {} joins))
+
+(defn joins->self-join-source-column-aliases [joins]
+  (reduce (fn [result [k join-seq]]
+            (if (self-join? join-seq)
+              (assoc result k (->column-1-alias join-seq))
+              result))
+    {} joins))
+
 (defn ->query-string
   [{::keys [source-table join-statement
             columns-to-query column-names column-aliases

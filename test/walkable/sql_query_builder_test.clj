@@ -61,6 +61,18 @@
   (is (not
         (sut/self-join? [:human/number :follow/human-1 :follow/human-2 :person/number]))))
 
+(deftest joins->self-join-source-table-aliases-test
+  (is (= (sut/joins->self-join-source-table-aliases
+           {:human/pet    [:human/pet-index :pet/index]
+            :human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]})
+        #:human{:follow "human_1"})))
+
+(deftest joins->self-join-source-column-aliases-test
+  (is (= (sut/joins->self-join-source-column-aliases
+           {:human/pet    [:human/pet-index :pet/index]
+            :human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]})
+        {:human/follow :human-1/number})))
+
 (deftest ->join-statements-tests
   (is (= (sut/->join-statements [:pet/index :person/number])
         " JOIN `person` ON `pet`.`index` = `person`.`number`"))
