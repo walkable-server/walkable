@@ -114,10 +114,11 @@
     (when offset
       (str " OFFSET " offset))))
 
-(defn children->columns-to-query
-  [{::keys [column-keywords required-columns source-columns]}
-   all-child-keys]
-  (let [child-column-keys
+(defn columns-to-query
+  [{::keys [sql-schema] :as env}]
+  (let [{::keys [column-keywords required-columns source-columns]} sql-schema
+        all-child-keys (->> env :ast :children (map :dispatch-key))
+        child-column-keys
         (->> all-child-keys (filter #(contains? column-keywords %)) (into #{}))
 
         child-required-keys

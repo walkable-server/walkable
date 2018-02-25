@@ -107,15 +107,17 @@
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
 
-(deftest children->columns-to-query-test
-  (is (= (sut/children->columns-to-query
-           #::sut{:column-keywords
-                  #{:pet/yob}
-                  :required-columns
-                  {:pet/age #{:pet/yob}}
-                  :source-columns
-                  {:pet/owner :person/number}}
-           [:pet/age :pet/will-be-ignored :pet/owner])
+(deftest columns-to-query-test
+  (is (= (sut/columns-to-query
+           {:ast {:children (mapv (fn [k] {:dispatch-key k})
+                              [:pet/age :pet/will-be-ignored :pet/owner])}
+            ::sut/sql-schema
+            #::sut{:column-keywords
+                   #{:pet/yob}
+                   :required-columns
+                   {:pet/age #{:pet/yob}}
+                   :source-columns
+                   {:pet/owner :person/number}}})
         #{:pet/yob :person/number})))
 
 (deftest ident->condition-tests
