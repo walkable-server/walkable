@@ -271,24 +271,6 @@
         :column-aliases   (->column-aliases columns)
         :join-statements  (compile-join-statements joins)}))
 
-(defn pull-entities
-  [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [column-keywords
-                 column-names
-                 column-aliases
-
-                 required-columns
-
-                 join-statements
-                 join-cardinality
-                 source-columns
-                 source-tables
-
-                 self-join-source-table-aliases
-                 self-join-source-column-aliases
-
-                 ident-conditions
-                 extra-conditions]}
 (defn clean-up-all-conditions
   [all-conditions]
   (let [all-conditions (remove nil? all-conditions)]
@@ -312,93 +294,84 @@
      (when-let [order-by (get-in env [:ast :params ::order-by])]
        (filters/->order-by-string column-names order-by))}))
 
+(defn process-conditions
+  [{:keys [sql-schema] :as env}]
+  (let [{:keys [ident-conditions extra-conditions source-columns
+                column-names
+                self-join-source-column-aliases]}
         sql-schema
         e (p/entity env)
-        k (get-in env [:ast :dispatch-key])]
+        k (get-in env [:ast :dispatch-key])
+
+        ident-condition
+        (when-let [->condition (get ident-conditions k)]
+          (->condition env))
+
+        source-column
+        (get source-columns k)
+
+        source-column-alias
+        (get self-join-source-column-aliases k)
+
+        source-condition
+        (when source-column
+          {(or source-column-alias source-column)
+           [:= (get e source-column)]})
+
+        extra-condition
+        (when-let [->condition (get extra-conditions k)]
+          (->condition env))
+
+        supplied-condition
+        (get-in env [:ast :params ::filters])
+
+        all-conditions
+        (clean-up-all-conditions
+          [ident-condition source-condition extra-condition supplied-condition])]
+    (when all-conditions
+      (filters/parameterize {:key    nil
+                             :keymap column-names}
+        all-conditions))))
+
+(defn process-query
+  [{::keys [sql-schema] :as env}]
+  (let [{::keys [column-keywords
+                 column-names
+                 column-aliases
+                 join-statements
+                 source-tables
+                 self-join-source-table-aliases]} sql-schema
+        k                                         (get-in env [:ast :dispatch-key])
+        [where-conditions query-params]           (process-conditions env)
+        {:keys [offset limit order-by]}           (process-pagination env)]
+    {:query-string-input {:source-table       (get source-tables k)
+                          :source-table-alias (get self-join-source-table-aliases k)
+                          :join-statement     (get join-statements k)
+                          :columns-to-query   (columns-to-query env)
+                          :column-names       column-names
+                          :column-aliases     column-aliases
+                          :where-conditions   where-conditions
+                          :offset             offset
+                          :limit              limit
+                          :order-by           order-by}
+     :query-params       query-params}))
+
+(defn pull-entities
+  [{::keys [sql-schema sql-db run-query] :as env}]
+  (let [{::keys [source-tables join-cardinality]} sql-schema
+        k                                         (get-in env [:ast :dispatch-key])]
     (if (contains? source-tables k)
-      (let [source-table
-            (get source-tables k)
-
-            source-column
-            (get source-columns k)
-
-            source-table-alias
-            (get self-join-source-table-aliases k)
-
-            source-column-alias
-            (get self-join-source-column-aliases k)
-
-            source-condition
-            (when source-column
-              {(or source-column-alias source-column)
-               [:= (get e source-column)]})
-
-            all-child-keys
-            (->> env :ast :children (map :dispatch-key))
-
-            join-statement
-            (get join-statements k)
-
-            columns-to-query
-            (children->columns-to-query sql-schema all-child-keys)
-
-            ident-condition
-            (when-let [condition (get ident-conditions k)]
-              (condition env))
-
-            extra-condition
-            (when-let [condition (get extra-conditions k)]
-              (condition env))
-
-            supplied-condition
-            (get-in env [:ast :params ::filters])
-
-            all-conditions
-            (remove nil? [ident-condition source-condition extra-condition supplied-condition])
-
-            all-conditions
-            (case (count all-conditions)
-              0 nil
-              1 (first all-conditions)
-              all-conditions)
-
-            [where-conditions sql-params]
-            (when all-conditions
-              (filters/parameterize {:key    nil
-                                     :keymap column-names}
-                all-conditions))
-
-            offset
-            (when-let [offset (get-in env [:ast :params ::offset])]
-              (when (integer? offset)
-                offset))
-
-            limit
-            (when-let [limit (get-in env [:ast :params ::limit])]
-              (when (integer? limit)
-                limit))
-
-            order-by
-            (when-let [order-by (get-in env [:ast :params ::order-by])]
-              (filters/->order-by-string column-names order-by))
+      ;; this is a join, let's go for data
+      (let [{:keys [query-string-input query-params]}
+            (process-query env)
 
             sql-query
-            (->query-string
-              #::{:source-table       source-table
-                  :source-table-alias source-table-alias
-                  :join-statement     join-statement
-                  :columns-to-query   columns-to-query
-                  :column-names       column-names
-                  :column-aliases     column-aliases
-                  :where-conditions   where-conditions
-                  :offset             offset
-                  :limit              limit
-                  :order-by           order-by})
+            (->query-string query-string-input)
 
             query-result
             (run-query sql-db
-              (if sql-params
-                (cons sql-query sql-params)
+              (if query-params
+                (cons sql-query query-params)
                 sql-query))
 
             do-join
