@@ -289,6 +289,14 @@
 
                  ident-conditions
                  extra-conditions]}
+(defn clean-up-all-conditions
+  [all-conditions]
+  (let [all-conditions (remove nil? all-conditions)]
+    (case (count all-conditions)
+      0 nil
+      1 (first all-conditions)
+      all-conditions)))
+
         sql-schema
         e (p/entity env)
         k (get-in env [:ast :dispatch-key])]
