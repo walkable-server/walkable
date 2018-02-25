@@ -93,9 +93,9 @@
     {} joins))
 
 (defn ->query-string
-  [{::keys [source-table join-statement source-table-alias
-            columns-to-query column-names column-aliases
-            where-conditions offset limit order-by]}]
+  [{:keys [source-table join-statement source-table-alias
+           columns-to-query column-names column-aliases
+           where-conditions offset limit order-by]}]
   (str "SELECT " (selection-with-aliases columns-to-query column-names column-aliases)
     " FROM `" source-table "`"
 
