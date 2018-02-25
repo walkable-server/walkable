@@ -236,7 +236,7 @@
     idents))
 
 (defn compile-schema
-  [{:keys [columns required-columns idents extra-conditions
+  [{:keys [columns pseudo-columns required-columns idents extra-conditions
            reversed-joins joins join-cardinality]}]
   (let [idents                                            (flatten-multi-keys idents)
         {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
@@ -246,7 +246,10 @@
         join-cardinality                                  (flatten-multi-keys join-cardinality)
         self-join-source-table-aliases                    (joins->self-join-source-table-aliases joins)
         self-join-source-column-aliases                   (joins->self-join-source-column-aliases joins)
-        columns                                           (set (concat columns (vals self-join-source-column-aliases)))]
+        true-columns                                      (set (concat columns
+                                                                 (vals self-join-source-column-aliases)))
+        columns                                           (set (concat true-columns
+                                                                 (keys pseudo-columns)))]
     #::{:column-keywords  columns
         :required-columns (expand-denpendencies required-columns)
         ;; SELECT ... FROM ?
@@ -262,7 +265,8 @@
         :join-cardinality join-cardinality
         :ident-conditions (compile-ident-conditions conditional-idents)
         :extra-conditions (compile-extra-conditions extra-conditions)
-        :column-names     (->column-names columns)
+        :column-names     (merge (->column-names true-columns)
+                            pseudo-columns)
         :column-aliases   (->column-aliases columns)
         :join-statements  (compile-join-statements joins)}))
 
