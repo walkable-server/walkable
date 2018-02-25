@@ -280,7 +280,7 @@
       all-conditions)))
 
 (defn process-pagination
-  [{:keys [sql-schema] :as env}]
+  [{::keys [sql-schema] :as env}]
   (let [{:keys [column-names]} sql-schema]
     {:offset
      (when-let [offset (get-in env [:ast :params ::offset])]
@@ -295,10 +295,10 @@
        (filters/->order-by-string column-names order-by))}))
 
 (defn process-conditions
-  [{:keys [sql-schema] :as env}]
-  (let [{:keys [ident-conditions extra-conditions source-columns
-                column-names
-                self-join-source-column-aliases]}
+  [{::keys [sql-schema] :as env}]
+  (let [{::keys [ident-conditions extra-conditions source-columns
+                 column-names
+                 self-join-source-column-aliases]}
         sql-schema
         e (p/entity env)
         k (get-in env [:ast :dispatch-key])
