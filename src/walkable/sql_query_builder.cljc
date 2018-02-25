@@ -297,6 +297,21 @@
       1 (first all-conditions)
       all-conditions)))
 
+(defn process-pagination
+  [{:keys [sql-schema] :as env}]
+  (let [{:keys [column-names]} sql-schema]
+    {:offset
+     (when-let [offset (get-in env [:ast :params ::offset])]
+       (when (integer? offset)
+         offset))
+     :limit
+     (when-let [limit (get-in env [:ast :params ::limit])]
+       (when (integer? limit)
+         limit))
+     :order-by
+     (when-let [order-by (get-in env [:ast :params ::order-by])]
+       (filters/->order-by-string column-names order-by))}))
+
         sql-schema
         e (p/entity env)
         k (get-in env [:ast :dispatch-key])]
