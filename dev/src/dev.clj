@@ -174,7 +174,8 @@
 (let [eg-1
       '[{:world/all
          [:human/number :human/name
-          {:human/follow [:human/number
+          {:human/follow [:follow/count
+                          :human/number
                           :human/name
                           :human/yob]}]}]
       parser
@@ -192,6 +193,7 @@
               :extra-conditions {}
               :joins            {:human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
+              :pseudo-columns   {:follow/count "COUNT(`follow`.`human_2`)"}
               :join-cardinality {:human/by-id  :one
                                  :human/follow :many}})}
     eg-1))
