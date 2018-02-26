@@ -148,14 +148,27 @@
         (->join-statement p2)))
     (apply str (map ->join-statement (->join-pairs join-seq)))))
 
-(defn joins->self-join-source-table-aliases [joins]
+(s/def ::joins
+  (s/coll-of (s/tuple ::namespaced-keyword ::join-seq)))
+
+(defn joins->self-join-source-table-aliases
+  "Helper for compile-schema. Generates source table aliases for
+  self-join keys."
+  [joins]
+  {:pre [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
             (if (self-join? join-seq)
               (assoc result k (->table-1-alias (first (->join-pairs join-seq))))
               result))
     {} joins))
 
-(defn joins->self-join-source-column-aliases [joins]
+(defn joins->self-join-source-column-aliases
+  "Helper for compile-schema. Generates source column aliases for
+  self-join keys."
+  [joins]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
             (if (self-join? join-seq)
               (assoc result k (->column-1-alias join-seq))
