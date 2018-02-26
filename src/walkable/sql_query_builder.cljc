@@ -276,6 +276,8 @@
     {key (cons operator params)}))
 
 (defn compile-ident-conditions
+  "Converts ident conditions from pure form to lambda form if not
+  yet."
   [idents]
   (reduce (fn [result [k v]]
             (assoc result k
