@@ -108,7 +108,12 @@
   {:pre [(s/valid? ::join-seq join-seq)]}
   (map first (split-join-seq join-seq)))
 
-(defn self-join? [join-seq]
+(defn self-join?
+  "Checks if a join sequence is a self-join which means joining the
+  same table as the original one."
+  [join-seq]
+  {:pre [(s/valid? ::join-seq join-seq)]
+   :post [boolean?]}
   (let [[from-table & other-tables] (->join-tables join-seq)]
     (contains? (set other-tables) from-table)))
 
