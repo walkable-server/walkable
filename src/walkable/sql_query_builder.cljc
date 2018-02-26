@@ -254,17 +254,23 @@
     {} idents))
 
 (defn joins->source-tables
+  "Produces map of join keys to their corresponding source table name."
   [joins]
-  (reduce (fn [result [k join-spec]]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-string-map %)]}
+  (reduce (fn [result [k join-seq]]
             (assoc result k
-              (first (split-keyword (first join-spec)))))
+              (first (split-keyword (first join-seq)))))
     {} joins))
 
 (defn joins->source-columns
+  "Produces map of join keys to their corresponding source column keyword."
   [joins]
-  (reduce (fn [result [k join-spec]]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-keyword-map %)]}
+  (reduce (fn [result [k join-seq]]
             (assoc result k
-              (first join-spec)))
+              (first join-seq)))
     {} joins))
 
 (defn compile-ident-conditions
