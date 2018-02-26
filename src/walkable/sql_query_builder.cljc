@@ -126,7 +126,12 @@
   column-2)
 
 (defn ->column-1-alias
+  "In case of self-join, use the column name in the relation table as
+  alias for the original table. Returns the original column name with
+  alias table."
   [join-seq]
+  {:pre  [(s/valid? ::join-seq join-seq)]
+   :post [#(s/valid? ::namespaced-keyword %)]}
   (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
     (keyword column-2 column-1)))
 
