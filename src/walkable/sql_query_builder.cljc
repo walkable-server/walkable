@@ -87,7 +87,14 @@
     " JOIN `" table-2
     "` ON `"   table-1-alias "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
-(defn split-join-seq [join-seq]
+(s/def ::join-seq
+  (s/and (s/coll-of ::namespaced-keyword
+           :min-count 2)
+    #(even? (count %))))
+
+(defn split-join-seq
+  [join-seq]
+  {:pre [(s/valid? ::join-seq join-seq)]}
   (map split-keyword join-seq))
 
 (defn ->join-pairs
