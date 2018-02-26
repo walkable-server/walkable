@@ -240,9 +240,14 @@
   (let [params         (-> env :ast :key rest)
         [operator key] condition]
     {key (cons operator params)}))
+(s/def ::conditional-ident
+  (s/tuple keyword? (s/tuple ::filters/operators ::namespaced-keyword)))
 
 (defn conditional-idents->source-tables
+  "Produces map of ident keys to their corresponding source table name."
   [idents]
+  {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
+   :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [ident-key [_operator column-keyword]]]
             (assoc result ident-key
               (first (split-keyword column-keyword))))
