@@ -135,7 +135,12 @@
   (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
     (keyword column-2 column-1)))
 
-(defn ->join-statements [join-seq]
+(defn ->join-statements
+  "Helper for compile-schema. Generates JOIN statement strings for all
+  join keys given their join sequence."
+  [join-seq]
+  {:pre [(s/valid? ::join-seq join-seq)]
+   :post [string?]}
   (if (self-join? join-seq)
     (let [[p1 p2] (->join-pairs join-seq)]
       (str
