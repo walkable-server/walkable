@@ -297,7 +297,6 @@
 (defn process-conditions
   [{::keys [sql-schema] :as env}]
   (let [{::keys [ident-conditions extra-conditions source-columns
-                 column-names
                  self-join-source-column-aliases]}
         sql-schema
         e (p/entity env)
@@ -323,11 +322,13 @@
           (->condition env))
 
         supplied-condition
-        (get-in env [:ast :params ::filters])
+        (get-in env [:ast :params ::filters])]
+    [ident-condition source-condition extra-condition supplied-condition]))
 
-        all-conditions
-        (clean-up-all-conditions
-          [ident-condition source-condition extra-condition supplied-condition])]
+(defn parameterize-all-conditions
+  [{::keys [sql-schema] :as env}]
+  (let [{::keys [column-names]} sql-schema
+        all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
                              :keymap column-names}
@@ -342,7 +343,7 @@
                  source-tables
                  self-join-source-table-aliases]} sql-schema
         k                                         (get-in env [:ast :dispatch-key])
-        [where-conditions query-params]           (process-conditions env)
+        [where-conditions query-params]           (parameterize-all-conditions env)
         {:keys [offset limit order-by]}           (process-pagination env)]
     {:query-string-input {:source-table       (get source-tables k)
                           :source-table-alias (get self-join-source-table-aliases k)
