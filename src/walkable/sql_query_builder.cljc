@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder
   (:require [walkable.sql-query-builder.filters :as filters]
+            [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]))
 
 (defn split-keyword
