@@ -118,7 +118,11 @@
     (contains? (set other-tables) from-table)))
 
 (defn ->table-1-alias
+  "In case of self-join, use the column name in the relation table as
+  alias for the original table."
   [[[table-1 column-1] [table-2 column-2]]]
+  {:pre [(every? string? [table-1 column-1 table-2 column-2])]
+   :post [string?]}
   column-2)
 
 (defn ->column-1-alias
