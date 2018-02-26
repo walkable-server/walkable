@@ -205,10 +205,20 @@
     (when offset
       (str " OFFSET " offset))))
 
+(s/def ::sql-schema
+  (s/keys :req []
+    :opt []))
+
 (defn columns-to-query
+  "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [sql-schema] :as env}]
+  {:pre  [(s/valid? ::sql-schema sql-schema)]
+   :post [set?]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
-        all-child-keys (->> env :ast :children (map :dispatch-key))
+
+        all-child-keys
+        (->> env :ast :children (map :dispatch-key))
+
         child-column-keys
         (->> all-child-keys (filter #(contains? column-keywords %)) (into #{}))
 
