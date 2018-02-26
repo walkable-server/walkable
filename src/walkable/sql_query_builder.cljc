@@ -235,11 +235,6 @@
       child-required-keys
       child-source-columns)))
 
-(defn ident->condition
-  [env condition]
-  (let [params         (-> env :ast :key rest)
-        [operator key] condition]
-    {key (cons operator params)}))
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::namespaced-keyword)))
 
@@ -272,6 +267,13 @@
             (assoc result k
               (first join-seq)))
     {} joins))
+
+(defn ident->condition
+  "Converts given ident key in env to equivalent condition dsl."
+  [env condition]
+  (let [params         (-> env :ast :key rest)
+        [operator key] condition]
+    {key (cons operator params)}))
 
 (defn compile-ident-conditions
   [idents]
