@@ -268,24 +268,6 @@
               (first join-seq)))
     {} joins))
 
-(defn ident->condition
-  "Converts given ident key in env to equivalent condition dsl."
-  [env condition]
-  (let [params         (-> env :ast :key rest)
-        [operator key] condition]
-    {key (cons operator params)}))
-
-(defn compile-ident-conditions
-  "Converts ident conditions from pure form to lambda form if not
-  yet."
-  [idents]
-  (reduce (fn [result [k v]]
-            (assoc result k
-              (if (fn? v)
-                v
-                (fn [env] (ident->condition env v)))))
-    {} idents))
-
 (s/def ::multi-keys
   (s/coll-of (s/tuple (s/or :single-key keyword?
                         :multiple-keys (s/coll-of keyword))
@@ -320,6 +302,24 @@
                                            current-vals)]))
                     key-set)]
     (into {} keys+vals)))
+
+(defn ident->condition
+  "Converts given ident key in env to equivalent condition dsl."
+  [env condition]
+  (let [params         (-> env :ast :key rest)
+        [operator key] condition]
+    {key (cons operator params)}))
+
+(defn compile-ident-conditions
+  "Converts ident conditions from pure form to lambda form if not
+  yet."
+  [idents]
+  (reduce (fn [result [k v]]
+            (assoc result k
+              (if (fn? v)
+                v
+                (fn [env] (ident->condition env v)))))
+    {} idents))
 
 (defn compile-extra-conditions
   [extra-conditions]
