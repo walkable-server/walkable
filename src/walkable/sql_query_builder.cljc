@@ -98,7 +98,9 @@
   (map split-keyword join-seq))
 
 (defn ->join-pairs
+  "Breaks a join-seq into pairs of table/column"
   [join-seq]
+  {:pre [(s/valid? ::join-seq join-seq)]}
   (partition 2 (split-join-seq join-seq)))
 
 (defn ->join-tables
