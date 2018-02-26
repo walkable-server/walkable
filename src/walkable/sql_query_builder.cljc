@@ -69,7 +69,11 @@
     (clojure.string/join ", ")))
 
 (defn ->join-statement
+  "Produces a SQL JOIN statement (of type string) given two pairs of
+  table/column"
   [[[table-1 column-1] [table-2 column-2]]]
+  {:pre [(every? string? [table-1 column-1 table-2 column-2])]
+   :post [string?]}
   (str
     " JOIN `" table-2
     "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
