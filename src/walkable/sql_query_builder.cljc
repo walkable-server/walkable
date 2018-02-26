@@ -3,30 +3,64 @@
             [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]))
 
+(s/def ::namespaced-keyword
+  #(and (keyword? %) (namespace %)))
+
 (defn split-keyword
   "Splits a keyword into a tuple of table and column."
   [k]
+  {:pre [(s/valid? ::namespaced-keyword k)]
+   :post [vector? #(= 2 (count %)) #(every? string? %)]}
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
 
-(defn keyword->column-name [k]
+(defn keyword->column-name
+  "Converts a keyword to column name in full form (which means table
+  name included) ready to use in an SQL query."
+  [k]
+  {:pre [(s/valid? ::namespaced-keyword k)]
+   :post [string?]}
   (->> (split-keyword k)
     (map #(str "`" % "`"))
     (clojure.string/join ".")))
 
-(defn keyword->alias [k]
+(defn keyword->alias
+  "Converts a keyword to an SQL alias"
+  [k]
+  {:pre [(s/valid? ::namespaced-keyword k)]
+   :post [string?]}
   (subs (str k) 1))
 
-(defn ->column-names [ks]
+(s/def ::keyword-string-map
+  (s/coll-of (s/tuple ::namespaced-keyword string?)))
+
+(s/def ::keyword-keyword-map
+  (s/coll-of (s/tuple ::namespaced-keyword string?)))
+
+(defn ->column-names
+  "Makes a hash-map of keywords and their equivalent column names"
+  [ks]
+  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) ks)]
+   :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map keyword->column-name ks)))
 
-(defn ->column-aliases [ks]
+(defn ->column-aliases
+  "Makes a hash-map of keywords and their equivalent aliases"
+  [ks]
+  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) ks)]
+   :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map keyword->alias ks)))
 
 (defn selection-with-aliases
+  "Produces the part after `SELECT` and before `FROM <sometable>` of
+  an SQL query"
   [columns-to-query column-names column-aliases]
+  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) columns-to-query)
+         (s/valid? ::keyword-string-map column-names)
+         (s/valid? ::keyword-string-map column-aliases)]
+   :post [string?]}
   (->> columns-to-query
     (map #(str (get column-names %)
             " AS \""
