@@ -105,6 +105,7 @@
 
 (defn ->join-tables
   [join-seq]
+  {:pre [(s/valid? ::join-seq join-seq)]}
   (map first (split-join-seq join-seq)))
 
 (defn self-join? [join-seq]
