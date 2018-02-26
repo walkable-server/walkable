@@ -286,7 +286,20 @@
                 (fn [env] (ident->condition env v)))))
     {} idents))
 
-(defn expand-multi-keys [m]
+(s/def ::multi-keys
+  (s/coll-of (s/tuple (s/or :single-key keyword?
+                        :multiple-keys (s/coll-of keyword))
+               (constantly true))))
+
+(s/def ::single-keys
+  (s/coll-of (s/tuple keyword? (constantly true))))
+
+(defn expand-multi-keys
+  "Expands a map where keys can be a vector of keywords to pairs where
+  each keyword has its own entry."
+  [m]
+  {:pre  [(s/valid? ::multi-keys m)]
+   :post [#(s/valid? ::single-keys %)]}
   (reduce (fn [result [ks v]]
             (if (sequential? ks)
               (let [new-pairs (mapv (fn [k] [k v]) ks)]
@@ -294,7 +307,10 @@
               (conj result [ks v])))
     [] m))
 
-(defn flatten-multi-keys [m]
+(defn flatten-multi-keys
+  [m]
+  {:pre  [(s/valid? ::multi-keys m)]
+   :post [#(s/valid? ::single-keys %)]}
   (let [expanded  (expand-multi-keys m)
         key-set   (set (map first expanded))
         keys+vals (mapv (fn [current-key]
