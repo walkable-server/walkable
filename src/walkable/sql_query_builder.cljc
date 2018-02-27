@@ -303,9 +303,15 @@
                     key-set)]
     (into {} keys+vals)))
 
+(s/def ::ident-condition
+  (s/tuple ::filters/operators ::namespaced-keyword))
+
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
   [env condition]
+  {:pre  [(s/valid? ::ident-condition condition)
+          (s/valid? (s/keys :req-un [::ast] env))]
+   :post [#(s/valid? ::filters/clauses %)]}
   (let [params         (-> env :ast :key rest)
         [operator key] condition]
     {key (cons operator params)}))
