@@ -15,8 +15,9 @@ Ever imagined sending queries like this to your SQL database?
                   {:pet/owner [:person/name]}]}]}]
 ```
 
-Yes, you can now. Build the query part of a fulcro server or REST api
-in minutes today!
+Yes, you can. Build the query part of a fulcro server or REST api in
+minutes today! Call it from your Fulcro/Re-frame etc app without
+worrying about SQL injection.
 
 ## Features
 
