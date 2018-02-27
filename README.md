@@ -1,6 +1,6 @@
 # Walkable
 
-Get data from SQL using om.next style query
+Get data from SQL using om.next style queries (similar to Datomic's pull api)
 
 Ever imagined sending queries like this to your SQL database?
 
