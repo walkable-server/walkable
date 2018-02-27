@@ -383,8 +383,6 @@
                                                                  (keys pseudo-columns)))]
     #::{:column-keywords  columns
         :required-columns (expand-denpendencies required-columns)
-        ;; SELECT ... FROM ?
-        ;; derive from idents and joins
         :source-tables    (merge (conditional-idents->source-tables conditional-idents)
                             unconditional-idents
                             (joins->source-tables joins))
