@@ -338,7 +338,9 @@
                        (assoc result backward
                          (reverse (get joins forward))))
                {} reversed-joins)]
-    (merge joins more)))
+    ;; if a join exists in joins, keep it instead of
+    ;; reversing associated backward join
+    (merge more joins)))
 
 (defn expand-denpendencies* [m]
   (reduce (fn [result [k vs]]
