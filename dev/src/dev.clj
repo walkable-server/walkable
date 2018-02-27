@@ -116,9 +116,9 @@
 #_
 (let [eg-1
       '[{(:people/all {::sqb/filters  {:person/number [:< 10]}
-                       ;; ::sqb/limit    1
-                       ;; ::sqb/offset   1
-                       ::sqb/order-by [[:person/name :desc]]})
+                       ::sqb/limit    1
+                       ::sqb/offset   1
+                       ::sqb/order-by [:person/name :desc]})
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
