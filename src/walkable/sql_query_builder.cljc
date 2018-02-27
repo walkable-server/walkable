@@ -3,13 +3,10 @@
             [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]))
 
-(s/def ::namespaced-keyword
-  #(and (keyword? %) (namespace %)))
-
 (defn split-keyword
   "Splits a keyword into a tuple of table and column."
   [k]
-  {:pre [(s/valid? ::namespaced-keyword k)]
+  {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [vector? #(= 2 (count %)) #(every? string? %)]}
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
@@ -18,7 +15,7 @@
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
   [k]
-  {:pre [(s/valid? ::namespaced-keyword k)]
+  {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
   (->> (split-keyword k)
     (map #(str "`" % "`"))
@@ -27,20 +24,20 @@
 (defn keyword->alias
   "Converts a keyword to an SQL alias"
   [k]
-  {:pre [(s/valid? ::namespaced-keyword k)]
+  {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
   (subs (str k) 1))
 
 (s/def ::keyword-string-map
-  (s/coll-of (s/tuple ::namespaced-keyword string?)))
+  (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
 
 (s/def ::keyword-keyword-map
-  (s/coll-of (s/tuple ::namespaced-keyword string?)))
+  (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
 
 (defn ->column-names
   "Makes a hash-map of keywords and their equivalent column names"
   [ks]
-  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) ks)]
+  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map keyword->column-name ks)))
@@ -48,7 +45,7 @@
 (defn ->column-aliases
   "Makes a hash-map of keywords and their equivalent aliases"
   [ks]
-  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) ks)]
+  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map keyword->alias ks)))
@@ -57,7 +54,7 @@
   "Produces the part after `SELECT` and before `FROM <sometable>` of
   an SQL query"
   [columns-to-query column-names column-aliases]
-  {:pre [(s/valid? (s/coll-of ::namespaced-keyword) columns-to-query)
+  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) columns-to-query)
          (s/valid? ::keyword-string-map column-names)
          (s/valid? ::keyword-string-map column-aliases)]
    :post [string?]}
@@ -88,7 +85,7 @@
     "` ON `"   table-1-alias "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
 (s/def ::join-seq
-  (s/and (s/coll-of ::namespaced-keyword
+  (s/and (s/coll-of ::filters/namespaced-keyword
            :min-count 2)
     #(even? (count %))))
 
@@ -131,7 +128,7 @@
   alias table."
   [join-seq]
   {:pre  [(s/valid? ::join-seq join-seq)]
-   :post [#(s/valid? ::namespaced-keyword %)]}
+   :post [#(s/valid? ::filters/namespaced-keyword %)]}
   (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
     (keyword column-2 column-1)))
 
@@ -149,7 +146,7 @@
     (apply str (map ->join-statement (->join-pairs join-seq)))))
 
 (s/def ::joins
-  (s/coll-of (s/tuple ::namespaced-keyword ::join-seq)))
+  (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
 
 (defn joins->self-join-source-table-aliases
   "Helper for compile-schema. Generates source table aliases for
@@ -236,7 +233,7 @@
       child-source-columns)))
 
 (s/def ::conditional-ident
-  (s/tuple keyword? (s/tuple ::filters/operators ::namespaced-keyword)))
+  (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
 
 (defn conditional-idents->source-tables
   "Produces map of ident keys to their corresponding source table name."
@@ -305,7 +302,7 @@
     (into {} keys+vals)))
 
 (s/def ::ident-condition
-  (s/tuple ::filters/operators ::namespaced-keyword))
+  (s/tuple ::filters/operators ::filters/namespaced-keyword))
 
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
