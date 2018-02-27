@@ -454,7 +454,11 @@
           (->condition env))
 
         supplied-condition
-        (get-in env [:ast :params ::filters])]
+        (get-in env [:ast :params ::filters])
+
+        supplied-condition
+        (when (s/valid? ::filters/clauses supplied-condition)
+          supplied-condition)]
     [ident-condition source-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
