@@ -317,17 +317,6 @@
         [operator key] condition]
     {key (cons operator params)}))
 
-(defn compile-ident-conditions
-  "Converts ident conditions from pure form to lambda form if not
-  yet."
-  [idents]
-  (reduce (fn [result [k v]]
-            (assoc result k
-              (if (fn? v)
-                v
-                (fn [env] (ident->condition env v)))))
-    {} idents))
-
 (defn compile-extra-conditions
   [extra-conditions]
   (reduce (fn [result [k v]]
@@ -403,7 +392,7 @@
         :self-join-source-column-aliases self-join-source-column-aliases
 
         :join-cardinality join-cardinality
-        :ident-conditions (compile-ident-conditions conditional-idents)
+        :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names true-columns)
                             pseudo-columns)
@@ -442,8 +431,8 @@
         k (get-in env [:ast :dispatch-key])
 
         ident-condition
-        (when-let [->condition (get ident-conditions k)]
-          (->condition env))
+        (when-let [condition (get ident-conditions k)]
+          (ident->condition env condition))
 
         source-column
         (get source-columns k)
