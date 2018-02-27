@@ -165,31 +165,30 @@
         parameters       (flatten (->> all (filter map?) (map :params)))]
     [condition-string parameters]))
 
-(s/def ::order-by
-  (s/coll-of (s/or
-               :column keyword?
-               :column+type (s/tuple keyword? #{:asc :desc}))
-    :min-count 1
-    :distinct true))
+(s/def ::namespaced-keyword
+  #(and (keyword? %) (namespace %)))
 
-(defn standardize-order-by-form [coll]
-  (map (fn [[type value]]
-         (if (= type :column)
-           {:column value}
-           (let [[column asc|desc] value]
-             {:column column
-              :kind   asc|desc})))
-    coll))
+(s/def ::column+order-params
+  (s/cat
+    :column ::namespaced-keyword
+    :params (s/* #{:asc :desc :nils-first :nils-last})))
+
+(def order-params->string
+  {:asc        " ASC"
+   :desc       " DESC"
+   :nils-first " NULLS FIRST"
+   :nils-last  " NULLS LAST"})
 
 (defn ->order-by-string [column-names order-by]
-  (let [form (s/conform ::order-by order-by)]
-    (when-not (= :clojure.spec.alpha/invalid form)
-      (let [form (->> (standardize-order-by-form form)
-                   (filter #(contains? column-names (:column %))))]
+  (let [form (s/conform (s/+ ::column+order-params) order-by)]
+    (when-not (= ::s/invalid form)
+      (let [form (filter #(contains? column-names (:column %)) form)]
         (when (seq form)
           (->> form
-            (map (fn [{:keys [column kind]}]
-                   (str (get column-names column)
-                     ({:asc  " ASC"
-                       :desc " DESC"} kind))))
-            (clojure.string/join ", " )))))))
+            (map (fn [{:keys [column params]}]
+                   (str
+                     (get column-names column)
+                     (->> params
+                       (map order-params->string)
+                       (apply str)))))
+            (clojure.string/join ", ")))))))

@@ -91,8 +91,9 @@
 
 (deftest ->order-by-string-tests
   (is (= (sut/->order-by-string {:person/name "p.n" :person/age "p.a"}
-           [:person/name [:person/age :desc]])
-        "p.n, p.a DESC"))
+           [:person/name
+            :person/age :desc :nils-last])
+        "p.n, p.a DESC NULLS LAST"))
 
   (is (nil? (sut/->order-by-string {:person/name "p.n" :person/age "p.a"}
               [])))
