@@ -96,7 +96,6 @@
                      :person-pet/person-number
                      :person-pet/pet-index
                      :pet/index
-                     :pet/name
                      :pet/yob
                      :pet/color]
   ;; extra columns required when an attribute is being asked for
