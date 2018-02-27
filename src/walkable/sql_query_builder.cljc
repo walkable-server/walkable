@@ -290,6 +290,7 @@
     [] m))
 
 (defn flatten-multi-keys
+  "Expands multiple keys then group values of the same key"
   [m]
   {:pre  [(s/valid? ::multi-keys m)]
    :post [#(s/valid? ::single-keys %)]}
