@@ -1,5 +1,23 @@
 # Walkable
 
+Get data from SQL using om.next style query
+
+Ever imagined sending queries like this to your SQL database?
+
+```clj
+'[{[:person/by-id 1]
+   [:person/id
+    :person/name
+    :person/yob
+    {:person/pet [:pet/id
+                  :pet/yob
+                  :pet/color
+                  {:pet/owner [:person/name]}]}]}]
+```
+
+Yes, you can now. Build the query part of a fulcro server or REST api
+in minutes today!
+
 ## Features
 
 Basically you define your schema like:
@@ -23,9 +41,11 @@ Basically you define your schema like:
                                  {:person/name [:or
                                                 [:like "john"]
                                                 [:like "mary"]]}]]}
- ;; just like fulcro-sql
- :joins            {:person/pet [:person/id :person-pet/person-id
-                                 :person-pet/pet-id :pet/id]
+ :joins            {;; will produce:
+                    ;; "JOIN `person_pet` ON `person`.`id` = `person_pet`.`person_id` JOIN `pet` ON `person_pet`.`pet_id` = `pet`.`id`"
+                    :person/pet [:person/id :person-pet/person-id :person-pet/pet-id :pet/id]
+                    ;; will produce
+                    ;; "JOIN `person` ON `pet`.``owner` = `person`.`id`"
                     :pet/owner [:pet/owner :person/id]}
  :join-cardinality {:person/by-id :one
                     :person/pet   :many}}
@@ -40,21 +60,13 @@ and you can make queries like this:
                  ;; -> you've already limited what the user can access, so let them play freely
                  ;; with whatever left open to them.
 
-                 ::sqb/order-by [:person/id ;; the same as [:person/id :asc]
-                                 [:person/name :desc]]})
+                 ::sqb/order-by [:person/id
+                                 :person/name :desc
+                                 ;; Note: sqlite doesn't support `:nils-first`, `:nils-last`
+                                 :person/yob :desc :nils-last]})
    [:person/id :person/name]}]
 ```
-or this:
-```clj
-'[{[:person/by-id 1]
-   [:person/id
-    :person/name
-    :person/yob
-    {:person/pet [:pet/id
-                  :pet/yob
-                  :pet/color
-                  {:pet/owner [:person/name]}]}]}]
-```
+
 As you can see the filter syntax is in pure Clojure. It's not just for aesthetic purpose. The generated SQL will always parameterized so it's safe from injection attacks. For instance:
 ```clj
 [:or {:person/name [:like "john"]} {:person/id [:in #{3 4 7}]}]
@@ -64,6 +76,12 @@ will result in
 ["SELECT <...> WHERE person.name LIKE ? OR person.id IN (?, ?, ?)"
 "john" 3 4 7]
 ```
+
+### More use cases
+
+Please see the file [dev.clj](dev/src/dev.clj) for more use
+cases. Consult [config.edn](dev/resources/walkable_demo/config.edn)
+for SQL migrations for those examples.
 
 ## Developing
 
