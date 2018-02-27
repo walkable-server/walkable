@@ -311,7 +311,7 @@
   "Converts given ident key in env to equivalent condition dsl."
   [env condition]
   {:pre  [(s/valid? ::ident-condition condition)
-          (s/valid? (s/keys :req-un [::ast] env))]
+          (s/valid? (s/keys :req-un [::ast]) env)]
    :post [#(s/valid? ::filters/clauses %)]}
   (let [params         (-> env :ast :key rest)
         [operator key] condition]
