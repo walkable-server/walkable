@@ -328,9 +328,9 @@
 
 (defn compile-join-statements
   [joins]
-  (reduce (fn [result [k v]]
+  (reduce (fn [result [k join-seq]]
             (assoc result k
-              (->join-statements v)))
+              (->join-statements join-seq)))
     {} joins))
 
 (defn expand-reversed-joins [reversed-joins joins]
