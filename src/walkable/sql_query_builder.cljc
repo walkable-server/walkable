@@ -411,7 +411,9 @@
 
 (defn process-pagination
   [{::keys [sql-schema] :as env}]
-  (let [{:keys [column-names]} sql-schema]
+  {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]))]}
+  (let [{::keys [column-names]} sql-schema]
     {:offset
      (when-let [offset (get-in env [:ast :params ::offset])]
        (when (integer? offset)
