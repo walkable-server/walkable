@@ -85,7 +85,7 @@
     (= 2 (count x))
     (= :clauses (first x))))
 
-(defn parameterize-set [n]
+(defn parameterize-tuple [n]
   (str
     "("
     (clojure.string/join ", "
@@ -117,10 +117,10 @@
     (str key " NOT BETWEEN ? AND ?")
 
     :in
-    (str key " IN " (parameterize-set (count params)))
+    (str key " IN " (parameterize-tuple (count params)))
 
     :not-in
-    (str key " NOT IN " (parameterize-set (count params)))))
+    (str key " NOT IN " (parameterize-tuple (count params)))))
 
 (declare process-multi)
 (declare process-clauses)

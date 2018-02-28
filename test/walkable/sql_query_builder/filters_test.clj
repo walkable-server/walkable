@@ -3,12 +3,12 @@
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest is]]))
 
-(deftest parameterize-set-tests
-  (is (= (sut/parameterize-set 0)
+(deftest parameterize-tuple-tests
+  (is (= (sut/parameterize-tuple 0)
         "()"))
-  (is (= (sut/parameterize-set 3)
+  (is (= (sut/parameterize-tuple 3)
         "(?, ?, ?)"))
-  (is (= (sut/parameterize-set 5)
+  (is (= (sut/parameterize-tuple 5)
         "(?, ?, ?, ?, ?)")))
 
 (deftest conform-conditions-tests
