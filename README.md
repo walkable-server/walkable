@@ -84,6 +84,14 @@ Please see the file [dev.clj](dev/src/dev.clj) for more use
 cases. Consult [config.edn](dev/resources/walkable_demo/config.edn)
 for SQL migrations for those examples.
 
+### Note on example's query params syntax
+
+Walkable works with both `[({:k params subquery} params)]` and `[{(:k
+params) subquery}]` syntax but in all examples I always use the later
+due to personal preference. However it's only supported as of fulcro
+2.2.1. If you're using om.next or older fulcro, you must use the
+former syntax otherwise it will crash.
+
 ## Developing
 
 ### Setup
