@@ -116,9 +116,10 @@
 #_
 (let [eg-1
       '[{(:people/all {::sqb/filters  {:person/number [:< 10]}
-                       ::sqb/limit    1
-                       ::sqb/offset   1
-                       ::sqb/order-by [:person/name :desc]})
+                       ;; ::sqb/limit    1
+                       ;; ::sqb/offset   1
+                       ;; ::sqb/order-by [:person/name :desc]
+                       })
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
@@ -173,7 +174,7 @@
 #_
 (let [eg-1
       '[{:world/all
-         [:human/number :human/name
+         [:human/number :human/name :human/two
           {:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
                           :human/name
@@ -196,7 +197,10 @@
                                  [:human/follow :human/follow-stats]
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
-              :pseudo-columns   {:follow/count "COUNT(`follow`.`human_2`)"}
+              :pseudo-columns   {;; using sub query as a column
+                                 :human/two "(SELECT 2)"
+                                 ;; using aggregate as a column
+                                 :follow/count "COUNT(`follow`.`human_2`)"}
               :join-cardinality {:human/by-id  :one
                                  :human/follow-stats :one
                                  :human/follow :many}})}
