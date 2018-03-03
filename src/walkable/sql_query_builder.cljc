@@ -210,7 +210,7 @@
   "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [sql-schema] :as env}]
   {:pre  [(s/valid? ::sql-schema sql-schema)]
-   :post [#(s/valid? (s/keys :req-un [:child-join-keys :columns-to-query]))]}
+   :post [#(s/valid? (s/keys :req-un [::child-join-keys ::columns-to-query]))]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
         all-child-keys
@@ -232,6 +232,12 @@
                          child-column-keys
                          child-required-keys
                          child-source-columns)}))
+
+(defn get-child-env
+  [{:keys [ast] :as env} child-join-key]
+  (let [children (->> ast :children
+                   (some #(when (= child-join-key (:dispatch-key %)) %)))]
+    (assoc env :ast children)))
 
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
