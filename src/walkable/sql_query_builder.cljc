@@ -501,6 +501,13 @@
      :query-params       query-params
      :child-join-keys    child-join-keys}))
 
+(defn batch-query
+  [query-strings params]
+  (let [union-query (clojure.string/join "\nUNION\n"
+                      (map #(str "SELECT * FROM (" % ")")
+                        query-strings))]
+    (cons union-query (apply concat params))))
+
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
   (let [{::keys [source-tables join-cardinality]} sql-schema
