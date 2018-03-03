@@ -118,7 +118,8 @@
                    {:pet/age #{:pet/yob}}
                    :source-columns
                    {:pet/owner :person/number}}})
-        #{:pet/yob :person/number})))
+        {:child-join-keys #{:pet/owner}
+         :columns-to-query #{:pet/yob :person/number}})))
 
 (deftest ident->condition-tests
   (is (= (sut/ident->condition

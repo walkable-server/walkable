@@ -223,7 +223,7 @@
         (->> all-child-keys (map #(get required-columns %)) (apply clojure.set/union))
 
         child-join-keys
-        (filter #(contains? source-columns %) all-child-keys)
+        (set (filter #(contains? source-columns %) all-child-keys))
 
         child-source-columns
         (->> child-join-keys (map #(get source-columns %)) (into #{}))]
