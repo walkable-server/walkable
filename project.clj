@@ -34,8 +34,8 @@
                                    [duct/server.figwheel "0.2.1" :exclusions [org.clojure/clojurescript]]
                                    [devcards "0.2.4" :exclusions [org.clojure/clojurescript]]
 
-                                   [fulcrologic/fulcro "2.2.0" :exclusions [org.clojure/clojurescript]]
-                                   [fulcrologic/fulcro-spec "2.0.2" :scope "test" :exclusions [fulcrologic/fulcro]]
+                                   [fulcrologic/fulcro "2.3.0" :exclusions [org.clojure/clojurescript]]
+                                   [fulcrologic/fulcro-spec "2.0.3-1" :scope "test" :exclusions [fulcrologic/fulcro]]
 
                                    [integrant/repl "0.3.0"]
                                    [eftest "0.4.3"]
