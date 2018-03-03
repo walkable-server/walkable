@@ -107,8 +107,8 @@
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
 
-(deftest columns-to-query-test
-  (is (= (sut/columns-to-query
+(deftest process-children-test
+  (is (= (sut/process-children
            {:ast {:children (mapv (fn [k] {:dispatch-key k})
                               [:pet/age :pet/will-be-ignored :pet/owner])}
             ::sut/sql-schema

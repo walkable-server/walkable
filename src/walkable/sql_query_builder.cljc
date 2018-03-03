@@ -206,11 +206,11 @@
   (s/keys :req []
     :opt []))
 
-(defn columns-to-query
+(defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [sql-schema] :as env}]
   {:pre  [(s/valid? ::sql-schema sql-schema)]
-   :post [set?]}
+   :post [#(s/valid? (s/keys :req-un [:child-join-keys :columns-to-query]))]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
         all-child-keys
@@ -227,10 +227,11 @@
 
         child-source-columns
         (->> child-join-keys (map #(get source-columns %)) (into #{}))]
-    (clojure.set/union
-      child-column-keys
-      child-required-keys
-      child-source-columns)))
+    {:child-join-keys  child-join-keys
+     :columns-to-query (clojure.set/union
+                         child-column-keys
+                         child-required-keys
+                         child-source-columns)}))
 
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
@@ -472,14 +473,15 @@
                  column-aliases
                  join-statements
                  source-tables
-                 self-join-source-table-aliases]} sql-schema
-        k                                         (get-in env [:ast :dispatch-key])
-        [where-conditions query-params]           (parameterize-all-conditions env)
-        {:keys [offset limit order-by]}           (process-pagination env)]
+                 self-join-source-table-aliases]}  sql-schema
+        k                                          (get-in env [:ast :dispatch-key])
+        [where-conditions query-params]            (parameterize-all-conditions env)
+        {:keys [child-join-keys columns-to-query]} (process-children env)
+        {:keys [offset limit order-by]}            (process-pagination env)]
     {:query-string-input {:source-table       (get source-tables k)
                           :source-table-alias (get self-join-source-table-aliases k)
                           :join-statement     (get join-statements k)
-                          :columns-to-query   (columns-to-query env)
+                          :columns-to-query   columns-to-query
                           :column-names       column-names
                           :column-aliases     column-aliases
                           :where-conditions   where-conditions
