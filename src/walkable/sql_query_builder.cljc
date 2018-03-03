@@ -510,28 +510,76 @@
 
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [source-tables join-cardinality]} sql-schema
-        k                                         (get-in env [:ast :dispatch-key])]
+  (let [{::keys [source-tables
+                 source-columns
+                 join-statements
+                 join-cardinality]} sql-schema
+        k                           (get-in env [:ast :dispatch-key])]
     (if (contains? source-tables k)
-      ;; this is a join, let's go for data
-      (let [{:keys [query-string-input query-params]}
+      ;; this is an ident or a join, let's go for data
+      (let [{:keys [query-string-input query-params child-join-keys]}
             (process-query env)
 
-            sql-query
-            (->query-string query-string-input)
+            query-string
+            ;; if k is not among joins but found in source-tables
+            ;; it must have type ident
+            (when (and (contains? source-tables k)
+                    (not (contains? join-statements k)))
+              (->query-string query-string-input))
 
-            query-result
-            (run-query sql-db
-              (if query-params
-                (cons sql-query query-params)
-                sql-query))
+            entities
+            (if query-string
+              ;; for idents
+              (run-query sql-db
+                (if query-params
+                  (cons query-string query-params)
+                  query-string))
+              ;; joins don't have to build a query themselves
+              ;; just look up the key in their parents data
+              (let [parent (p/entity env)]
+                (get parent k)))
+
+            ;;join-child-queries
+            join-children-data-by-join-key
+            (when (seq child-join-keys)
+              (into {}
+                (for [j child-join-keys]
+                  (let [source-column (get source-columns j)
+                        query-string-inputs
+                        (for [e entities]
+                          (process-query
+                            (assoc-in (get-child-env env j)
+                              [::p/entity source-column] (get e source-column))))
+
+                        query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
+                        params        (map :query-params query-string-inputs)
+
+                        join-children-data
+                        (run-query sql-db (batch-query query-strings params))]
+                    [j (group-by source-column join-children-data)]))))
+
+            entities-with-join-children-data
+            (for [e entities]
+              (let [child-joins
+                    (into {}
+                      (for [j child-join-keys]
+                        (let [source-column (get source-columns j)
+                              parent-id     (get e source-column)
+                              children      (get-in join-children-data-by-join-key
+                                              [j parent-id])]
+                          [j children])))]
+                (merge e child-joins)))
+
+            one?
+            (= :one (get join-cardinality k))
 
             do-join
-            (if (= :one (get join-cardinality k))
+            (if one?
               #(p/join (first %2) %1)
               #(p/join-seq %1 %2))]
-        (if (seq query-result)
-          (do-join env query-result)
-          []))
+        (if (seq entities-with-join-children-data)
+          (do-join env entities-with-join-children-data)
+          (when-not one?
+            [])))
 
       ::p/continue)))
