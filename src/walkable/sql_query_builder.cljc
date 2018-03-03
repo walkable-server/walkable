@@ -479,10 +479,14 @@
                  column-aliases
                  join-statements
                  source-tables
+                 source-columns
                  self-join-source-table-aliases]}  sql-schema
         k                                          (get-in env [:ast :dispatch-key])
         [where-conditions query-params]            (parameterize-all-conditions env)
         {:keys [child-join-keys columns-to-query]} (process-children env)
+        columns-to-query                           (if-let [source-column (get source-columns k)]
+                                                     (conj columns-to-query source-column)
+                                                     columns-to-query)
         {:keys [offset limit order-by]}            (process-pagination env)]
     {:query-string-input {:source-table       (get source-tables k)
                           :source-table-alias (get self-join-source-table-aliases k)
@@ -494,7 +498,8 @@
                           :offset             offset
                           :limit              limit
                           :order-by           order-by}
-     :query-params       query-params}))
+     :query-params       query-params
+     :child-join-keys    child-join-keys}))
 
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
