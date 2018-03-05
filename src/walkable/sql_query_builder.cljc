@@ -118,9 +118,17 @@
 (s/def ::joins
   (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
 
-(defn joins->self-join-source-table-aliases
-  "Helper for compile-schema. Generates source table aliases for
-  self-join keys."
+(defn source-column
+  [join-seq]
+  (first join-seq))
+
+(defn target-column
+  [join-seq]
+  (second join-seq))
+
+(defn target-table
+  [join-seq]
+  (first (split-keyword (target-column join-seq))))
   [joins]
   {:pre [(s/valid? ::joins joins)]
    :post [#(s/valid? ::keyword-string-map %)]}

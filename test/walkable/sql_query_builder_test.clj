@@ -52,12 +52,19 @@
           (("person_pet" "person_number")
            ("person" "number"))))))
 
+(deftest target-column-tests
+  (is (= (sut/target-column [:pet/owner :person/number])
+        :person/number))
+  (is (= (sut/target-column [:pet/index :person-pet/pet-index
+                             :person-pet/person-number :person/number])
+        :person-pet/pet-index)))
 
-(deftest joins->self-join-source-column-aliases-test
-  (is (= (sut/joins->self-join-source-column-aliases
-           {:human/pet    [:human/pet-index :pet/index]
-            :human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]})
-        {:human/follow :human-1/number})))
+(deftest target-table-tests
+  (is (= (sut/target-table [:pet/owner :person/number])
+        "person"))
+  (is (= (sut/target-table [:pet/index :person-pet/pet-index
+                            :person-pet/person-number :person/number])
+        "person_pet")))
 
 (deftest ->join-statements-tests
   (is (= (sut/->join-statements [:pet/index :person-pet/pet-index
