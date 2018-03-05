@@ -508,10 +508,10 @@
                               [::p/entity source-column] (get e source-column))))
 
                         query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
-                        params        (map :query-params query-string-inputs)
+                        all-params        (map :query-params query-string-inputs)
 
                         join-children-data
-                        (run-query sql-db (batch-query query-strings params))]
+                        (run-query sql-db (batch-query query-strings all-params))]
                     [j (group-by target-column join-children-data)]))))
 
             entities-with-join-children-data
