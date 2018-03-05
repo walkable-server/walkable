@@ -129,25 +129,35 @@
 (defn target-table
   [join-seq]
   (first (split-keyword (target-column join-seq))))
-  [joins]
-  {:pre [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (if (self-join? join-seq)
-              (assoc result k (->table-1-alias (first (->join-pairs join-seq))))
-              result))
-    {} joins))
 
-(defn joins->self-join-source-column-aliases
-  "Helper for compile-schema. Generates source column aliases for
-  self-join keys."
+(defn joins->target-tables
+  "Produces map of join keys to their corresponding source table name."
   [joins]
   {:pre  [(s/valid? ::joins joins)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
-            (if (self-join? join-seq)
-              (assoc result k (->column-1-alias join-seq))
-              result))
+            (assoc result k
+              (target-table join-seq)))
+    {} joins))
+
+(defn joins->target-columns
+  "Produces map of join keys to their corresponding target column."
+  [joins]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-keyword-map %)]}
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (target-column join-seq)))
+    {} joins))
+
+(defn joins->source-columns
+  "Produces map of join keys to their corresponding source column."
+  [joins]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-keyword-map %)]}
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (source-column join-seq)))
     {} joins))
 
 (s/def ::query-string-input

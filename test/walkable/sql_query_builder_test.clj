@@ -167,8 +167,8 @@
             :pets/by-ids  [:in :pet/index]})
         {:person/by-id "person", :pets/by-ids "pet"})))
 
-(deftest joins->source-tables-test
-  (is (= (sut/joins->source-tables
+(deftest joins->target-tables-test
+  (is (= (sut/joins->target-tables
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
