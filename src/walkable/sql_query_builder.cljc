@@ -42,13 +42,14 @@
   (zipmap ks
     (map column-name ks)))
 
-(defn ->column-aliases
-  "Makes a hash-map of keywords and their equivalent aliases"
+(defn ->clojuric-names
+  "Makes a hash-map of keywords and their Clojuric name (to be use as
+  sql's SELECT aliases"
   [ks]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map keyword->alias ks)))
+    (map clojuric-name ks)))
 
 (defn selection-with-aliases
   "Produces the part after `SELECT` and before `FROM <sometable>` of
