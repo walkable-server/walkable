@@ -37,10 +37,6 @@
   (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
         " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
 
-(deftest ->join-tables-test
-  (is (= (sut/->join-tables [:pet/index :person/number])
-        ["pet" "person"])))
-
 (deftest target-column-tests
   (is (= (sut/target-column [:pet/owner :person/number])
         :person/number))
