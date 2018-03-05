@@ -111,12 +111,9 @@
   [join-seq]
   {:pre [(s/valid? ::join-seq join-seq)]
    :post [string?]}
-  (if (self-join? join-seq)
-    (let [[p1 p2] (->join-pairs join-seq)]
-      (str
-        (->join-statement-with-alias p1 (->table-1-alias p1))
-        (->join-statement p2)))
-    (apply str (map ->join-statement (->join-pairs join-seq)))))
+  (let [[tag] (s/conform ::join-seq join-seq)]
+    (when (= :one-join tag)
+      (->join-statement (map split-keyword (drop 2 join-seq))))))
 
 (s/def ::joins
   (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
