@@ -98,33 +98,6 @@
   {:pre [(s/valid? ::join-seq join-seq)]}
   (map first (split-join-seq join-seq)))
 
-(defn self-join?
-  "Checks if a join sequence is a self-join which means joining the
-  same table as the original one."
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]
-   :post [boolean?]}
-  (let [[from-table & other-tables] (->join-tables join-seq)]
-    (contains? (set other-tables) from-table)))
-
-(defn ->table-1-alias
-  "In case of self-join, use the column name in the relation table as
-  alias for the original table."
-  [[[table-1 column-1] [table-2 column-2]]]
-  {:pre [(every? string? [table-1 column-1 table-2 column-2])]
-   :post [string?]}
-  column-2)
-
-(defn ->column-1-alias
-  "In case of self-join, use the column name in the relation table as
-  alias for the original table. Returns the original column name with
-  alias table."
-  [join-seq]
-  {:pre  [(s/valid? ::join-seq join-seq)]
-   :post [#(s/valid? ::filters/namespaced-keyword %)]}
-  (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
-    (keyword column-2 column-1)))
-
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
   join keys given their join sequence."
