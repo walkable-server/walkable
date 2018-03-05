@@ -76,11 +76,18 @@
     " JOIN `" table-2
     "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
+(s/def ::no-join
+  (s/coll-of ::filters/namespaced-keyword
+    :count 2))
+
+(s/def ::one-join
+  (s/coll-of ::filters/namespaced-keyword
+    :count 4))
 
 (s/def ::join-seq
-  (s/and (s/coll-of ::filters/namespaced-keyword
-           :min-count 2)
-    #(even? (count %))))
+  (s/or
+    :no-join  ::no-join
+    :one-join ::one-join))
 
 (defn split-join-seq
   [join-seq]
