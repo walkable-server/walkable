@@ -76,14 +76,6 @@
     " JOIN `" table-2
     "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
-(defn ->join-statement-with-alias
-  [[[table-1 column-1] [table-2 column-2]]
-   table-1-alias]
-  {:pre [(every? string? [table-1 column-1 table-2 column-2 table-1-alias])]
-   :post [string?]}
-  (str
-    " JOIN `" table-2
-    "` ON `"   table-1-alias "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
 (s/def ::join-seq
   (s/and (s/coll-of ::filters/namespaced-keyword
