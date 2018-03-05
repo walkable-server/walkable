@@ -12,9 +12,9 @@
   (is (= (sut/keyword->column-name :foo/bar)
         "`foo`.`bar`")))
 
-(deftest keyword->alias-test
-  (is (= (sut/keyword->alias :foo/bar)
-        "foo/bar")))
+(deftest clojuric-name-test
+  (is (= (sut/clojuric-name :foo/bar)
+        "`foo/bar`")))
 
 (deftest ->column-names-test
   (is (= (sut/->column-names [:foo/bar :loo/lar])

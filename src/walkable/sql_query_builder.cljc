@@ -21,12 +21,12 @@
     (map #(str "`" % "`"))
     (clojure.string/join ".")))
 
-(defn keyword->alias
+(defn clojuric-name
   "Converts a keyword to an SQL alias"
   [k]
   {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
-  (subs (str k) 1))
+  (str "`" (subs (str k) 1) "`"))
 
 (s/def ::keyword-string-map
   (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
