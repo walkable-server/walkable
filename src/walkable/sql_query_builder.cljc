@@ -230,7 +230,7 @@
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
 
-(defn conditional-idents->source-tables
+(defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
   [idents]
   {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
@@ -347,28 +347,23 @@
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
         join-cardinality                                  (flatten-multi-keys join-cardinality)
-        self-join-source-table-aliases                    (joins->self-join-source-table-aliases joins)
-        self-join-source-column-aliases                   (joins->self-join-source-column-aliases joins)
-        true-columns                                      (set (concat columns
-                                                                 (vals self-join-source-column-aliases)))
+        true-columns                                      (set (apply concat columns (vals joins)))
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
     #::{:column-keywords  columns
         :required-columns (expand-denpendencies required-columns)
-        :source-tables    (merge (conditional-idents->source-tables conditional-idents)
+        :target-tables    (merge (conditional-idents->target-tables conditional-idents)
                             unconditional-idents
-                            (joins->source-tables joins))
+                            (joins->target-tables joins))
+        :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
-
-        :self-join-source-table-aliases  self-join-source-table-aliases
-        :self-join-source-column-aliases self-join-source-column-aliases
 
         :join-cardinality join-cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names true-columns)
                             pseudo-columns)
-        :column-aliases   (->column-aliases columns)
+        :clojuric-names   (->clojuric-names columns)
         :join-statements  (compile-join-statements joins)}))
 
 (defn clean-up-all-conditions
@@ -398,8 +393,7 @@
 
 (defn process-conditions
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [ident-conditions extra-conditions source-columns
-                 self-join-source-column-aliases]}
+  (let [{::keys [ident-conditions extra-conditions target-columns source-columns]}
         sql-schema
         e (p/entity env)
         k (get-in env [:ast :dispatch-key])
@@ -408,15 +402,15 @@
         (when-let [condition (get ident-conditions k)]
           (ident->condition env condition))
 
+        target-column
+        (get target-columns k)
+
         source-column
         (get source-columns k)
 
-        source-column-alias
-        (get self-join-source-column-aliases k)
-
-        source-condition
-        (when source-column
-          {(or source-column-alias source-column)
+        target-condition
+        (when target-column ;; if it's a join
+          {target-column
            [:= (get e source-column)]})
 
         extra-condition
@@ -429,43 +423,41 @@
         supplied-condition
         (when (s/valid? ::filters/clauses supplied-condition)
           supplied-condition)]
-    [ident-condition source-condition extra-condition supplied-condition]))
+    [ident-condition target-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [column-names]} sql-schema
+  (let [{::keys [clojuric-names]} sql-schema
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
-                             :keymap column-names}
+                             :keymap clojuric-names}
         all-conditions))))
 
 (defn process-query
   [{::keys [sql-schema] :as env}]
   (let [{::keys [column-keywords
                  column-names
-                 column-aliases
+                 clojuric-names
                  join-statements
-                 source-tables
-                 source-columns
-                 self-join-source-table-aliases]}  sql-schema
+                 target-tables
+                 target-columns]}                  sql-schema
         k                                          (get-in env [:ast :dispatch-key])
         [where-conditions query-params]            (parameterize-all-conditions env)
         {:keys [child-join-keys columns-to-query]} (process-children env)
-        columns-to-query                           (if-let [source-column (get source-columns k)]
-                                                     (conj columns-to-query source-column)
+        columns-to-query                           (if-let [target-column (get target-columns k)]
+                                                     (conj columns-to-query target-column)
                                                      columns-to-query)
         {:keys [offset limit order-by]}            (process-pagination env)]
-    {:query-string-input {:source-table       (get source-tables k)
-                          :source-table-alias (get self-join-source-table-aliases k)
-                          :join-statement     (get join-statements k)
-                          :columns-to-query   columns-to-query
-                          :column-names       column-names
-                          :column-aliases     column-aliases
-                          :where-conditions   where-conditions
-                          :offset             offset
-                          :limit              limit
-                          :order-by           order-by}
+    {:query-string-input {:target-table        (get target-tables k)
+                          :join-statement      (get join-statements k)
+                          :columns-to-query    columns-to-query
+                          :column-names        column-names
+                          :clojuric-names      clojuric-names
+                          :where-conditions    where-conditions
+                          :offset              offset
+                          :limit               limit
+                          :order-by            order-by}
      :query-params       query-params
      :child-join-keys    child-join-keys}))
 
@@ -478,20 +470,21 @@
 
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [source-tables
+  (let [{::keys [target-tables
+                 target-columns
                  source-columns
                  join-statements
                  join-cardinality]} sql-schema
         k                           (get-in env [:ast :dispatch-key])]
-    (if (contains? source-tables k)
+    (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params child-join-keys]}
             (process-query env)
 
             query-string
-            ;; if k is not among joins but found in source-tables
+            ;; if k is not among joins but found in target-tables
             ;; it must have type ident
-            (when (and (contains? source-tables k)
+            (when (and (contains? target-tables k)
                     (not (contains? join-statements k)))
               (->query-string query-string-input))
 
@@ -512,7 +505,11 @@
             (when (seq child-join-keys)
               (into {}
                 (for [j child-join-keys]
-                  (let [source-column (get source-columns j)
+                  (let [;; parent
+                        source-column (get source-columns j)
+                        ;; children
+                        target-column (get target-columns j)
+
                         query-string-inputs
                         (for [e entities]
                           (process-query
@@ -524,7 +521,7 @@
 
                         join-children-data
                         (run-query sql-db (batch-query query-strings params))]
-                    [j (group-by source-column join-children-data)]))))
+                    [j (group-by target-column join-children-data)]))))
 
             entities-with-join-children-data
             (for [e entities]

@@ -117,7 +117,7 @@
                            #{:pet/yob}
                            :required-columns
                            {:pet/age #{:pet/yob}}
-                           :source-columns
+                           :target-columns
                            {:person/pets :person/number
                             :pet/owner   :person/number
                             :pet/species :species/id}}]
@@ -161,8 +161,8 @@
          :conditional-idents   #:person {:by-id  [:= :person/number],
                                          :by-yob [:= :person/yob]}})))
 
-(deftest conditional-idents->source-tables-test
-  (is (= (sut/conditional-idents->source-tables
+(deftest conditional-idents->target-tables-test
+  (is (= (sut/conditional-idents->target-tables
            {:person/by-id [:= :person/number]
             :pets/by-ids  [:in :pet/index]})
         {:person/by-id "person", :pets/by-ids "pet"})))
@@ -174,9 +174,9 @@
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
             :farmer/cow [:farmer/cow-index :cow/index]})
-        {:person/pet "person",
-         :pet/owner  "pet",
-         :farmer/cow "farmer"})))
+        {:person/pet "person_pet",
+         :pet/owner  "person_pet",
+         :farmer/cow "cow"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns
@@ -188,3 +188,14 @@
         {:person/pet :person/number,
          :pet/owner :pet/index,
          :farmer/cow :farmer/cow-index})))
+
+(deftest joins->target-columns-test
+  (is (= (sut/joins->target-columns
+           {:person/pet [:person/number :person-pet/person-number
+                         :person-pet/pet-index :pet/index]
+            :pet/owner  [:pet/index :person-pet/pet-index
+                         :person-pet/person-number :person/number]
+            :farmer/cow [:farmer/cow-index :cow/index]})
+        {:person/pet :person-pet/person-number,
+         :pet/owner :person-pet/pet-index,
+         :farmer/cow :cow/index})))
