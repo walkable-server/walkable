@@ -32,7 +32,7 @@
   (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
 
 (s/def ::keyword-keyword-map
-  (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
+  (s/coll-of (s/tuple ::filters/namespaced-keyword ::filters/namespaced-keyword)))
 
 (defn ->column-names
   "Makes a hash-map of keywords and their equivalent column names"
