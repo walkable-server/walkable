@@ -54,16 +54,16 @@
 (defn selection-with-aliases
   "Produces the part after `SELECT` and before `FROM <sometable>` of
   an SQL query"
-  [columns-to-query column-names column-aliases]
+  [{:keys [columns-to-query column-names clojuric-names]}]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) columns-to-query)
          (s/valid? ::keyword-string-map column-names)
-         (s/valid? ::keyword-string-map column-aliases)]
+         (s/valid? ::keyword-string-map clojuric-names)]
    :post [string?]}
   (->> columns-to-query
-    (map #(str (get column-names %)
-            " AS \""
-            (get column-aliases %)
-            "\""))
+    (map (fn [column]
+           (str (get column-names column)
+             " AS "
+             (get clojuric-names column))))
     (clojure.string/join ", ")))
 
 (defn ->join-statement

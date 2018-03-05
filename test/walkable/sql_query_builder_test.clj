@@ -26,11 +26,12 @@
 
 (deftest selection-with-aliases-test
   (is (= (sut/selection-with-aliases
-           [:foo/bar :loo/lar]
-           {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"} ;; output of `(->column-names [:foo/bar :loo/lar])`
-           {:foo/bar "foo/bar", :loo/lar "loo/lar"} ;; output of `(->column-aliases [:foo/bar :loo/lar])`
-           )
-        "`foo`.`bar` AS \"foo/bar\", `loo`.`lar` AS \"loo/lar\"")))
+           {:columns-to-query [:foo/bar :loo/lar]
+            :column-names     {:foo/bar "`foo`.`bar`"
+                               :loo/lar "`loo`.`lar`"}
+            :clojuric-names   {:foo/bar "`foo/bar`",
+                               :loo/lar "`loo/lar`",}})
+        "`foo`.`bar` AS `foo/bar`, `loo`.`lar` AS `loo/lar`")))
 
 (deftest ->join-statement-test
   (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
