@@ -20,9 +20,9 @@
   (is (= (sut/->column-names [:foo/bar :loo/lar])
         {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"})))
 
-(deftest ->column-aliases-test
-  (is (= (sut/->column-aliases [:foo/bar :loo/lar])
-        {:foo/bar "foo/bar", :loo/lar "loo/lar"})))
+(deftest ->clojuric-names-test
+  (is (= (sut/->clojuric-names [:foo/bar :loo/lar])
+        {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
 (deftest selection-with-aliases-test
   (is (= (sut/selection-with-aliases
