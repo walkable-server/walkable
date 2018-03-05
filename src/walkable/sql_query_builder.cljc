@@ -240,26 +240,6 @@
               (first (split-keyword column-keyword))))
     {} idents))
 
-(defn joins->source-tables
-  "Produces map of join keys to their corresponding source table name."
-  [joins]
-  {:pre  [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (first (split-keyword (first join-seq)))))
-    {} joins))
-
-(defn joins->source-columns
-  "Produces map of join keys to their corresponding source column keyword."
-  [joins]
-  {:pre  [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (first join-seq)))
-    {} joins))
-
 (s/def ::multi-keys
   (s/coll-of (s/tuple (s/or :single-key keyword?
                         :multiple-keys (s/coll-of keyword))
