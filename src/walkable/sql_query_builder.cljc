@@ -11,7 +11,7 @@
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
 
-(defn keyword->column-name
+(defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
   [k]
@@ -40,7 +40,7 @@
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map keyword->column-name ks)))
+    (map column-name ks)))
 
 (defn ->column-aliases
   "Makes a hash-map of keywords and their equivalent aliases"

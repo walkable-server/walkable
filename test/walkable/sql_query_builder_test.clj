@@ -9,7 +9,7 @@
         '("foo" "bar"))))
 
 (deftest keyword->column-name-test
-  (is (= (sut/keyword->column-name :foo/bar)
+  (is (= (sut/column-name :foo/bar)
         "`foo`.`bar`")))
 
 (deftest clojuric-name-test
