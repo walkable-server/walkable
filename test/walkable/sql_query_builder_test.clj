@@ -9,76 +9,52 @@
         '("foo" "bar"))))
 
 (deftest keyword->column-name-test
-  (is (= (sut/keyword->column-name :foo/bar)
+  (is (= (sut/column-name :foo/bar)
         "`foo`.`bar`")))
 
-(deftest keyword->alias-test
-  (is (= (sut/keyword->alias :foo/bar)
-        "foo/bar")))
+(deftest clojuric-name-test
+  (is (= (sut/clojuric-name :foo/bar)
+        "`foo/bar`")))
 
 (deftest ->column-names-test
   (is (= (sut/->column-names [:foo/bar :loo/lar])
         {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"})))
 
-(deftest ->column-aliases-test
-  (is (= (sut/->column-aliases [:foo/bar :loo/lar])
-        {:foo/bar "foo/bar", :loo/lar "loo/lar"})))
+(deftest ->clojuric-names-test
+  (is (= (sut/->clojuric-names [:foo/bar :loo/lar])
+        {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
 (deftest selection-with-aliases-test
   (is (= (sut/selection-with-aliases
-           [:foo/bar :loo/lar]
-           {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"} ;; output of `(->column-names [:foo/bar :loo/lar])`
-           {:foo/bar "foo/bar", :loo/lar "loo/lar"} ;; output of `(->column-aliases [:foo/bar :loo/lar])`
-           )
-        "`foo`.`bar` AS \"foo/bar\", `loo`.`lar` AS \"loo/lar\"")))
+           {:columns-to-query [:foo/bar :loo/lar]
+            :column-names     {:foo/bar "`foo`.`bar`"
+                               :loo/lar "`loo`.`lar`"}
+            :clojuric-names   {:foo/bar "`foo/bar`",
+                               :loo/lar "`loo/lar`",}})
+        "`foo`.`bar` AS `foo/bar`, `loo`.`lar` AS `loo/lar`")))
 
 (deftest ->join-statement-test
   (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
         " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
 
-(deftest ->join-tables-test
-  (is (= (sut/->join-tables [:pet/index :person/number])
-        ["pet" "person"])))
+(deftest target-column-tests
+  (is (= (sut/target-column [:pet/owner :person/number])
+        :person/number))
+  (is (= (sut/target-column [:pet/index :person-pet/pet-index
+                             :person-pet/person-number :person/number])
+        :person-pet/pet-index)))
 
-(deftest ->join-statement-with-alias-test
-  (is (= (sut/->join-statement-with-alias [["foo" "bar"] ["boo" "far"]] "foo_1")
-        " JOIN `boo` ON `foo_1`.`bar` = `boo`.`far`")))
-
-(deftest ->join-pairs-tests
-  (is (= (sut/->join-pairs [:pet/index :person/number])
-        '((("pet" "index")
-           ("person" "number")))))
-  (is (= (sut/->join-pairs [:pet/index :person-pet/pet-index
+(deftest target-table-tests
+  (is (= (sut/target-table [:pet/owner :person/number])
+        "person"))
+  (is (= (sut/target-table [:pet/index :person-pet/pet-index
                             :person-pet/person-number :person/number])
-        '((("pet" "index")
-           ("person_pet" "pet_index"))
-          (("person_pet" "person_number")
-           ("person" "number"))))))
-
-(deftest self-join?-tests
-  (is (sut/self-join?
-        [:human/number :follow/human-1 :follow/human-2 :human/number]))
-  (is (not
-        (sut/self-join? [:human/number :follow/human-1 :follow/human-2 :person/number]))))
-
-(deftest joins->self-join-source-table-aliases-test
-  (is (= (sut/joins->self-join-source-table-aliases
-           {:human/pet    [:human/pet-index :pet/index]
-            :human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]})
-        #:human{:follow "human_1"})))
-
-(deftest joins->self-join-source-column-aliases-test
-  (is (= (sut/joins->self-join-source-column-aliases
-           {:human/pet    [:human/pet-index :pet/index]
-            :human/follow [:human/number :follow/human-1 :follow/human-2 :human/number]})
-        {:human/follow :human-1/number})))
+        "person_pet")))
 
 (deftest ->join-statements-tests
-  (is (= (sut/->join-statements [:pet/index :person/number])
-        " JOIN `person` ON `pet`.`index` = `person`.`number`"))
   (is (= (sut/->join-statements [:pet/index :person-pet/pet-index
                                  :person-pet/person-number :person/number])
-        " JOIN `person_pet` ON `pet`.`index` = `person_pet`.`pet_index` JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
+        " JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
 
 (deftest expand-multi-keys-tests
   (is (= (sut/expand-multi-keys {:a 1 [:a :b] 2})
@@ -126,7 +102,7 @@
                            #{:pet/yob}
                            :required-columns
                            {:pet/age #{:pet/yob}}
-                           :source-columns
+                           :target-columns
                            {:person/pets :person/number
                             :pet/owner   :person/number
                             :pet/species :species/id}}]
@@ -170,22 +146,22 @@
          :conditional-idents   #:person {:by-id  [:= :person/number],
                                          :by-yob [:= :person/yob]}})))
 
-(deftest conditional-idents->source-tables-test
-  (is (= (sut/conditional-idents->source-tables
+(deftest conditional-idents->target-tables-test
+  (is (= (sut/conditional-idents->target-tables
            {:person/by-id [:= :person/number]
             :pets/by-ids  [:in :pet/index]})
         {:person/by-id "person", :pets/by-ids "pet"})))
 
-(deftest joins->source-tables-test
-  (is (= (sut/joins->source-tables
+(deftest joins->target-tables-test
+  (is (= (sut/joins->target-tables
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
             :farmer/cow [:farmer/cow-index :cow/index]})
-        {:person/pet "person",
-         :pet/owner  "pet",
-         :farmer/cow "farmer"})))
+        {:person/pet "person_pet",
+         :pet/owner  "person_pet",
+         :farmer/cow "cow"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns
@@ -197,3 +173,14 @@
         {:person/pet :person/number,
          :pet/owner :pet/index,
          :farmer/cow :farmer/cow-index})))
+
+(deftest joins->target-columns-test
+  (is (= (sut/joins->target-columns
+           {:person/pet [:person/number :person-pet/person-number
+                         :person-pet/pet-index :pet/index]
+            :pet/owner  [:pet/index :person-pet/pet-index
+                         :person-pet/person-number :person/number]
+            :farmer/cow [:farmer/cow-index :cow/index]})
+        {:person/pet :person-pet/person-number,
+         :pet/owner :person-pet/pet-index,
+         :farmer/cow :cow/index})))

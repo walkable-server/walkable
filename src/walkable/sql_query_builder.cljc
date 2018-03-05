@@ -11,7 +11,7 @@
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
 
-(defn keyword->column-name
+(defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
   [k]
@@ -21,18 +21,18 @@
     (map #(str "`" % "`"))
     (clojure.string/join ".")))
 
-(defn keyword->alias
+(defn clojuric-name
   "Converts a keyword to an SQL alias"
   [k]
   {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
-  (subs (str k) 1))
+  (str "`" (subs (str k) 1) "`"))
 
 (s/def ::keyword-string-map
   (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
 
 (s/def ::keyword-keyword-map
-  (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
+  (s/coll-of (s/tuple ::filters/namespaced-keyword ::filters/namespaced-keyword)))
 
 (defn ->column-names
   "Makes a hash-map of keywords and their equivalent column names"
@@ -40,29 +40,30 @@
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map keyword->column-name ks)))
+    (map column-name ks)))
 
-(defn ->column-aliases
-  "Makes a hash-map of keywords and their equivalent aliases"
+(defn ->clojuric-names
+  "Makes a hash-map of keywords and their Clojuric name (to be use as
+  sql's SELECT aliases"
   [ks]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map keyword->alias ks)))
+    (map clojuric-name ks)))
 
 (defn selection-with-aliases
   "Produces the part after `SELECT` and before `FROM <sometable>` of
   an SQL query"
-  [columns-to-query column-names column-aliases]
+  [{:keys [columns-to-query column-names clojuric-names]}]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) columns-to-query)
          (s/valid? ::keyword-string-map column-names)
-         (s/valid? ::keyword-string-map column-aliases)]
+         (s/valid? ::keyword-string-map clojuric-names)]
    :post [string?]}
   (->> columns-to-query
-    (map #(str (get column-names %)
-            " AS \""
-            (get column-aliases %)
-            "\""))
+    (map (fn [column]
+           (str (get column-names column)
+             " AS "
+             (get clojuric-names column))))
     (clojure.string/join ", ")))
 
 (defn ->join-statement
@@ -75,62 +76,23 @@
     " JOIN `" table-2
     "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
 
-(defn ->join-statement-with-alias
-  [[[table-1 column-1] [table-2 column-2]]
-   table-1-alias]
-  {:pre [(every? string? [table-1 column-1 table-2 column-2 table-1-alias])]
-   :post [string?]}
-  (str
-    " JOIN `" table-2
-    "` ON `"   table-1-alias "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
+(s/def ::no-join
+  (s/coll-of ::filters/namespaced-keyword
+    :count 2))
+
+(s/def ::one-join
+  (s/coll-of ::filters/namespaced-keyword
+    :count 4))
 
 (s/def ::join-seq
-  (s/and (s/coll-of ::filters/namespaced-keyword
-           :min-count 2)
-    #(even? (count %))))
+  (s/or
+    :no-join  ::no-join
+    :one-join ::one-join))
 
 (defn split-join-seq
   [join-seq]
   {:pre [(s/valid? ::join-seq join-seq)]}
   (map split-keyword join-seq))
-
-(defn ->join-pairs
-  "Breaks a join-seq into pairs of table/column"
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]}
-  (partition 2 (split-join-seq join-seq)))
-
-(defn ->join-tables
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]}
-  (map first (split-join-seq join-seq)))
-
-(defn self-join?
-  "Checks if a join sequence is a self-join which means joining the
-  same table as the original one."
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]
-   :post [boolean?]}
-  (let [[from-table & other-tables] (->join-tables join-seq)]
-    (contains? (set other-tables) from-table)))
-
-(defn ->table-1-alias
-  "In case of self-join, use the column name in the relation table as
-  alias for the original table."
-  [[[table-1 column-1] [table-2 column-2]]]
-  {:pre [(every? string? [table-1 column-1 table-2 column-2])]
-   :post [string?]}
-  column-2)
-
-(defn ->column-1-alias
-  "In case of self-join, use the column name in the relation table as
-  alias for the original table. Returns the original column name with
-  alias table."
-  [join-seq]
-  {:pre  [(s/valid? ::join-seq join-seq)]
-   :post [#(s/valid? ::filters/namespaced-keyword %)]}
-  (let [[[table-1 column-1] [table-2 column-2]] (map (juxt namespace name) (take 2 join-seq))]
-    (keyword column-2 column-1)))
 
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
@@ -138,57 +100,72 @@
   [join-seq]
   {:pre [(s/valid? ::join-seq join-seq)]
    :post [string?]}
-  (if (self-join? join-seq)
-    (let [[p1 p2] (->join-pairs join-seq)]
-      (str
-        (->join-statement-with-alias p1 (->table-1-alias p1))
-        (->join-statement p2)))
-    (apply str (map ->join-statement (->join-pairs join-seq)))))
+  (let [[tag] (s/conform ::join-seq join-seq)]
+    (when (= :one-join tag)
+      (->join-statement (map split-keyword (drop 2 join-seq))))))
 
 (s/def ::joins
   (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
 
-(defn joins->self-join-source-table-aliases
-  "Helper for compile-schema. Generates source table aliases for
-  self-join keys."
-  [joins]
-  {:pre [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (if (self-join? join-seq)
-              (assoc result k (->table-1-alias (first (->join-pairs join-seq))))
-              result))
-    {} joins))
+(defn source-column
+  [join-seq]
+  (first join-seq))
 
-(defn joins->self-join-source-column-aliases
-  "Helper for compile-schema. Generates source column aliases for
-  self-join keys."
+(defn target-column
+  [join-seq]
+  (second join-seq))
+
+(defn target-table
+  [join-seq]
+  (first (split-keyword (target-column join-seq))))
+
+(defn joins->target-tables
+  "Produces map of join keys to their corresponding source table name."
   [joins]
   {:pre  [(s/valid? ::joins joins)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
-            (if (self-join? join-seq)
-              (assoc result k (->column-1-alias join-seq))
-              result))
+            (assoc result k
+              (target-table join-seq)))
+    {} joins))
+
+(defn joins->target-columns
+  "Produces map of join keys to their corresponding target column."
+  [joins]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-keyword-map %)]}
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (target-column join-seq)))
+    {} joins))
+
+(defn joins->source-columns
+  "Produces map of join keys to their corresponding source column."
+  [joins]
+  {:pre  [(s/valid? ::joins joins)]
+   :post [#(s/valid? ::keyword-keyword-map %)]}
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (source-column join-seq)))
     {} joins))
 
 (s/def ::query-string-input
-  (s/keys :req-un [::columns-to-query ::column-names ::column-aliases ::source-table]
-    :opt-un [::source-table-alias ::join-statement ::where-conditions
+  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names ::target-table]
+    :opt-un [::join-statement ::where-conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [columns-to-query column-names column-aliases source-table
-           source-table-alias join-statement where-conditions
+  [{:keys [columns-to-query column-names clojuric-names target-table
+           join-statement where-conditions
            offset limit order-by] :as input}]
-  {:pre [(s/valid? ::query-string-input input)]
+  {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
-  (str "SELECT " (selection-with-aliases columns-to-query column-names column-aliases)
-    " FROM `" source-table "`"
-
-    (when source-table-alias
-      (str " `" source-table-alias "`"))
+  (str "SELECT "
+    (selection-with-aliases {:columns-to-query columns-to-query
+                             :column-names     column-names
+                             :clojuric-names   clojuric-names})
+    " FROM `" target-table "`"
 
     join-statement
 
@@ -242,7 +219,7 @@
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
 
-(defn conditional-idents->source-tables
+(defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
   [idents]
   {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
@@ -251,26 +228,6 @@
             (assoc result ident-key
               (first (split-keyword column-keyword))))
     {} idents))
-
-(defn joins->source-tables
-  "Produces map of join keys to their corresponding source table name."
-  [joins]
-  {:pre  [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (first (split-keyword (first join-seq)))))
-    {} joins))
-
-(defn joins->source-columns
-  "Produces map of join keys to their corresponding source column keyword."
-  [joins]
-  {:pre  [(s/valid? ::joins joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (first join-seq)))
-    {} joins))
 
 (s/def ::multi-keys
   (s/coll-of (s/tuple (s/or :single-key keyword?
@@ -379,28 +336,24 @@
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
         join-cardinality                                  (flatten-multi-keys join-cardinality)
-        self-join-source-table-aliases                    (joins->self-join-source-table-aliases joins)
-        self-join-source-column-aliases                   (joins->self-join-source-column-aliases joins)
-        true-columns                                      (set (concat columns
-                                                                 (vals self-join-source-column-aliases)))
+        true-columns                                      (set (apply concat columns (vals joins)))
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
     #::{:column-keywords  columns
+        :ident-keywords   (set (keys idents))
         :required-columns (expand-denpendencies required-columns)
-        :source-tables    (merge (conditional-idents->source-tables conditional-idents)
+        :target-tables    (merge (conditional-idents->target-tables conditional-idents)
                             unconditional-idents
-                            (joins->source-tables joins))
+                            (joins->target-tables joins))
+        :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
-
-        :self-join-source-table-aliases  self-join-source-table-aliases
-        :self-join-source-column-aliases self-join-source-column-aliases
 
         :join-cardinality join-cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names true-columns)
                             pseudo-columns)
-        :column-aliases   (->column-aliases columns)
+        :clojuric-names   (->clojuric-names columns)
         :join-statements  (compile-join-statements joins)}))
 
 (defn clean-up-all-conditions
@@ -430,8 +383,7 @@
 
 (defn process-conditions
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [ident-conditions extra-conditions source-columns
-                 self-join-source-column-aliases]}
+  (let [{::keys [ident-conditions extra-conditions target-columns source-columns]}
         sql-schema
         e (p/entity env)
         k (get-in env [:ast :dispatch-key])
@@ -440,15 +392,15 @@
         (when-let [condition (get ident-conditions k)]
           (ident->condition env condition))
 
+        target-column
+        (get target-columns k)
+
         source-column
         (get source-columns k)
 
-        source-column-alias
-        (get self-join-source-column-aliases k)
-
-        source-condition
-        (when source-column
-          {(or source-column-alias source-column)
+        target-condition
+        (when target-column ;; if it's a join
+          {target-column
            [:= (get e source-column)]})
 
         extra-condition
@@ -461,47 +413,47 @@
         supplied-condition
         (when (s/valid? ::filters/clauses supplied-condition)
           supplied-condition)]
-    [ident-condition source-condition extra-condition supplied-condition]))
+    [ident-condition target-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [column-names]} sql-schema
+  (let [{::keys [clojuric-names]} sql-schema
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
-                             :keymap column-names}
+                             :keymap clojuric-names}
         all-conditions))))
 
 (defn process-query
   [{::keys [sql-schema] :as env}]
   (let [{::keys [column-keywords
                  column-names
-                 column-aliases
+                 clojuric-names
                  join-statements
-                 source-tables
-                 source-columns
-                 self-join-source-table-aliases]}  sql-schema
+                 target-tables
+                 target-columns]}                  sql-schema
         k                                          (get-in env [:ast :dispatch-key])
         [where-conditions query-params]            (parameterize-all-conditions env)
         {:keys [child-join-keys columns-to-query]} (process-children env)
-        columns-to-query                           (if-let [source-column (get source-columns k)]
-                                                     (conj columns-to-query source-column)
+        columns-to-query                           (if-let [target-column (get target-columns k)]
+                                                     (conj columns-to-query target-column)
                                                      columns-to-query)
         {:keys [offset limit order-by]}            (process-pagination env)]
-    {:query-string-input {:source-table       (get source-tables k)
-                          :source-table-alias (get self-join-source-table-aliases k)
-                          :join-statement     (get join-statements k)
-                          :columns-to-query   columns-to-query
-                          :column-names       column-names
-                          :column-aliases     column-aliases
-                          :where-conditions   where-conditions
-                          :offset             offset
-                          :limit              limit
-                          :order-by           order-by}
+    {:query-string-input {:target-table        (get target-tables k)
+                          :join-statement      (get join-statements k)
+                          :columns-to-query    columns-to-query
+                          :column-names        column-names
+                          :clojuric-names      clojuric-names
+                          :where-conditions    where-conditions
+                          :offset              offset
+                          :limit               limit
+                          :order-by            order-by}
      :query-params       query-params
      :child-join-keys    child-join-keys}))
 
 (defn batch-query
+  "Combines multiple SQL queries and their params into a single query
+  using UNION."
   [query-strings params]
   (let [union-query (clojure.string/join "\nUNION\n"
                       (map #(str "SELECT * FROM (" % ")")
@@ -510,21 +462,20 @@
 
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [source-tables
+  (let [{::keys [ident-keywords
+                 target-tables
+                 target-columns
                  source-columns
                  join-statements
                  join-cardinality]} sql-schema
         k                           (get-in env [:ast :dispatch-key])]
-    (if (contains? source-tables k)
+    (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params child-join-keys]}
             (process-query env)
 
             query-string
-            ;; if k is not among joins but found in source-tables
-            ;; it must have type ident
-            (when (and (contains? source-tables k)
-                    (not (contains? join-statements k)))
+            (when (contains? ident-keywords k)
               (->query-string query-string-input))
 
             entities
@@ -544,7 +495,11 @@
             (when (seq child-join-keys)
               (into {}
                 (for [j child-join-keys]
-                  (let [source-column (get source-columns j)
+                  (let [;; parent
+                        source-column (get source-columns j)
+                        ;; children
+                        target-column (get target-columns j)
+
                         query-string-inputs
                         (for [e entities]
                           (process-query
@@ -552,11 +507,11 @@
                               [::p/entity source-column] (get e source-column))))
 
                         query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
-                        params        (map :query-params query-string-inputs)
+                        all-params        (map :query-params query-string-inputs)
 
                         join-children-data
-                        (run-query sql-db (batch-query query-strings params))]
-                    [j (group-by source-column join-children-data)]))))
+                        (run-query sql-db (batch-query query-strings all-params))]
+                    [j (group-by target-column join-children-data)]))))
 
             entities-with-join-children-data
             (for [e entities]
