@@ -41,17 +41,6 @@
   (is (= (sut/->join-tables [:pet/index :person/number])
         ["pet" "person"])))
 
-(deftest ->join-pairs-tests
-  (is (= (sut/->join-pairs [:pet/index :person/number])
-        '((("pet" "index")
-           ("person" "number")))))
-  (is (= (sut/->join-pairs [:pet/index :person-pet/pet-index
-                            :person-pet/person-number :person/number])
-        '((("pet" "index")
-           ("person_pet" "pet_index"))
-          (("person_pet" "person_number")
-           ("person" "number"))))))
-
 (deftest target-column-tests
   (is (= (sut/target-column [:pet/owner :person/number])
         :person/number))
