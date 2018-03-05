@@ -340,6 +340,7 @@
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
     #::{:column-keywords  columns
+        :ident-keywords   (set (keys idents))
         :required-columns (expand-denpendencies required-columns)
         :target-tables    (merge (conditional-idents->target-tables conditional-idents)
                             unconditional-idents
@@ -461,7 +462,8 @@
 
 (defn pull-entities
   [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [target-tables
+  (let [{::keys [ident-keywords
+                 target-tables
                  target-columns
                  source-columns
                  join-statements
@@ -473,10 +475,7 @@
             (process-query env)
 
             query-string
-            ;; if k is not among joins but found in target-tables
-            ;; it must have type ident
-            (when (and (contains? target-tables k)
-                    (not (contains? join-statements k)))
+            (when (contains? ident-keywords k)
               (->query-string query-string-input))
 
             entities
