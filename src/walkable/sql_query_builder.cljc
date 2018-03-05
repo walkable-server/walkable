@@ -161,22 +161,22 @@
     {} joins))
 
 (s/def ::query-string-input
-  (s/keys :req-un [::columns-to-query ::column-names ::column-aliases ::source-table]
-    :opt-un [::source-table-alias ::join-statement ::where-conditions
+  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names ::target-table]
+    :opt-un [::join-statement ::where-conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [columns-to-query column-names column-aliases source-table
-           source-table-alias join-statement where-conditions
+  [{:keys [columns-to-query column-names clojuric-names target-table
+           join-statement where-conditions
            offset limit order-by] :as input}]
-  {:pre [(s/valid? ::query-string-input input)]
+  {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
-  (str "SELECT " (selection-with-aliases columns-to-query column-names column-aliases)
-    " FROM `" source-table "`"
-
-    (when source-table-alias
-      (str " `" source-table-alias "`"))
+  (str "SELECT "
+    (selection-with-aliases {:columns-to-query columns-to-query
+                             :column-names     column-names
+                             :clojuric-names   clojuric-names})
+    " FROM `" target-table "`"
 
     join-statement
 
