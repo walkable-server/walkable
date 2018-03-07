@@ -97,35 +97,6 @@
         {:child-join-keys #{:pet/owner}
          :columns-to-query #{:pet/yob :person/number}})))
 
-(deftest get-child-env-test
-  (let [sql-schema #::sut {:column-keywords
-                           #{:pet/yob}
-                           :required-columns
-                           {:pet/age #{:pet/yob}}
-                           :target-columns
-                           {:person/pets :person/number
-                            :pet/owner   :person/number
-                            :pet/species :species/id}}]
-    (is (= (sut/get-child-env
-             {:ast {:children [{:dispatch-key :person/name}
-                               {:dispatch-key :person/pets ;; <- it's here
-                                :children     [{:dispatch-key :pet/name}
-                                               {:dispatch-key :pet/owner
-                                                :children     [{:dispatch-key :person/name}]}
-                                               {:dispatch-key :pet/species
-                                                :children     [{:dispatch-key :species/name}]}]}]}
-              ::sut/sql-schema
-              sql-schema}
-             :person/pets)
-          {:ast {:dispatch-key :person/pets,
-                 :children     [{:dispatch-key :pet/name}
-                                {:dispatch-key :pet/owner,
-                                 :children     [{:dispatch-key :person/name}]}
-                                {:dispatch-key :pet/species,
-                                 :children     [{:dispatch-key :species/name}]}]},
-           ::sut/sql-schema
-           sql-schema}))))
-
 (deftest ident->condition-tests
   (is (= (sut/ident->condition
            {:ast {:key [:person/by-id 1]}}
