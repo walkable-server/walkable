@@ -1,6 +1,7 @@
 (ns walkable.sql-query-builder
   (:require [walkable.sql-query-builder.filters :as filters]
             [clojure.spec.alpha :as s]
+            [clojure.zip :as z]
             [com.wsscode.pathom.core :as p]))
 
 (defn split-keyword
@@ -183,24 +184,70 @@
   (s/keys :req []
     :opt []))
 
+(defn ast-zipper
+  "Make a zipper to navigate an ast tree possibly with placeholder
+  subtrees."
+  [ast {:keys [leaf? placeholder?]}]
+  (->> ast
+    (z/zipper
+      (fn branch? [x] (and (map? x)
+                        (or (= :root (::my-marker x)) (placeholder? x))
+                        (seq (:children x))))
+      (fn children [x] (->> (:children x) (filter #(or (leaf? %) (placeholder? %)))))
+      (fn make-node [x xs] (assoc x :children (vec xs))))))
+
+(defn all-zipper-children
+  "Given a zipper, returns all its children"
+  [zipper]
+  (->> zipper
+    (iterate z/next)
+    rest ;; remove the root itself
+    (take-while #(not (z/end? %)))))
+
+(defn find-all-children
+  "Find all direct children, or children in nested placeholders."
+  [ast {:keys [placeholder? leaf?]}]
+  (->>
+    (ast-zipper (assoc ast ::my-marker :root)
+      {:leaf?        leaf?
+       :placeholder? placeholder?})
+    (all-zipper-children)
+    (map z/node)
+    rest
+    (remove placeholder?)))
+
 (defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
-  [{::keys [sql-schema] :as env}]
+  [{::keys [sql-schema] :keys [ast] ::p/keys [placeholder-prefixes]
+    :as env}]
   {:pre  [(s/valid? ::sql-schema sql-schema)]
-   :post [#(s/valid? (s/keys :req-un [::child-join-keys ::columns-to-query]))]}
+   :post [#(s/valid? (s/keys :req-un [::child-join-keys ::columns-to-query]) %)]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
+        all-children
+        (find-all-children ast
+          {:placeholder? #(contains? placeholder-prefixes
+                            (namespace (:dispatch-key %)))
+           :leaf? #(or (contains? column-keywords (:dispatch-key %))
+                     (contains? source-columns (:dispatch-key %)))})
+
+        {:keys [column-children join-children]}
+        (->> all-children
+          (group-by #(if (contains? column-keywords (:dispatch-key %))
+                       :column-children
+                       :join-children)))
+
         all-child-keys
-        (->> env :ast :children (map :dispatch-key))
+        (map :dispatch-key column-children)
 
         child-column-keys
-        (->> all-child-keys (filter #(contains? column-keywords %)) (into #{}))
+        (map :dispatch-key column-children)
 
         child-required-keys
         (->> all-child-keys (map #(get required-columns %)) (apply clojure.set/union))
 
         child-join-keys
-        (set (filter #(contains? source-columns %) all-child-keys))
+        (map :dispatch-key join-children)
 
         child-source-columns
         (->> child-join-keys (map #(get source-columns %)) (into #{}))]
@@ -495,7 +542,8 @@
             (when (seq child-join-keys)
               (into {}
                 (for [j child-join-keys]
-                  (let [;; parent
+                  (let [;; (let [j (:dispatch-key child-join)]
+                        ;; parent
                         source-column (get source-columns j)
                         ;; children
                         target-column (get target-columns j)
