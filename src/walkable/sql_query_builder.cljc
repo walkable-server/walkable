@@ -269,7 +269,7 @@
 
         child-source-columns
         (->> child-join-keys (map #(get source-columns %)) (into #{}))]
-    {:join-children    join-children
+    {:join-children    (set join-children)
      :columns-to-query (clojure.set/union
                          child-column-keys
                          child-required-keys
