@@ -2,6 +2,7 @@
   (:require [walkable.sql-query-builder :as sut]
             [clojure.test :as t :refer [deftest is]]
             [walkable.sql-query-builder.filters :as filters]
+            [fulcro.client.primitives :as prim]
             [com.wsscode.pathom.core :as p]))
 
 (deftest split-keyword-test
@@ -82,6 +83,23 @@
                                     :b #{:d}
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
+
+(deftest find-all-children-test
+  (is (= (->>
+           (sut/find-all-children
+             (first (:children (prim/query->ast
+                                 '[{:some/root [:x.a/child-col :x.b/child-col
+                                                {:ph/ph1 [(:y.a/child-col {:params [1 2]})
+                                                          {:y.a/child-join [ ;; not a direct child
+                                                                            {:ph/will-be-ignored [:y.c/child-col]}]}
+                                                          {:pp/ph1 [:z.a/child-col :z.b/child-join {:ph/will-be-ignored [:z.c/child-col]}]}]}
+                                                {:ph/ph2 [:t.a/child-col :t.b/child-col]}]}])))
+             {:leaf?        #(contains? #{"child-col" "child-join"}
+                               (name (:dispatch-key %)))
+              :placeholder? #(contains? #{"ph" "pp"} (namespace (:dispatch-key %)))})
+           (map :dispatch-key)
+           (into #{}))
+        #{:x.a/child-col :x.b/child-col :y.a/child-col :y.a/child-join :z.a/child-col :z.b/child-join :z.c/child-col :t.a/child-col :t.b/child-col})))
 
 (deftest process-children-test
   (is (= (sut/process-children
