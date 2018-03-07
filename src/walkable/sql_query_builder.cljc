@@ -184,6 +184,14 @@
   (s/keys :req []
     :opt []))
 
+(defn ast-root
+  [ast]
+  (assoc ast ::my-marker :root))
+
+(defn ast-zipper-root?
+  [x]
+  (= :root (::my-marker x)))
+
 (defn ast-zipper
   "Make a zipper to navigate an ast tree possibly with placeholder
   subtrees."
@@ -191,7 +199,7 @@
   (->> ast
     (z/zipper
       (fn branch? [x] (and (map? x)
-                        (or (= :root (::my-marker x)) (placeholder? x))
+                        (or (ast-zipper-root? x) (placeholder? x))
                         (seq (:children x))))
       (fn children [x] (->> (:children x) (filter #(or (leaf? %) (placeholder? %)))))
       (fn make-node [x xs] (assoc x :children (vec xs))))))
@@ -201,36 +209,34 @@
   [zipper]
   (->> zipper
     (iterate z/next)
-    rest ;; remove the root itself
     (take-while #(not (z/end? %)))))
 
 (defn find-all-children
   "Find all direct children, or children in nested placeholders."
   [ast {:keys [placeholder? leaf?]}]
   (->>
-    (ast-zipper (assoc ast ::my-marker :root)
+    (ast-zipper (ast-root ast)
       {:leaf?        leaf?
        :placeholder? placeholder?})
     (all-zipper-children)
     (map z/node)
-    rest
-    (remove placeholder?)))
+    (remove #(or (ast-zipper-root? %) (placeholder? %)))))
 
 (defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [sql-schema] :keys [ast] ::p/keys [placeholder-prefixes]
-    :as env}]
+    :as    env}]
   {:pre  [(s/valid? ::sql-schema sql-schema)]
-   :post [#(s/valid? (s/keys :req-un [::child-join-keys ::columns-to-query]) %)]}
+   :post [#(s/valid? (s/keys :req-un [::join-children ::columns-to-query]) %)]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
         all-children
         (find-all-children ast
           {:placeholder? #(contains? placeholder-prefixes
                             (namespace (:dispatch-key %)))
-           :leaf? #(or (contains? column-keywords (:dispatch-key %))
-                     (contains? source-columns (:dispatch-key %))
-                     (contains? required-columns (:dispatch-key %)))})
+           :leaf?        #(or (contains? column-keywords (:dispatch-key %))
+                            (contains? source-columns (:dispatch-key %))
+                            (contains? required-columns (:dispatch-key %)))})
 
         {:keys [column-children join-children]}
         (->> all-children
@@ -241,10 +247,10 @@
                            :column-children)))
 
         all-child-keys
-        (map :dispatch-key column-children)
+        (->> column-children (map :dispatch-key) (into #{}))
 
         child-column-keys
-        (map :dispatch-key column-children)
+        (->> column-children (map :dispatch-key) (into #{}))
 
         child-required-keys
         (->> all-child-keys (map #(get required-columns %)) (apply clojure.set/union))
@@ -254,17 +260,11 @@
 
         child-source-columns
         (->> child-join-keys (map #(get source-columns %)) (into #{}))]
-    {:child-join-keys  child-join-keys
+    {:join-children    join-children
      :columns-to-query (clojure.set/union
                          child-column-keys
                          child-required-keys
                          child-source-columns)}))
-
-(defn get-child-env
-  [{:keys [ast] :as env} child-join-key]
-  (let [children (->> ast :children
-                   (some #(when (= child-join-key (:dispatch-key %)) %)))]
-    (assoc env :ast children)))
 
 (s/def ::conditional-ident
   (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
@@ -417,7 +417,7 @@
 (defn process-pagination
   [{::keys [sql-schema] :as env}]
   {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
-   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]))]}
+   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
   (let [{::keys [column-names]} sql-schema]
     {:offset
      (when-let [offset (get-in env [:ast :params ::offset])]
@@ -481,25 +481,25 @@
                  clojuric-names
                  join-statements
                  target-tables
-                 target-columns]}                  sql-schema
-        k                                          (get-in env [:ast :dispatch-key])
-        [where-conditions query-params]            (parameterize-all-conditions env)
-        {:keys [child-join-keys columns-to-query]} (process-children env)
-        columns-to-query                           (if-let [target-column (get target-columns k)]
-                                                     (conj columns-to-query target-column)
-                                                     columns-to-query)
-        {:keys [offset limit order-by]}            (process-pagination env)]
-    {:query-string-input {:target-table        (get target-tables k)
-                          :join-statement      (get join-statements k)
-                          :columns-to-query    columns-to-query
-                          :column-names        column-names
-                          :clojuric-names      clojuric-names
-                          :where-conditions    where-conditions
-                          :offset              offset
-                          :limit               limit
-                          :order-by            order-by}
+                 target-columns]}                sql-schema
+        k                                        (get-in env [:ast :dispatch-key])
+        [where-conditions query-params]          (parameterize-all-conditions env)
+        {:keys [join-children columns-to-query]} (process-children env)
+        columns-to-query                         (if-let [target-column (get target-columns k)]
+                                                   (conj columns-to-query target-column)
+                                                   columns-to-query)
+        {:keys [offset limit order-by]}          (process-pagination env)]
+    {:query-string-input {:target-table     (get target-tables k)
+                          :join-statement   (get join-statements k)
+                          :columns-to-query columns-to-query
+                          :column-names     column-names
+                          :clojuric-names   clojuric-names
+                          :where-conditions where-conditions
+                          :offset           offset
+                          :limit            limit
+                          :order-by         order-by}
      :query-params       query-params
-     :child-join-keys    child-join-keys}))
+     :join-children      join-children}))
 
 (defn batch-query
   "Combines multiple SQL queries and their params into a single query
@@ -521,7 +521,7 @@
         k                           (get-in env [:ast :dispatch-key])]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
-      (let [{:keys [query-string-input query-params child-join-keys]}
+      (let [{:keys [query-string-input query-params join-children]}
             (process-query env)
 
             query-string
@@ -542,10 +542,10 @@
 
             ;;join-child-queries
             join-children-data-by-join-key
-            (when (seq child-join-keys)
+            (when (seq join-children)
               (into {}
-                (for [j child-join-keys]
-                  (let [;; (let [j (:dispatch-key child-join)]
+                (for [join-child join-children]
+                  (let [j             (:dispatch-key join-child)
                         ;; parent
                         source-column (get source-columns j)
                         ;; children
@@ -554,11 +554,13 @@
                         query-string-inputs
                         (for [e entities]
                           (process-query
-                            (assoc-in (get-child-env env j)
-                              [::p/entity source-column] (get e source-column))))
+                            (-> env
+                              (assoc :ast join-child)
+                              (assoc-in [::p/entity source-column]
+                                (get e source-column)))))
 
                         query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
-                        all-params        (map :query-params query-string-inputs)
+                        all-params    (map :query-params query-string-inputs)
 
                         join-children-data
                         (run-query sql-db (batch-query query-strings all-params))]
@@ -568,8 +570,9 @@
             (for [e entities]
               (let [child-joins
                     (into {}
-                      (for [j child-join-keys]
-                        (let [source-column (get source-columns j)
+                      (for [join-child join-children]
+                        (let [j             (:dispatch-key join-children)
+                              source-column (get source-columns j)
                               parent-id     (get e source-column)
                               children      (get-in join-children-data-by-join-key
                                               [j parent-id])]
