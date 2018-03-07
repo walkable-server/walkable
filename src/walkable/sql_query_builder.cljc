@@ -580,7 +580,7 @@
               (let [child-joins
                     (into {}
                       (for [join-child join-children]
-                        (let [j             (:dispatch-key join-children)
+                        (let [j             (:dispatch-key join-child)
                               source-column (get source-columns j)
                               parent-id     (get e source-column)
                               children      (get-in join-children-data-by-join-key
