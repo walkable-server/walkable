@@ -229,13 +229,16 @@
           {:placeholder? #(contains? placeholder-prefixes
                             (namespace (:dispatch-key %)))
            :leaf? #(or (contains? column-keywords (:dispatch-key %))
-                     (contains? source-columns (:dispatch-key %)))})
+                     (contains? source-columns (:dispatch-key %))
+                     (contains? required-columns (:dispatch-key %)))})
 
         {:keys [column-children join-children]}
         (->> all-children
-          (group-by #(if (contains? column-keywords (:dispatch-key %))
-                       :column-children
-                       :join-children)))
+          (group-by #(cond (contains? source-columns (:dispatch-key %))
+                           :join-children
+
+                           (contains? column-keywords (:dispatch-key %))
+                           :column-children)))
 
         all-child-keys
         (map :dispatch-key column-children)
