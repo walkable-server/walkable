@@ -256,7 +256,7 @@
                            :column-children)))
 
         all-child-keys
-        (->> column-children (map :dispatch-key) (into #{}))
+        (->> all-children (map :dispatch-key) (into #{}))
 
         child-column-keys
         (->> column-children (map :dispatch-key) (into #{}))
