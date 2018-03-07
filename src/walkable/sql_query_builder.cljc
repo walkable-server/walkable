@@ -547,7 +547,7 @@
               ;; joins don't have to build a query themselves
               ;; just look up the key in their parents data
               (let [parent (p/entity env)]
-                (get parent k)))
+                (get parent (:ast env))))
 
             ;;join-child-queries
             join-children-data-by-join-key
@@ -573,7 +573,7 @@
 
                         join-children-data
                         (run-query sql-db (batch-query query-strings all-params))]
-                    [j (group-by target-column join-children-data)]))))
+                    [join-child (group-by target-column join-children-data)]))))
 
             entities-with-join-children-data
             (for [e entities]
@@ -584,8 +584,8 @@
                               source-column (get source-columns j)
                               parent-id     (get e source-column)
                               children      (get-in join-children-data-by-join-key
-                                              [j parent-id])]
-                          [j children])))]
+                                              [join-child parent-id])]
+                          [join-child children])))]
                 (merge e child-joins)))
 
             one?
