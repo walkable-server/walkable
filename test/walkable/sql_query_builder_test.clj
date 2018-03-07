@@ -112,7 +112,7 @@
                    {:pet/age #{:pet/yob}}
                    :source-columns
                    {:pet/owner :person/number}}})
-        {:child-join-keys #{:pet/owner}
+        {:join-children [{:dispatch-key :pet/owner}],
          :columns-to-query #{:pet/yob :person/number}})))
 
 (deftest ident->condition-tests
