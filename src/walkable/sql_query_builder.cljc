@@ -206,6 +206,7 @@
                         (or (ast-zipper-root? x) (placeholder? x))
                         (seq (:children x))))
       (fn children [x] (->> (:children x) (filter #(or (leaf? %) (placeholder? %)))))
+      ;; not neccessary because we only want to read, not write
       (fn make-node [x xs] (assoc x :children (vec xs))))))
 
 (defn all-zipper-children
@@ -239,8 +240,11 @@
         (find-all-children ast
           {:placeholder? #(contains? placeholder-prefixes
                             (namespace (:dispatch-key %)))
-           :leaf?        #(or (contains? column-keywords (:dispatch-key %))
+           :leaf?        #(or ;; it's a column child
+                            (contains? column-keywords (:dispatch-key %))
+                            ;; it's a join child
                             (contains? source-columns (:dispatch-key %))
+                            ;; it's a attr child that requires some other column children
                             (contains? required-columns (:dispatch-key %)))})
 
         {:keys [column-children join-children]}
