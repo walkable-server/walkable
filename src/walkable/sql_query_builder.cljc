@@ -192,10 +192,14 @@
   [x]
   (= :root (::my-marker x)))
 
+(s/def ::zipper-fns
+  (s/keys :req-un [::placeholder? ::leaf?]))
+
 (defn ast-zipper
   "Make a zipper to navigate an ast tree possibly with placeholder
   subtrees."
-  [ast {:keys [leaf? placeholder?]}]
+  [ast {:keys [placeholder? leaf?] :as zipper-fns}]
+  {:pre [(map? ast) (s/valid? ::zipper-fns zipper-fns)]}
   (->> ast
     (z/zipper
       (fn branch? [x] (and (map? x)
@@ -213,7 +217,8 @@
 
 (defn find-all-children
   "Find all direct children, or children in nested placeholders."
-  [ast {:keys [placeholder? leaf?]}]
+  [ast {:keys [placeholder? leaf?] :as zipper-fns}]
+  {:pre [(map? ast) (s/valid? ::zipper-fns zipper-fns)]}
   (->>
     (ast-zipper (ast-root ast)
       {:leaf?        leaf?
