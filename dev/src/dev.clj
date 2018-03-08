@@ -159,7 +159,7 @@
                                  :person/age #{:person/yob}}
               :idents           {:person/by-id [:= :person/number]
                                  :people/all   "person"}
-              :extra-conditions {[:pet/owner :person/by-id]
+              :extra-conditions {[:person/by-id :people/all]
                                  [:or {:person/hidden [:= true]}
                                   {:person/hidden [:= false]}]}
               :joins            {:person/pet [:person/number :person-pet/person-number
