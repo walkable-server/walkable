@@ -470,12 +470,13 @@
     [ident-condition target-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
-  [{::keys [sql-schema] :as env}]
-  (let [{::keys [clojuric-names]} sql-schema
+  [{::keys [sql-schema] :as env} columns-to-query]
+  (let [{::keys [clojuric-names column-names]} sql-schema
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
-                             :keymap clojuric-names}
+                             :keymap (merge column-names
+                                       (select-keys clojuric-names columns-to-query))}
         all-conditions))))
 
 (defn process-query
@@ -487,11 +488,11 @@
                  target-tables
                  target-columns]}                sql-schema
         k                                        (get-in env [:ast :dispatch-key])
-        [where-conditions query-params]          (parameterize-all-conditions env)
         {:keys [join-children columns-to-query]} (process-children env)
         columns-to-query                         (if-let [target-column (get target-columns k)]
                                                    (conj columns-to-query target-column)
                                                    columns-to-query)
+        [where-conditions query-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
     {:query-string-input {:target-table     (get target-tables k)
                           :join-statement   (get join-statements k)
