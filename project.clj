@@ -5,18 +5,20 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [clojure-future-spec "1.9.0-beta4"]
                  [com.wsscode/pathom "2.0.0-beta1"]]
-  :plugins [[duct/lein-duct "0.10.6"]]
-  :resource-paths ["resources" "target/resources"]
-  :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
+  :resource-paths ["resources"]
   :profiles
   {:dev          [:project/dev :profiles/dev]
    :repl         {:prep-tasks   ^:replace ["javac" "compile"]
                   :repl-options {:init-ns          user
                                  :timeout          120000
                                  :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
+   :uberjar      {:aot :all}
    :profiles/dev {}
-   :project/dev  {:source-paths   ["dev/src"]
-                  :resource-paths ["dev/resources"]
+   :project/dev  {:main           ^:skip-aot walkable-demo.main
+                  :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
+                  :plugins        [[duct/lein-duct "0.10.6"]]
+                  :source-paths   ["dev/src"]
+                  :resource-paths ["dev/resources" "target/resources"]
                   :dependencies   [[duct/core "0.6.2"]
                                    [duct/module.logging "0.3.1"]
                                    [duct/logger.timbre "0.4.1"]
