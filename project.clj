@@ -6,7 +6,6 @@
                  [clojure-future-spec "1.9.0-beta4"]
                  [com.wsscode/pathom "2.0.0-beta1"]]
   :plugins [[duct/lein-duct "0.10.6"]]
-  :main ^:skip-aot walkable-demo.main
   :resource-paths ["resources" "target/resources"]
   :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
   :profiles
@@ -15,7 +14,6 @@
                   :repl-options {:init-ns          user
                                  :timeout          120000
                                  :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
-   :uberjar      {:aot :all}
    :profiles/dev {}
    :project/dev  {:source-paths   ["dev/src"]
                   :resource-paths ["dev/resources"]
