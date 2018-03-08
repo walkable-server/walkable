@@ -90,11 +90,6 @@
     :no-join  ::no-join
     :one-join ::one-join))
 
-(defn split-join-seq
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]}
-  (map split-keyword join-seq))
-
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
   join keys given their join sequence."
