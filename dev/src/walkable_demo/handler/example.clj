@@ -38,7 +38,7 @@
      ::p/plugins
      [(p/env-plugin
         {::p/reader
-         [sqb/pull-entities guard-attributes derive-attributes p/map-reader]})]}))
+         [sqb/pull-entities guard-attributes derive-attributes p/map-reader (p/placeholder-reader "ph")]})]}))
 
 (defmethod ig/init-key ::sql-schema [_ schema]
   ;; todo: advanced schema here
