@@ -169,12 +169,55 @@
                                  :person/pet   :many}})}
     eg-1))
 
+;; placeholder example
+#_
+(let [eg-1
+      '[{:people/all
+         [{:ph/info [:person/age :person/name]}
+          {:person/pet [:pet/index
+                        :pet/age
+                        :pet/color]}
+          {:ph/deep [{:ph/nested [{:ph/play [{:person/pet [:pet/index
+                                                           :pet/age
+                                                           :pet/color]}]}]}]}]}]
+      parser
+      example/pathom-parser]
+  (parser {::p/placeholder-prefixes #{"ph"}
+           ::sqb/sql-db    (db)
+           ::sqb/run-query run-print-query
+           ::sqb/sql-schema
+           (sqb/compile-schema
+             ;; which columns are available in SQL table?
+             {:columns          [:person/number
+                                 :person/name
+                                 :person/yob
+                                 :person/hidden
+                                 :person-pet/person-number
+                                 :person-pet/pet-index
+                                 :pet/index
+                                 :pet/name
+                                 :pet/yob
+                                 :pet/color]
+              ;; extra columns required when an attribute is being asked for
+              ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+              :required-columns {:pet/age    #{:pet/yob}
+                                 :person/age #{:person/yob}}
+              :idents           {:person/by-id [:= :person/number]
+                                 :people/all   "person"}
+              :extra-conditions {}
+              :joins            {:person/pet [:person/number :person-pet/person-number
+                                              :person-pet/pet-index :pet/index]}
+              :reversed-joins   {:pet/owner :person/pet}
+              :join-cardinality {:person/by-id :one
+                                 :person/pet   :many}})}
+    eg-1))
+
 ;; self-join example
 #_
 (let [eg-1
       '[{:world/all
          [:human/number :human/name :human/two
-          {:human/follow-stats [:follow/count]}
+          #_{:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
                           :human/name
                           :human/yob]}]}]
