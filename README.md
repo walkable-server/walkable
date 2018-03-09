@@ -112,6 +112,19 @@ former syntax otherwise your client-side app will crash.
 
 ## Developing
 
+Walkable comes with a [Duct](https://github.com/duct-framework/duct)
+setup as its development environment which can be found in `dev`
+directory.
+
+> Duct is a highly modular framework for building server-side
+> applications in Clojure using data-driven architecture.
+
+Here is a quick guide for how to use the development environment.
+
+> A more detailed guide for Duct can be found at:
+>
+> https://github.com/duct-framework/docs/blob/master/GUIDE.rst
+
 ### Setup
 
 When you first clone this repository, run:
