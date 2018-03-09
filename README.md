@@ -1,6 +1,9 @@
 # Walkable
 
-Get data from SQL using om.next style queries (similar to Datomic's pull api)
+A serious way to fetch data from SQL using Clojure: Datomic/om.next
+pull syntax, Clojure flavored filtering and more.
+
+[![Build Status](https://travis-ci.org/walkable-server/walkable.svg?branch=master)](https://travis-ci.org/walkable-server/walkable)
 
 Ever imagined sending queries like this to your SQL database?
 
