@@ -15,7 +15,7 @@
    :uberjar      {:aot :all}
    :profiles/dev {}
    :project/dev  {:main           ^:skip-aot walkable-demo.main
-                  :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
+                  ;; :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
                   :plugins        [[duct/lein-duct "0.10.6"]]
                   :source-paths   ["dev/src"]
                   :resource-paths ["dev/resources" "target/resources"]
