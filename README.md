@@ -19,7 +19,25 @@ Yes, you can. Build the query part of a fulcro server or REST api in
 minutes today! Call it from your Fulcro/Re-frame etc app without
 worrying about SQL injection.
 
-## Features
+## Installation
+
+![Latest version](https://clojars.org/walkable/latest-version.svg)
+
+## Usage
+
+Walkable is a plugin for [Pathom](https://github.com/wilkerlucio/pathom/).
+
+```clj
+(require '[com.wsscode.pathom.core :as p])
+(require '[walkable.sql-query-builder :as sqb])
+
+(def pathom-parser
+  (p/parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/pull-entities p/map-reader (p/placeholder-reader "ph")]})]}))
+```
 
 Basically you define your schema like:
 ```clj
