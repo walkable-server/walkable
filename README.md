@@ -27,6 +27,10 @@ worrying about SQL injection.
 
 Walkable is a plugin for [Pathom](https://github.com/wilkerlucio/pathom/).
 
+> Pathom is a Clojure library designed to provide a collection of
+> helper functions to support Clojure(script) graph parsers using
+> om.next graph syntax.
+
 ```clj
 (require '[com.wsscode.pathom.core :as p])
 (require '[walkable.sql-query-builder :as sqb])
