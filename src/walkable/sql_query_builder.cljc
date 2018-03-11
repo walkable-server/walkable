@@ -386,6 +386,8 @@
     idents))
 
 (defn compile-schema
+  "Given a brief user-supplied schema, derives an efficient schema
+  ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
            reversed-joins joins join-cardinality]}]
   (let [idents                                            (flatten-multi-keys idents)
