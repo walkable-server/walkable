@@ -227,7 +227,12 @@
   "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [sql-schema] :keys [ast] ::p/keys [placeholder-prefixes]
     :as    env}]
-  {:pre  [(s/valid? ::sql-schema sql-schema)]
+  {:pre  [(s/valid? (s/keys :req [::column-keywords ::source-columns]
+                      :opt [::required-columns])
+            sql-schema)
+
+          (when placeholder-prefixes
+            (set? placeholder-prefixes))]
    :post [#(s/valid? (s/keys :req-un [::join-children ::columns-to-query]) %)]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
