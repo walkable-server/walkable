@@ -372,7 +372,11 @@
       m
       (expand-denpendencies m'))))
 
-(defn separate-idents [idents]
+(defn separate-idents
+  "Helper function for compile-schema. Separates all user-supplied
+  idents to unconditional idents and conditional idents for further
+  processing."
+  [idents]
   (reduce (fn [result [k v]]
             (if (string? v)
               (assoc-in result [:unconditional-idents k] v)
