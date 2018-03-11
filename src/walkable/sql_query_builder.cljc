@@ -516,6 +516,18 @@
     (cons union-query (apply concat params))))
 
 (defn pull-entities
+  "A Pathom plugin that pulls entities from SQL database and puts
+  relevent data to ::p/entity ready for p/map-reader plugin.
+
+  The env given to the Pathom parser must contains:
+
+  - sql-schema: output of compile-schema
+
+  - sql-db: a database instance
+
+  - run-query: a function that run an SQL query (optionally with
+  params) against the given sql-db. Shares the same signature with
+  clojure.java.jdbc/query."
   [{::keys [sql-schema sql-db run-query] :as env}]
   (let [{::keys [ident-keywords
                  target-tables
