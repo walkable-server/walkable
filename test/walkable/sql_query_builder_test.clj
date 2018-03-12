@@ -18,7 +18,7 @@
         "`foo/bar`")))
 
 (deftest ->column-names-test
-  (is (= (sut/->column-names [:foo/bar :loo/lar])
+  (is (= (sut/->column-names sut/backticks [:foo/bar :loo/lar])
         {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"})))
 
 (deftest ->clojuric-names-test
