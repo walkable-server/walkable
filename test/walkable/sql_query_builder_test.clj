@@ -14,7 +14,7 @@
         "`foo`.`bar`")))
 
 (deftest clojuric-name-test
-  (is (= (sut/clojuric-name :foo/bar)
+  (is (= (sut/clojuric-name sut/backticks :foo/bar)
         "`foo/bar`")))
 
 (deftest ->column-names-test
