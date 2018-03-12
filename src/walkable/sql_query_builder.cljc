@@ -24,11 +24,11 @@
 (defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
-  [k]
+  [[quote-open quote-close] k]
   {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
   (->> (split-keyword k)
-    (map #(str "`" % "`"))
+    (map #(str quote-open % quote-close))
     (clojure.string/join ".")))
 
 (defn clojuric-name
