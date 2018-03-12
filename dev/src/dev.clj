@@ -75,6 +75,10 @@
 ;; use sqb/quotation-marks if you use postgresql
 (def quote-marks sqb/backticks)
 
+;; set to false if you use anything else but sqlite
+;; eg mysql, postgresql
+(def sqlite-union true)
+
 ;; simple join examples
 #_
 (let [eg-1
@@ -89,6 +93,7 @@
            ::sqb/sql-schema
            (sqb/compile-schema
              {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
               :columns          [:cow/index
                                  :cow/color
                                  :farmer/cow-index
@@ -117,6 +122,7 @@
            ::sqb/sql-schema
            (sqb/compile-schema
              {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
               :columns          [:kid/number :kid/name :toy/index :toy/color :toy/owner-number]
               :idents           {:kid/by-id [:= :kid/number]
                                  :kids/all  "kid"}
@@ -160,6 +166,7 @@
            (sqb/compile-schema
              ;; which columns are available in SQL table?
              {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
               :columns          [:person/number
                                  :person/name
                                  :person/yob
@@ -206,6 +213,7 @@
            (sqb/compile-schema
              ;; which columns are available in SQL table?
              {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
               :columns          [:person/number
                                  :person/name
                                  :person/yob
@@ -247,6 +255,7 @@
            ::sqb/sql-schema
            (sqb/compile-schema
              {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
               :columns          [:human/number :human/name :human/yob
                                  ;; :human-1/number :human-2/number
                                  ]
