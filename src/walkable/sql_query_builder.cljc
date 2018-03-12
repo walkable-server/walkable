@@ -55,11 +55,11 @@
 (defn ->clojuric-names
   "Makes a hash-map of keywords and their Clojuric name (to be use as
   sql's SELECT aliases"
-  [ks]
+  [quote-marks ks]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map clojuric-name ks)))
+    (map #(clojuric-name quote-marks %) ks)))
 
 (defn selection-with-aliases
   "Produces the part after `SELECT` and before `FROM <sometable>` of
