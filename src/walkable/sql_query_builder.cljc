@@ -498,7 +498,7 @@
         source-column
         (get source-columns k)
 
-        target-condition
+        join-condition
         (when target-column ;; if it's a join
           {target-column
            [:= (get e source-column)]})
@@ -513,7 +513,7 @@
         supplied-condition
         (when (s/valid? ::filters/clauses supplied-condition)
           supplied-condition)]
-    [ident-condition target-condition extra-condition supplied-condition]))
+    [ident-condition join-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env} columns-to-query]
