@@ -622,6 +622,7 @@
   clojure.java.jdbc/query."
   [{::keys [sql-schema sql-db run-query] :as env}]
   (let [{::keys [ident-keywords
+                 batch-query
                  target-tables
                  target-columns
                  source-columns
