@@ -1,5 +1,8 @@
 {:duct.core/environment :development
- :duct.core/include ["walkable_demo/config"]
- :duct.module/sql {}
- :duct.database.sql/hikaricp {:jdbc-url "jdbc:sqlite:walkable_demo.sqlite"}
+ :duct.core/include     ["walkable_demo/config"]
+ :duct.module/sql {:database-url "jdbc:sqlite:walkable_demo.sqlite"}
+ ;; use this instead if you use mysql
+ ;; :duct.module/sql {:database-url "jdbc:mysql://localhost:3306/yourdb?user=youruser"}
+ ;; use this instead if you use postgresql
+ ;; :duct.module/sql {:database-url "jdbc:postgresql://localhost:5432/yourdb?user=youruser"}
  }
