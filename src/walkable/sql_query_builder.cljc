@@ -426,6 +426,12 @@
                       query-strings)]
     (cons union-query (apply concat params))))
 
+(defn wrap-select
+  "Wrap a SQL string in SELECT * FROM (...). Useful for sqlite's
+  batch-query."
+  [s]
+  (str "SELECT * FROM (" s ")"))
+
 (defn compile-schema
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
