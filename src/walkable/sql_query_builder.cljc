@@ -521,8 +521,9 @@
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
-                             :keymap (merge column-names
-                                       (select-keys clojuric-names columns-to-query))}
+                             :keymap column-names
+                             #_(merge column-names
+                               (select-keys clojuric-names columns-to-query))}
         all-conditions))))
 
 (defn process-query
