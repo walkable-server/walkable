@@ -554,7 +554,8 @@
   own SQL query."
   [{::keys [sql-schema] :as env}]
   {:pre [(s/valid? (s/keys :req [::column-names
-                                 ::clojuric-names]
+                                 ::clojuric-names
+                                 ::quote-marks]
                      :opt [::join-statements
                            ::target-tables
                            ::target-columns])
@@ -562,6 +563,7 @@
   (let [{::keys [column-names
                  clojuric-names
                  join-statements
+                 quote-marks
                  target-tables
                  target-columns]}                sql-schema
         k                                        (get-in env [:ast :dispatch-key])
@@ -576,6 +578,7 @@
                           :columns-to-query columns-to-query
                           :column-names     column-names
                           :clojuric-names   clojuric-names
+                          :quote-marks      quote-marks
                           :where-conditions where-conditions
                           :offset           offset
                           :limit            limit
