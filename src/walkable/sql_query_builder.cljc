@@ -439,6 +439,8 @@
         :join-statements  (compile-join-statements joins)}))
 
 (defn clean-up-all-conditions
+  "Receives all-conditions produced by process-conditions. Only keeps
+  non-empty conditions."
   [all-conditions]
   (let [all-conditions (remove nil? all-conditions)]
     (case (count all-conditions)
