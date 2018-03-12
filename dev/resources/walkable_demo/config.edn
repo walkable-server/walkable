@@ -89,6 +89,7 @@
 
  :walkable-demo.handler.example/sql-schema
  { ;; which columns are available in SQL table?
+  :quote-marks      ["`" "`"]
   :columns          [:person/number
                      :person/name
                      :person/yob
