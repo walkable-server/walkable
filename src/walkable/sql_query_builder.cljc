@@ -175,10 +175,6 @@
     (when offset
       (str " OFFSET " offset))))
 
-(s/def ::sql-schema
-  (s/keys :req []
-    :opt []))
-
 (defn ast-root
   [ast]
   (assoc ast ::my-marker :root))
@@ -222,6 +218,20 @@
     (all-zipper-children)
     (map z/node)
     (remove #(or (ast-zipper-root? %) (placeholder? %)))))
+
+(s/def ::sql-schema
+  (s/keys :req [::column-keywords
+                ::target-columns
+                ::extra-conditions
+                ::join-statements
+                ::required-columns
+                ::clojuric-names
+                ::column-names
+                ::ident-keywords
+                ::source-columns
+                ::ident-conditions
+                ::join-cardinality
+                ::target-tables]))
 
 (defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
