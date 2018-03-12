@@ -27,6 +27,11 @@
 
                                    [duct/module.sql "0.4.2"]
                                    [duct/database.sql.hikaricp "0.3.2"]
+
+                                   ;; enable if you use postgresql
+                                   ;; [org.postgresql/postgresql "42.2.1"]
+                                   ;; enable if you use mysql
+                                   ;; [mysql/mysql-connector-java "5.1.45"]
                                    [org.xerial/sqlite-jdbc "3.21.0.1"]
 
                                    [org.clojure/clojurescript "1.9.946"]
