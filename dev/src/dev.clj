@@ -72,6 +72,9 @@
     (println args))
   (apply jdbc/query xs))
 
+;; use sqb/quotation-marks if you use postgresql
+(def quote-marks sqb/backticks)
+
 ;; simple join examples
 #_
 (let [eg-1
@@ -85,7 +88,8 @@
 
            ::sqb/sql-schema
            (sqb/compile-schema
-             {:columns          [:cow/index
+             {:quote-marks      quote-marks
+              :columns          [:cow/index
                                  :cow/color
                                  :farmer/cow-index
                                  :farmer/number
@@ -112,7 +116,8 @@
 
            ::sqb/sql-schema
            (sqb/compile-schema
-             {:columns          [:kid/number :kid/name :toy/index :toy/color :toy/owner-number]
+             {:quote-marks      quote-marks
+              :columns          [:kid/number :kid/name :toy/index :toy/color :toy/owner-number]
               :idents           {:kid/by-id [:= :kid/number]
                                  :kids/all  "kid"}
               :extra-conditions {}
@@ -154,7 +159,8 @@
            ::sqb/sql-schema
            (sqb/compile-schema
              ;; which columns are available in SQL table?
-             {:columns          [:person/number
+             {:quote-marks      quote-marks
+              :columns          [:person/number
                                  :person/name
                                  :person/yob
                                  :person/hidden
@@ -194,12 +200,13 @@
       parser
       example/pathom-parser]
   (parser {::p/placeholder-prefixes #{"ph"}
-           ::sqb/sql-db    (db)
-           ::sqb/run-query run-print-query
+           ::sqb/sql-db             (db)
+           ::sqb/run-query          run-print-query
            ::sqb/sql-schema
            (sqb/compile-schema
              ;; which columns are available in SQL table?
-             {:columns          [:person/number
+             {:quote-marks      quote-marks
+              :columns          [:person/number
                                  :person/name
                                  :person/yob
                                  :person/hidden
@@ -238,7 +245,8 @@
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
            (sqb/compile-schema
-             {:columns          [:human/number :human/name :human/yob
+             {:quote-marks      quote-marks
+              :columns          [:human/number :human/name :human/yob
                                  ;; :human-1/number :human-2/number
                                  ]
               :required-columns {}
@@ -253,7 +261,10 @@
               :pseudo-columns   {;; using sub query as a column
                                  :human/two "(SELECT 2)"
                                  ;; using aggregate as a column
-                                 :follow/count "COUNT(`follow`.`human_2`)"}
+                                 :follow/count "COUNT(`follow`.`human_2`)"
+                                 ;; if postgresql, use quotation marks instead:
+                                 ;; "COUNT(\"follow\".\"human_2\")"
+                                 }
               :join-cardinality {:human/by-id  :one
                                  :human/follow-stats :one
                                  :human/follow :many}})}
