@@ -168,26 +168,27 @@
   "Builds the final query string ready for SQL server."
   [{:keys [columns-to-query column-names clojuric-names target-table
            join-statement where-conditions
-           offset limit order-by] :as input}]
+           offset limit order-by quote-marks] :as input}]
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
-  (str "SELECT "
-    (selection-with-aliases {:columns-to-query columns-to-query
-                             :column-names     column-names
-                             :clojuric-names   clojuric-names})
-    " FROM `" target-table "`"
+  (let [[quote-open quote-close] quote-marks]
+    (str "SELECT "
+      (selection-with-aliases {:columns-to-query columns-to-query
+                               :column-names     column-names
+                               :clojuric-names   clojuric-names})
+      " FROM " quote-open target-table quote-close
 
-    join-statement
+      join-statement
 
-    (when where-conditions
-      (str " WHERE "
-        where-conditions))
-    (when order-by
-      (str " ORDER BY " order-by))
-    (when limit
-      (str " LIMIT " limit))
-    (when offset
-      (str " OFFSET " offset))))
+      (when where-conditions
+        (str " WHERE "
+          where-conditions))
+      (when order-by
+        (str " ORDER BY " order-by))
+      (when limit
+        (str " LIMIT " limit))
+      (when offset
+        (str " OFFSET " offset)))))
 
 (defn ast-root
   [ast]
