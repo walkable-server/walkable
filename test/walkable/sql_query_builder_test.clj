@@ -54,8 +54,9 @@
         "person_pet")))
 
 (deftest ->join-statements-tests
-  (is (= (sut/->join-statements [:pet/index :person-pet/pet-index
-                                 :person-pet/person-number :person/number])
+  (is (= (sut/->join-statements sut/backticks
+           [:pet/index :person-pet/pet-index
+            :person-pet/person-number :person/number])
         " JOIN `person` ON `person_pet`.`person_number` = `person`.`number`")))
 
 (deftest expand-multi-keys-tests
