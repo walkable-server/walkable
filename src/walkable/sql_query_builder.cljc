@@ -247,7 +247,8 @@
                 ::ident-conditions
                 ::join-cardinality
                 ::quote-marks
-                ::target-tables]))
+                ::target-tables
+                ::batch-query]))
 
 (defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
