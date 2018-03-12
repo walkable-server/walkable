@@ -535,7 +535,7 @@
   own SQL query."
   [{::keys [sql-schema] :as env}]
   {:pre [(s/valid? (s/keys :req [::column-names
-                                 ::clojuric-names                                 ]
+                                 ::clojuric-names]
                      :opt [::join-statements
                            ::target-tables
                            ::target-columns])
