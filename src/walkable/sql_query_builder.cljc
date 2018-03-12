@@ -534,8 +534,13 @@
   - join-children: set of direct nested levels that will require their
   own SQL query."
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [column-keywords
-                 column-names
+  {:pre [(s/valid? (s/keys :req [::column-names
+                                 ::clojuric-names                                 ]
+                     :opt [::join-statements
+                           ::target-tables
+                           ::target-columns])
+           sql-schema)]}
+  (let [{::keys [column-names
                  clojuric-names
                  join-statements
                  target-tables
