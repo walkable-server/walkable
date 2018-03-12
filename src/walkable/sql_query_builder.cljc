@@ -449,6 +449,8 @@
       all-conditions)))
 
 (defn process-pagination
+  "Processes :offset :limit and :order-by if provided in current
+  om.next query params."
   [{::keys [sql-schema] :as env}]
   {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
