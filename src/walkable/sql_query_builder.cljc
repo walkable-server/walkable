@@ -4,6 +4,15 @@
             [clojure.zip :as z]
             [com.wsscode.pathom.core :as p]))
 
+(def backticks
+  (repeat 2 "`"))
+
+(def quotation-marks
+  (repeat 2 "\""))
+
+(def apostrophes
+  (repeat 2 "'"))
+
 (defn split-keyword
   "Splits a keyword into a tuple of table and column."
   [k]
