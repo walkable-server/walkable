@@ -405,7 +405,13 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins join-cardinality]}]
+           reversed-joins joins join-cardinality] :as input-schema}]
+
+  {:pre [(s/valid? (s/keys :req-un [::columns ::idents]
+                     :opt-un [::pseudo-columns ::required-columns ::extra-conditions
+                              ::reversed-joins ::joins ::join-cardinality])
+           input-schema)]
+   :post [#(s/valid? ::sql-schema %)]}
   (let [idents                                            (flatten-multi-keys idents)
         {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
         extra-conditions                                  (flatten-multi-keys extra-conditions)
