@@ -1,26 +1,29 @@
 # Walkable
 
-A serious way to fetch data from SQL using Clojure: Datomic/om.next
-pull syntax, Clojure flavored filtering and more.
+Everything you need from an SQL database should be within walking
+distance.[1]
+
+Walkable is a serious way to fetch data from SQL using Clojure:
+Datomic/om.next *pull* syntax, Clojure flavored filtering and more.
 
 [![Build Status](https://travis-ci.org/walkable-server/walkable.svg?branch=master)](https://travis-ci.org/walkable-server/walkable)
 
 Ever imagined sending queries like this to your SQL database?
 
 ```clj
-'[{[:person/by-id 1]
-   [:person/id
-    :person/name
-    :person/yob
-    {:person/pet [:pet/id
-                  :pet/yob
-                  :pet/color
-                  {:pet/owner [:person/name]}]}]}]
+[{[:person/by-id 1]
+  [:person/id :person/name :person/age
+   {:person/friends [:person/name]}
+   {:person/pet [:pet/name :pet/favorite-foods]}]}]
 ```
 
-Yes, you can. Build the query part of a fulcro server or REST api in
-minutes today! Call it from your Fulcro/Re-frame etc app without
-worrying about SQL injection.
+Yes, you can. Have your data fetched in your Clojure mission critical
+app with confidence. Even more, build the query part of a fulcro
+server or REST api in minutes today! Call it from your Clojurescript
+app without worrying about SQL injection.
+
+[1]: By within walking distance I mean composing your queries without
+missing the power of paredit/parinfer.
 
 ## Installation
 
