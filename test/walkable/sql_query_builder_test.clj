@@ -35,7 +35,8 @@
         "`foo`.`bar` AS `foo/bar`, `loo`.`lar` AS `loo/lar`")))
 
 (deftest ->join-statement-test
-  (is (= (sut/->join-statement [["foo" "bar"] ["boo" "far"]])
+  (is (= (sut/->join-statement {:quote-marks sut/backticks
+                                :joins       [["foo" "bar"] ["boo" "far"]]})
         " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
 
 (deftest target-column-tests
