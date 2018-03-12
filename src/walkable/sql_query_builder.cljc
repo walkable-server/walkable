@@ -436,11 +436,13 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins join-cardinality quote-marks]
+           reversed-joins joins join-cardinality quote-marks sqlite-union]
+    :or   {quote-marks backticks}
     :as   input-schema}]
 
-  {:pre  [(s/valid? (s/keys :req-un [::columns ::idents ::quote-marks]
+  {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns ::extra-conditions
+                               ::sqlite-union ::quote-marks
                                ::reversed-joins ::joins ::join-cardinality])
             input-schema)]
    :post [#(s/valid? ::sql-schema %)]}
@@ -463,6 +465,10 @@
         :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
 
+        :batch-query      (if sqlite-union
+                            (fn sqlite-batch-query [query-strings params]
+                              (batch-query (map wrap-select query-strings) params))
+                            batch-query)
         :join-cardinality join-cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
