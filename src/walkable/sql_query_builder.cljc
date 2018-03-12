@@ -468,6 +468,20 @@
        (filters/->order-by-string column-names order-by))}))
 
 (defn process-conditions
+  "Combines all conditions to produce the final WHERE
+  statement. Returns a vector (which implies an AND) of:
+
+  - ident-condition: eg [:person/by-id 1] will result `WHERE person.id
+  = 1`
+
+  - join-condition: to filter the joined table given the attribute of
+  the entity from upper level.
+
+  - extra-condition: extra constraints for an ident or a join defined
+  in schema.
+
+  - supplied-condition: ad-hoc condition supplied in om.next
+  query (often by client apps)"
   [{::keys [sql-schema] :as env}]
   (let [{::keys [ident-conditions extra-conditions target-columns source-columns]}
         sql-schema
