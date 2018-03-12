@@ -374,10 +374,10 @@
     {} extra-conditions))
 
 (defn compile-join-statements
-  [joins]
+  [quote-marks joins]
   (reduce (fn [result [k join-seq]]
             (assoc result k
-              (->join-statements join-seq)))
+              (->join-statements quote-marks join-seq)))
     {} joins))
 
 (defn expand-reversed-joins [reversed-joins joins]
