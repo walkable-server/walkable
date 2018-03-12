@@ -235,7 +235,8 @@
 (let [eg-1
       '[{:world/all
          [:human/number :human/name :human/two
-          #_{:human/follow-stats [:follow/count]}
+          ;; experimental! see :pseudo-columns below
+          ;; {:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
                           :human/name
                           :human/yob]}]}]
@@ -260,10 +261,10 @@
               :reversed-joins   {}
               :pseudo-columns   {;; using sub query as a column
                                  :human/two "(SELECT 2)"
+
+                                 ;; Experimental! Only tested with SQLite
                                  ;; using aggregate as a column
                                  :follow/count "COUNT(`follow`.`human_2`)"
-                                 ;; if postgresql, use quotation marks instead:
-                                 ;; "COUNT(\"follow\".\"human_2\")"
                                  }
               :join-cardinality {:human/by-id  :one
                                  :human/follow-stats :one
