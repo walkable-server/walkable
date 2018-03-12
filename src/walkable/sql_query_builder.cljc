@@ -46,11 +46,11 @@
 
 (defn ->column-names
   "Makes a hash-map of keywords and their equivalent column names"
-  [ks]
+  [quote-marks ks]
   {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
-    (map column-name ks)))
+    (map #(column-name quote-marks %) ks)))
 
 (defn ->clojuric-names
   "Makes a hash-map of keywords and their Clojuric name (to be use as
