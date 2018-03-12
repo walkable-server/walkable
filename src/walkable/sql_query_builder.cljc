@@ -79,12 +79,15 @@
 (defn ->join-statement
   "Produces a SQL JOIN statement (of type string) given two pairs of
   table/column"
-  [[[table-1 column-1] [table-2 column-2]]]
-  {:pre [(every? string? [table-1 column-1 table-2 column-2])]
-   :post [string?]}
-  (str
-    " JOIN `" table-2
-    "` ON `"   table-1 "`.`" column-1 "` = `" table-2 "`.`" column-2 "`"))
+  [{:keys [quote-marks joins]}]
+  {:post [string?]}
+  (let [[[table-1 column-1] [table-2 column-2]] joins
+        [quote-open quote-close]                quote-marks]
+    (assert (every? string? [table-1 column-1 table-2 column-2]))
+    (str
+      " JOIN " quote-open table-2 quote-close
+      " ON "   quote-open table-1 quote-close "." quote-open column-1 quote-close
+      " = "    quote-open table-2 quote-close "." quote-open column-2 quote-close)))
 
 (s/def ::no-join
   (s/coll-of ::filters/namespaced-keyword
