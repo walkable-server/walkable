@@ -159,7 +159,8 @@
     {} joins))
 
 (s/def ::query-string-input
-  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names ::target-table]
+  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names
+                   ::target-table ::quote-marks]
     :opt-un [::join-statement ::where-conditions
              ::offset ::limit ::order-by]))
 
