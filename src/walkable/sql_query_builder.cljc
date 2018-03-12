@@ -33,10 +33,10 @@
 
 (defn clojuric-name
   "Converts a keyword to an SQL alias"
-  [k]
+  [[quote-open quote-close] k]
   {:pre [(s/valid? ::filters/namespaced-keyword k)]
    :post [string?]}
-  (str "`" (subs (str k) 1) "`"))
+  (str quote-open (subs (str k) 1) quote-close))
 
 (s/def ::keyword-string-map
   (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
