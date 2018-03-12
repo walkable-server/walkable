@@ -241,8 +241,9 @@
                       :opt [::required-columns])
             sql-schema)
 
-          (when placeholder-prefixes
-            (set? placeholder-prefixes))]
+          (if placeholder-prefixes
+            (set? placeholder-prefixes)
+            true)]
    :post [#(s/valid? (s/keys :req-un [::join-children ::columns-to-query]) %)]}
   (let [{::keys [column-keywords required-columns source-columns]} sql-schema
 
