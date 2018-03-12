@@ -100,7 +100,7 @@
     (when (= :one-join tag)
       (->join-statement (map split-keyword (drop 2 join-seq))))))
 
-(s/def ::joins
+(s/def ::join-specs
   (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
 
 (defn source-column
@@ -118,7 +118,7 @@
 (defn joins->target-tables
   "Produces map of join keys to their corresponding source table name."
   [joins]
-  {:pre  [(s/valid? ::joins joins)]
+  {:pre  [(s/valid? ::join-specs joins)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
             (assoc result k
@@ -128,7 +128,7 @@
 (defn joins->target-columns
   "Produces map of join keys to their corresponding target column."
   [joins]
-  {:pre  [(s/valid? ::joins joins)]
+  {:pre  [(s/valid? ::join-specs joins)]
    :post [#(s/valid? ::keyword-keyword-map %)]}
   (reduce (fn [result [k join-seq]]
             (assoc result k
@@ -138,7 +138,7 @@
 (defn joins->source-columns
   "Produces map of join keys to their corresponding source column."
   [joins]
-  {:pre  [(s/valid? ::joins joins)]
+  {:pre  [(s/valid? ::join-specs joins)]
    :post [#(s/valid? ::keyword-keyword-map %)]}
   (reduce (fn [result [k join-seq]]
             (assoc result k
