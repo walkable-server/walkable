@@ -601,16 +601,6 @@
      :query-params       query-params
      :join-children      join-children}))
 
-(defn batch-query
-  "Combines multiple SQL queries and their params into a single query
-  using UNION."
-  [query-strings params]
-  (let [union-query (clojure.string/join "\nUNION ALL\n"
-                      query-strings
-                      #_(map #(str "SELECT * FROM (" % ")")
-                        query-strings))]
-    (cons union-query (apply concat params))))
-
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
