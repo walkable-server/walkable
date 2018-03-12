@@ -22,7 +22,7 @@
         {:foo/bar "`foo`.`bar`", :loo/lar "`loo`.`lar`"})))
 
 (deftest ->clojuric-names-test
-  (is (= (sut/->clojuric-names [:foo/bar :loo/lar])
+  (is (= (sut/->clojuric-names sut/backticks [:foo/bar :loo/lar])
         {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
 (deftest selection-with-aliases-test
