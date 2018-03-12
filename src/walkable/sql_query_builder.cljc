@@ -105,12 +105,13 @@
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
   join keys given their join sequence."
-  [join-seq]
-  {:pre [(s/valid? ::join-seq join-seq)]
+  [quote-marks join-seq]
+  {:pre  [(s/valid? ::join-seq join-seq)]
    :post [string?]}
   (let [[tag] (s/conform ::join-seq join-seq)]
     (when (= :one-join tag)
-      (->join-statement (map split-keyword (drop 2 join-seq))))))
+      (->join-statement {:quote-marks quote-marks
+                         :joins       (map split-keyword (drop 2 join-seq))}))))
 
 (s/def ::join-specs
   (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
