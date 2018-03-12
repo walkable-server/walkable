@@ -246,6 +246,7 @@
                 ::source-columns
                 ::ident-conditions
                 ::join-cardinality
+                ::quote-marks
                 ::target-tables]))
 
 (defn process-children
