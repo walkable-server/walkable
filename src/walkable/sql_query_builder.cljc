@@ -421,12 +421,13 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins join-cardinality] :as input-schema}]
+           reversed-joins joins join-cardinality quote-marks]
+    :as   input-schema}]
 
-  {:pre [(s/valid? (s/keys :req-un [::columns ::idents]
-                     :opt-un [::pseudo-columns ::required-columns ::extra-conditions
-                              ::reversed-joins ::joins ::join-cardinality])
-           input-schema)]
+  {:pre  [(s/valid? (s/keys :req-un [::columns ::idents ::quote-marks]
+                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions
+                               ::reversed-joins ::joins ::join-cardinality])
+            input-schema)]
    :post [#(s/valid? ::sql-schema %)]}
   (let [idents                                            (flatten-multi-keys idents)
         {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
@@ -439,6 +440,7 @@
                                                                  (keys pseudo-columns)))]
     #::{:column-keywords  columns
         :ident-keywords   (set (keys idents))
+        :quote-marks      quote-marks
         :required-columns (expand-denpendencies required-columns)
         :target-tables    (merge (conditional-idents->target-tables conditional-idents)
                             unconditional-idents
@@ -449,10 +451,10 @@
         :join-cardinality join-cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
-        :column-names     (merge (->column-names true-columns)
+        :column-names     (merge (->column-names quote-marks true-columns)
                             pseudo-columns)
-        :clojuric-names   (->clojuric-names columns)
-        :join-statements  (compile-join-statements joins)}))
+        :clojuric-names   (->clojuric-names quote-marks columns)
+        :join-statements  (compile-join-statements quote-marks joins)}))
 
 (defn clean-up-all-conditions
   "Receives all-conditions produced by process-conditions. Only keeps
