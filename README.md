@@ -175,6 +175,16 @@ due to my personal preference. However it's only supported as of fulcro
 2.2.1. If you're using om.next or older fulcro, you must use the
 former syntax otherwise your client-side app will crash.
 
+## Special thanks to:
+
+ - Rich Hickey & Cognitect team for Clojure and Datomic
+
+ - David Nolen for bringing many fresh ideas to the community including om.next
+
+ - Tony Kay for his heroic work on fulcro which showed me how great things can be done
+
+ - Wilker Lucio for pathom and being helpful with my silly questions
+
 ## Developing
 
 Walkable comes with a [Duct](https://github.com/duct-framework/duct)
