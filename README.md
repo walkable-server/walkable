@@ -181,6 +181,8 @@ former syntax otherwise your client-side app will crash.
 
  - David Nolen for bringing many fresh ideas to the community including om.next
 
+ - James Reeves for Duct framework. The best development experience I've ever had
+
  - Tony Kay for his heroic work on fulcro which showed me how great things can be done
 
  - Wilker Lucio for pathom and being helpful with my silly questions
