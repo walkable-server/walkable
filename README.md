@@ -25,31 +25,10 @@ app without worrying about SQL injection.
 [1]: By within walking distance I mean composing your queries without
 missing the power of paredit/parinfer.
 
-## Installation
+## Overview
 
-![Latest version](https://clojars.org/walkable/latest-version.svg)
+Basically you define your schema like this:
 
-## Usage
-
-Walkable is a plugin for [Pathom](https://github.com/wilkerlucio/pathom/).
-
-> Pathom is a Clojure library designed to provide a collection of
-> helper functions to support Clojure(script) graph parsers using
-> om.next graph syntax.
-
-```clj
-(require '[com.wsscode.pathom.core :as p])
-(require '[walkable.sql-query-builder :as sqb])
-
-(def pathom-parser
-  (p/parser
-    {::p/plugins
-     [(p/env-plugin
-        {::p/reader
-         [sqb/pull-entities p/map-reader (p/placeholder-reader "ph")]})]}))
-```
-
-Basically you define your schema like:
 ```clj
 {:idents           {;; query with `[:person/by-id 1]` will result in
                     ;; `FROM person WHERE person.id = 1`
@@ -79,7 +58,9 @@ Basically you define your schema like:
  :join-cardinality {:person/by-id :one
                     :person/pet   :many}}
 ```
-and you can make queries like this:
+
+then you can make queries like this:
+
 ```clj
 '[{(:people/all {::sqb/limit    5
                  ::sqb/offset   10
@@ -96,14 +77,88 @@ and you can make queries like this:
    [:person/id :person/name]}]
 ```
 
-As you can see the filter syntax is in pure Clojure. It's not just for aesthetic purpose. The generated SQL will always parameterized so it's safe from injection attacks. For instance:
+As you can see the filter syntax is in pure Clojure. It's not just for
+aesthetic purpose. The generated SQL will always parameterized so it's
+safe from injection attacks. For instance:
+
 ```clj
 [:or {:person/name [:like "john"]} {:person/id [:in #{3 4 7}]}]
 ```
+
 will result in
+
 ```clj
 ["SELECT <...> WHERE person.name LIKE ? OR person.id IN (?, ?, ?)"
 "john" 3 4 7]
+```
+
+## Installation
+
+![Latest version](https://clojars.org/walkable/latest-version.svg)
+
+## Usage
+
+Walkable is a plugin for [Pathom](https://github.com/wilkerlucio/pathom/).
+
+> Pathom is a Clojure library designed to provide a collection of
+> helper functions to support Clojure(script) graph parsers using
+> om.next graph syntax.
+
+First of all, you need to build pathom parser with walkable's `sqb/pull-entities`
+
+```clj
+(require '[com.wsscode.pathom.core :as p])
+(require '[walkable.sql-query-builder :as sqb])
+
+(def pathom-parser
+  (p/parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+        ;; walkable's main worker
+         [sqb/pull-entities
+         ;; pathom's entity reader
+          p/map-reader]})]}))
+```
+
+Then you need to define your schema and compile it
+
+```clj
+(def compiled-schema
+  (sqb/compile-schema
+    {:quote-marks ...
+     :columns     ...
+     :idents      ...
+     :joins       ...
+     ...          ...}))
+```
+
+Ready! It's time to run your graph queries
+
+```clj
+(require '[clojure.java.jdbc :as jdbc])
+
+(let [my-query     [{:people/all [:person/name]}]
+      my-db        {:dbtype   "mysql"
+                    :dbname   "clojure_test"
+                    :user     "test_user"
+                    :password "test_password"}
+      my-run-query jdbc/query]
+  (pathom-parser {::sqb/sql-db    my-db
+                  ::sqb/run-query my-run-query
+                  ::sqb/schema    compiled-schema}))
+```
+
+where `my-run-query` and `my-db` is any pair of a function plus a
+database spec (even a pair of mock ones!) that work together like
+this:
+
+```clj
+(my-run-query my-db ["select * from fruit where color = ?" "red"])
+;; => [{:id 1, :color "red"} {:id 3, :color "red"} ...]
+
+(my-run-query my-db "select * from fruit")
+;; => [{:id 1, :color "red"} {:id 2, :color "blue"} ...]
 ```
 
 ### More use cases
