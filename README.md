@@ -187,6 +187,8 @@ former syntax otherwise your client-side app will crash.
 
  - Wilker Lucio for pathom and being helpful with my silly questions
 
+ - Bozhidar Batsov and CIDER team!!!
+
 
 ## Support
 
