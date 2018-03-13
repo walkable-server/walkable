@@ -187,6 +187,13 @@ former syntax otherwise your client-side app will crash.
 
  - Wilker Lucio for pathom and being helpful with my silly questions
 
+
+## Support
+
+I'm available for questions regarding walkable on `#walkable`
+clojurians slack channel. I'm also on `#fulcro` and
+[Clojureverse](https://clojureverse.org/)
+
 ## Developing
 
 Walkable comes with a [Duct](https://github.com/duct-framework/duct)
