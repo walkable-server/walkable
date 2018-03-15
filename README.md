@@ -189,6 +189,25 @@ former syntax otherwise your client-side app will crash.
 
  - Bozhidar Batsov and CIDER team!!!
 
+## Performance
+
+Walkable comes with some optimizations:
+
+- A compile phase (`sqb/compile-schema`) that pre-computes many parts
+  of final SQL query strings.
+
+- Reduce roundtrips between Clojure and SQL server by combining
+  similar queries introduced by the same om.next join query.
+
+## Limitation
+
+- Currently Walkable only takes care of reading from the database, NOT
+  making mutations to it. I think it varies from applications to
+  applications. If you can think of any pattern of doing it, please
+  open an issue.
+
+- Walkable does not support async sql query runners, so it's a no go for
+nodejs.
 
 ## Support
 
