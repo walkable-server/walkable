@@ -1,7 +1,7 @@
 # Walkable
 
 Everything you need from an SQL database should be within walking
-distance.[1]
+distance.
 
 Walkable is a serious way to fetch data from SQL using Clojure:
 Datomic/om.next *pull* syntax, Clojure flavored filtering and more.
@@ -21,9 +21,6 @@ Yes, you can. Have your data fetched in your Clojure mission critical
 app with confidence. Even more, build the query part of a fulcro
 server or REST api in minutes today! Call it from your Clojurescript
 app without worrying about SQL injection.
-
-[1]: By within walking distance I mean composing your queries without
-missing the power of paredit/parinfer.
 
 ## Overview
 
