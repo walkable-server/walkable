@@ -25,15 +25,6 @@
   (is (= (sut/->clojuric-names sut/backticks [:foo/bar :loo/lar])
         {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
-(deftest selection-with-aliases-test
-  (is (= (sut/selection-with-aliases
-           {:columns-to-query [:foo/bar :loo/lar]
-            :column-names     {:foo/bar "`foo`.`bar`"
-                               :loo/lar "`loo`.`lar`"}
-            :clojuric-names   {:foo/bar "`foo/bar`",
-                               :loo/lar "`loo/lar`",}})
-        "`foo`.`bar` AS `foo/bar`, `loo`.`lar` AS `loo/lar`")))
-
 (deftest ->join-statement-test
   (is (= (sut/->join-statement {:quote-marks sut/backticks
                                 :joins       [["foo" "bar"] ["boo" "far"]]})

@@ -62,21 +62,6 @@
   (zipmap ks
     (map #(clojuric-name quote-marks %) ks)))
 
-(defn selection-with-aliases
-  "Produces the part after `SELECT` and before `FROM <sometable>` of
-  an SQL query"
-  [{:keys [columns-to-query column-names clojuric-names]}]
-  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) columns-to-query)
-         (s/valid? ::keyword-string-map column-names)
-         (s/valid? ::keyword-string-map clojuric-names)]
-   :post [string?]}
-  (->> columns-to-query
-    (map (fn [column]
-           (str (get column-names column)
-             " AS "
-             (get clojuric-names column))))
-    (clojure.string/join ", ")))
-
 (defn ->join-statement
   "Produces a SQL JOIN statement (of type string) given two pairs of
   table/column"
