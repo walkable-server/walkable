@@ -575,6 +575,17 @@
 
      (apply concat (map :selection-params xs))]))
 
+(defn process-all-params
+  "Replaces any keyword found in all-params with their corresponding
+  column-name"
+  [env all-params]
+  (let [column-names (-> env ::sql-schema ::column-names)]
+    (mapv (fn stringify-keywords [param]
+            (if (filters/namespaced-keyword? param)
+              (get column-names param)
+              param))
+      all-params)))
+
 (defn process-query
   "Helper function for pull-entities. Outputs
 
@@ -608,7 +619,7 @@
                           :offset           offset
                           :limit            limit
                           :order-by         order-by}
-     :query-params       (concat select-params where-params)
+     :query-params       (process-all-params env (concat select-params where-params))
      :join-children      join-children}))
 
 (defn pull-entities
