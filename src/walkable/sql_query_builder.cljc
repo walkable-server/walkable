@@ -505,29 +505,25 @@
   - supplied-condition: ad-hoc condition supplied in om.next
   query (often by client apps)"
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [ident-conditions extra-conditions target-columns source-columns]}
+  (let [{::keys [ident-conditions]}
         sql-schema
         e (p/entity env)
-        k (get-in env [:ast :dispatch-key])
+        k (env/dispatch-key env)
 
         ident-condition
         (when-let [condition (get ident-conditions k)]
           (ident->condition env condition))
 
-        target-column
-        (get target-columns k)
+        target-column (env/target-column env)
 
-        source-column
-        (get source-columns k)
+        source-column (env/source-column env)
 
         join-condition
         (when target-column ;; if it's a join
           {target-column
            [:= (get e source-column)]})
 
-        extra-condition
-        (when-let [->condition (get extra-conditions k)]
-          (->condition env))
+        extra-condition (env/extra-condition env)
 
         supplied-condition
         (get-in env [:ast :params ::filters])
