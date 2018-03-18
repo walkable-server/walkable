@@ -145,23 +145,20 @@
     {} joins))
 
 (s/def ::query-string-input
-  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names
-                   ::target-table ::quote-marks]
+  (s/keys :req-un [::selection ::target-table ::quote-marks]
     :opt-un [::join-statement ::where-conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [columns-to-query column-names clojuric-names target-table
+  [{:keys [selection target-table
            join-statement where-conditions
            offset limit order-by quote-marks] :as input}]
+
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
   (let [[quote-open quote-close] quote-marks]
-    (str "SELECT "
-      (selection-with-aliases {:columns-to-query columns-to-query
-                               :column-names     column-names
-                               :clojuric-names   clojuric-names})
+    (str "SELECT " selection
       " FROM " quote-open target-table quote-close
 
       join-statement
