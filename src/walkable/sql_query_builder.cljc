@@ -544,6 +544,27 @@
                                (select-keys clojuric-names columns-to-query))}
         all-conditions))))
 
+(defn process-selection
+  [{::keys [sql-schema] :as env} columns-to-query]
+  (let [{::keys [column-names clojuric-names]} sql-schema
+
+        target-column (env/target-column env)
+        column-names  (merge column-names
+                        (when target-column
+                          {target-column ["?" (env/source-column-value env)]}))]
+    (map (fn [k]
+           (let [column-name (get column-names k)
+                 alias       (get clojuric-names k)]
+             (if (coll? column-name)
+               (let [[selection & params] column-name]
+                 {:selection        selection
+                  :alias            alias
+                  :selection-params params})
+               {:selection        column-name
+                :alias            alias
+                :selection-params nil})))
+      columns-to-query)))
+
 (defn process-query
   "Helper function for pull-entities. Outputs
 
