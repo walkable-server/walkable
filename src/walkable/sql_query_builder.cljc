@@ -565,6 +565,16 @@
                 :selection-params nil})))
       columns-to-query)))
 
+(defn parameterize-all-selection
+  [env columns-to-query]
+  (let [xs (process-selection env columns-to-query)]
+    [(->> xs
+       (map (fn with-as [{:keys [selection alias]}]
+              (str selection " AS " alias)))
+       (clojure.string/join ", "))
+
+     (apply concat (map :selection-params xs))]))
+
 (defn process-query
   "Helper function for pull-entities. Outputs
 
