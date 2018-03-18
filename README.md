@@ -1,7 +1,7 @@
 # Walkable
 
 Everything you need from an SQL database should be within walking
-distance.[1]
+distance.
 
 Walkable is a serious way to fetch data from SQL using Clojure:
 Datomic/om.next *pull* syntax, Clojure flavored filtering and more.
@@ -21,9 +21,6 @@ Yes, you can. Have your data fetched in your Clojure mission critical
 app with confidence. Even more, build the query part of a fulcro
 server or REST api in minutes today! Call it from your Clojurescript
 app without worrying about SQL injection.
-
-[1]: By within walking distance I mean composing your queries without
-missing the power of paredit/parinfer.
 
 ## Overview
 
@@ -187,6 +184,27 @@ former syntax otherwise your client-side app will crash.
 
  - Wilker Lucio for pathom and being helpful with my silly questions
 
+ - Bozhidar Batsov and CIDER team!!!
+
+## Performance
+
+Walkable comes with some optimizations:
+
+- A compile phase (`sqb/compile-schema`) that pre-computes many parts
+  of final SQL query strings.
+
+- Reduce roundtrips between Clojure and SQL server by combining
+  similar queries introduced by the same om.next join query.
+
+## Limitation
+
+- Currently Walkable only takes care of reading from the database, NOT
+  making mutations to it. I think it varies from applications to
+  applications. If you can think of any pattern of doing it, please
+  open an issue.
+
+- Walkable does not support async sql query runners, so it's a no go for
+nodejs.
 
 ## Support
 
@@ -196,91 +214,7 @@ clojurians slack channel. I'm also on `#fulcro` and
 
 ## Developing
 
-Walkable comes with a [Duct](https://github.com/duct-framework/duct)
-setup as its development environment which can be found in `dev`
-directory.
-
-> Duct is a highly modular framework for building server-side
-> applications in Clojure using data-driven architecture.
-
-Here is a quick guide for how to use the development environment.
-
-> A more detailed guide for Duct can be found at:
->
-> https://github.com/duct-framework/docs/blob/master/GUIDE.rst
-
-### Setup
-
-When you first clone this repository, run:
-
-```sh
-lein duct setup
-```
-
-This will create files for local configuration, and prep your system
-for the project.
-
-### Environment
-
-To begin developing, start with a REPL.
-
-```sh
-lein repl
-```
-
-Then load the development environment.
-
-```clojure
-user=> (dev)
-:loaded
-```
-
-Run `go` to prep and initiate the system.
-
-```clojure
-dev=> (go)
-:duct.server.http.jetty/starting-server {:port 3000}
-:initiated
-```
-
-By default this creates a web server at <http://localhost:3000>.
-
-When you make changes to your source files, use `reset` to reload any
-modified files and reset the server. Changes to CSS or ClojureScript
-files will be hot-loaded into the browser.
-
-```clojure
-dev=> (reset)
-:reloading (...)
-:resumed
-```
-
-If you want to access a ClojureScript REPL, make sure that the site is loaded
-in a browser and run:
-
-```clojure
-dev=> (cljs-repl)
-Waiting for browser connection... Connected.
-To quit, type: :cljs/quit
-nil
-cljs.user=>
-```
-
-### Testing
-
-Testing is fastest through the REPL, as you avoid environment startup
-time.
-
-```clojure
-dev=> (test)
-...
-```
-
-But you can also run tests through Leiningen.
-
-```sh
-lein test
-```
+See [developing.md](doc/developing.md)
 
 ## Legal
 

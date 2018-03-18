@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder
   (:require [walkable.sql-query-builder.filters :as filters]
+            [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]
             [com.wsscode.pathom.core :as p]))
@@ -60,21 +61,6 @@
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map #(clojuric-name quote-marks %) ks)))
-
-(defn selection-with-aliases
-  "Produces the part after `SELECT` and before `FROM <sometable>` of
-  an SQL query"
-  [{:keys [columns-to-query column-names clojuric-names]}]
-  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) columns-to-query)
-         (s/valid? ::keyword-string-map column-names)
-         (s/valid? ::keyword-string-map clojuric-names)]
-   :post [string?]}
-  (->> columns-to-query
-    (map (fn [column]
-           (str (get column-names column)
-             " AS "
-             (get clojuric-names column))))
-    (clojure.string/join ", ")))
 
 (defn ->join-statement
   "Produces a SQL JOIN statement (of type string) given two pairs of
@@ -159,23 +145,20 @@
     {} joins))
 
 (s/def ::query-string-input
-  (s/keys :req-un [::columns-to-query ::column-names ::clojuric-names
-                   ::target-table ::quote-marks]
+  (s/keys :req-un [::selection ::target-table ::quote-marks]
     :opt-un [::join-statement ::where-conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [columns-to-query column-names clojuric-names target-table
+  [{:keys [selection target-table
            join-statement where-conditions
            offset limit order-by quote-marks] :as input}]
+
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
   (let [[quote-open quote-close] quote-marks]
-    (str "SELECT "
-      (selection-with-aliases {:columns-to-query columns-to-query
-                               :column-names     column-names
-                               :clojuric-names   clojuric-names})
+    (str "SELECT " selection
       " FROM " quote-open target-table quote-close
 
       join-statement
@@ -522,29 +505,25 @@
   - supplied-condition: ad-hoc condition supplied in om.next
   query (often by client apps)"
   [{::keys [sql-schema] :as env}]
-  (let [{::keys [ident-conditions extra-conditions target-columns source-columns]}
+  (let [{::keys [ident-conditions]}
         sql-schema
         e (p/entity env)
-        k (get-in env [:ast :dispatch-key])
+        k (env/dispatch-key env)
 
         ident-condition
         (when-let [condition (get ident-conditions k)]
           (ident->condition env condition))
 
-        target-column
-        (get target-columns k)
+        target-column (env/target-column env)
 
-        source-column
-        (get source-columns k)
+        source-column (env/source-column env)
 
         join-condition
         (when target-column ;; if it's a join
           {target-column
            [:= (get e source-column)]})
 
-        extra-condition
-        (when-let [->condition (get extra-conditions k)]
-          (->condition env))
+        extra-condition (env/extra-condition env)
 
         supplied-condition
         (get-in env [:ast :params ::filters])
@@ -565,6 +544,37 @@
                                (select-keys clojuric-names columns-to-query))}
         all-conditions))))
 
+(defn process-selection
+  [{::keys [sql-schema] :as env} columns-to-query]
+  (let [{::keys [column-names clojuric-names]} sql-schema
+
+        target-column (env/target-column env)
+        column-names  (merge column-names
+                        (when target-column
+                          {target-column ["?" (env/source-column-value env)]}))]
+    (map (fn [k]
+           (let [column-name (get column-names k)
+                 alias       (get clojuric-names k)]
+             (if (coll? column-name)
+               (let [[selection & params] column-name]
+                 {:selection        selection
+                  :alias            alias
+                  :selection-params params})
+               {:selection        column-name
+                :alias            alias
+                :selection-params nil})))
+      columns-to-query)))
+
+(defn parameterize-all-selection
+  [env columns-to-query]
+  (let [xs (process-selection env columns-to-query)]
+    [(->> xs
+       (map (fn with-as [{:keys [selection alias]}]
+              (str selection " AS " alias)))
+       (clojure.string/join ", "))
+
+     (apply concat (map :selection-params xs))]))
+
 (defn process-query
   "Helper function for pull-entities. Outputs
 
@@ -581,30 +591,24 @@
                            ::target-tables
                            ::target-columns])
            sql-schema)]}
-  (let [{::keys [column-names
-                 clojuric-names
-                 join-statements
-                 quote-marks
-                 target-tables
-                 target-columns]}                sql-schema
-        k                                        (get-in env [:ast :dispatch-key])
+  (let [{::keys [quote-marks]}                   sql-schema
+        k                                        (env/dispatch-key env)
         {:keys [join-children columns-to-query]} (process-children env)
-        columns-to-query                         (if-let [target-column (get target-columns k)]
+        columns-to-query                         (if-let [target-column (env/target-column env)]
                                                    (conj columns-to-query target-column)
                                                    columns-to-query)
-        [where-conditions query-params]          (parameterize-all-conditions env columns-to-query)
+        [selection select-params]                (parameterize-all-selection env columns-to-query)
+        [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
-    {:query-string-input {:target-table     (get target-tables k)
-                          :join-statement   (get join-statements k)
-                          :columns-to-query columns-to-query
-                          :column-names     column-names
-                          :clojuric-names   clojuric-names
+    {:query-string-input {:target-table     (env/target-table env)
+                          :join-statement   (env/join-statement env)
+                          :selection        selection
                           :quote-marks      quote-marks
                           :where-conditions where-conditions
                           :offset           offset
                           :limit            limit
                           :order-by         order-by}
-     :query-params       query-params
+     :query-params       (concat select-params where-params)
      :join-children      join-children}))
 
 (defn pull-entities
@@ -628,7 +632,7 @@
                  source-columns
                  join-statements
                  join-cardinality]} sql-schema
-        k                           (get-in env [:ast :dispatch-key])]
+        k                           (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
