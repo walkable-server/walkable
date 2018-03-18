@@ -17,8 +17,12 @@
     ;; default
     nil))
 
+(defn namespaced-keyword?
+  [x]
+  (and (keyword? x) (namespace x)))
+
 (s/def ::condition-value
-  #(or (number? %) (string? %) (boolean? %)))
+  #(or (number? %) (string? %) (boolean? %) (namespaced-keyword? %)))
 
 (s/def ::condition
   (s/&
@@ -166,7 +170,7 @@
     [condition-string parameters]))
 
 (s/def ::namespaced-keyword
-  #(and (keyword? %) (namespace %)))
+  namespaced-keyword?)
 
 (s/def ::column+order-params
   (s/cat
