@@ -591,30 +591,24 @@
                            ::target-tables
                            ::target-columns])
            sql-schema)]}
-  (let [{::keys [column-names
-                 clojuric-names
-                 join-statements
-                 quote-marks
-                 target-tables
-                 target-columns]}                sql-schema
-        k                                        (get-in env [:ast :dispatch-key])
+  (let [{::keys [quote-marks]}                   sql-schema
+        k                                        (env/dispatch-key env)
         {:keys [join-children columns-to-query]} (process-children env)
-        columns-to-query                         (if-let [target-column (get target-columns k)]
+        columns-to-query                         (if-let [target-column (env/target-column env)]
                                                    (conj columns-to-query target-column)
                                                    columns-to-query)
-        [where-conditions query-params]          (parameterize-all-conditions env columns-to-query)
+        [selection select-params]                (parameterize-all-selection env columns-to-query)
+        [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
-    {:query-string-input {:target-table     (get target-tables k)
-                          :join-statement   (get join-statements k)
-                          :columns-to-query columns-to-query
-                          :column-names     column-names
-                          :clojuric-names   clojuric-names
+    {:query-string-input {:target-table     (env/target-table env)
+                          :join-statement   (env/join-statement env)
+                          :selection        selection
                           :quote-marks      quote-marks
                           :where-conditions where-conditions
                           :offset           offset
                           :limit            limit
                           :order-by         order-by}
-     :query-params       query-params
+     :query-params       (concat select-params where-params)
      :join-children      join-children}))
 
 (defn pull-entities
@@ -638,7 +632,7 @@
                  source-columns
                  join-statements
                  join-cardinality]} sql-schema
-        k                           (get-in env [:ast :dispatch-key])]
+        k                           (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
