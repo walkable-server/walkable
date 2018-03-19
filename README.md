@@ -22,6 +22,8 @@ app with confidence. Even more, build the query part of a fulcro
 server or REST api in minutes today! Call it from your Clojurescript
 app without worrying about SQL injection.
 
+You can learn about the above query language [here](doc/query_language.md)
+
 ## Overview
 
 Basically you define your schema like this:
