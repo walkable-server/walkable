@@ -1,10 +1,12 @@
+![Walkable logo](doc/walkable.png)
+
 # Walkable
 
 Everything you need from an SQL database should be within walking
 distance.
 
-Walkable is a serious way to fetch data from SQL using Clojure:
-Datomic/om.next *pull* syntax, Clojure flavored filtering and more.
+Walkable is a serious way to fetch data from SQL for Clojure:
+Datomic/om.next pull syntax, Clojure flavored filtering and more.
 
 [![Build Status](https://travis-ci.org/walkable-server/walkable.svg?branch=master)](https://travis-ci.org/walkable-server/walkable)
 
