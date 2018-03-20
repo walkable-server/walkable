@@ -104,7 +104,84 @@ zero or more such item.
 
 ### 3. Idents
 
-todo
+Actually the properties and joins above can't stand alone
+themselves. They must stem from somewhere: enter idents. Idents are
+the root of all queries (or the root of all **evals** :D)
+
+#### 3.1 Keyword idents
+
+Some idents look just like joins:
+
+```clj
+[{:my-profile [:person/name :person/age]}]
+```
+
+of course idents can have joins, too:
+
+```clj
+[{:my-profile [:person/name :person/age
+               {:person/pets [:pet/name :pet/id]}]}]
+```
+
+#### 3.2 Vector idents
+
+Other idents look a bit weird. Instead of being a keyword, they are
+made of a vector of a keyword indicating the entity type followed by
+one or more arguments specifying how to identify those entities.
+
+First, look at the ident vector:
+
+```clj
+[:person/by-id 1]
+;; and
+[:people-list/by-member-ids 1 2 3]
+```
+
+Okay, now see them in context:
+
+```clj
+[{[:person/by-id 1] [:person/name :person/age]}]
+
+[{[:people-list/by-member-ids 1 2 3] [:person/name :person/age]}]
+```
+
+Allow yourself some time to grasp the syntax. Once you're comfortable,
+here is the above queries again with a join added:
+
+```clj
+[{[:person/by-id 1] [:person/name :person/age
+                     {:person/pets [:pet/name :pet/id]}]}]
+
+[{[:people-list/by-member-ids 1 2 3] [:person/name :person/age
+                                      {:person/pets [:pet/name :pet/id]}]}]
+```
+
+You may notice idents also live inside a vector, which means you can
+have many of them in your query:
+
+These two queries:
+
+```clj
+[{[:person/by-id 1] [:person/name :person/age]}]
+[{[:person/by-id 2] [:person/name :person/age]}]
+```
+can be merged into one
+
+```clj
+[{[:person/by-id 1] [:person/name :person/age]}
+ {[:person/by-id 2] [:person/name :person/age]}]
+```
+
+actually, idents can stem from anywhere, like this:
+
+```clj
+[{[:person/by-id 1] [:person/name :person/age
+                     {[:person/by-id 2] [:person/name :person/age]}]}]
+```
+
+Here `[:person/by-id 2]` looks just like a join (such as
+`:person/mate`, `:person/pets`), but it has nothing to do with the
+entity `[:person/by-id 1]`.
 
 ### 4. Parameters
 
