@@ -243,8 +243,8 @@
 (let [eg-1
       '[{:world/all
          [:human/number :human/name :human/two
-          ;; experimental! see :pseudo-columns below
-          ;; {:human/follow-stats [:follow/count]}
+          ;; see :pseudo-columns below
+          {:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
                           :human/name
                           :human/yob]}]}]
@@ -256,9 +256,7 @@
            (sqb/compile-schema
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
-              :columns          [:human/number :human/name :human/yob
-                                 ;; :human-1/number :human-2/number
-                                 ]
+              :columns          [:human/number :human/name :human/yob]
               :required-columns {}
               :idents           {:human/by-id [:= :human/number]
                                  :world/all   "human"}
@@ -270,10 +268,8 @@
               :reversed-joins   {}
               :pseudo-columns   {;; using sub query as a column
                                  :human/two "(SELECT 2)"
-
-                                 ;; Experimental! Only tested with SQLite
                                  ;; using aggregate as a column
-                                 :follow/count "COUNT(`follow`.`human_2`)"
+                                 :follow/count ["COUNT(?)" :follow/human-2]
                                  }
               :join-cardinality {:human/by-id  :one
                                  :human/follow-stats :one
