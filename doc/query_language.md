@@ -185,7 +185,43 @@ entity `[:person/by-id 1]`.
 
 ### 4. Parameters
 
-todo
+Sometimes you want the query resolver to modify a little bit of the
+data. Parameters are the piece to communicate just that.
+
+> Parameters must be implemented from the query resolver's side in
+  order to have effect. The parameters in the examples below are
+  provided to explain the syntax, so you get the idea.
+
+There are two ways to denote parameters, the new and the legacy
+syntax. Let's go for the new one first.
+
+```clj
+'[:person/name :person/height]
+;; vs
+'[:person/name (:person/height {:unit :cm})]
+```
+
+Just like a Clojure function's list of arguments, parameters may
+contain zero or more items. Personally, I prefer the use of one
+hash-map. For instance, with Walkable you can use some pre-defined
+parameters:
+
+```clj
+[{(:people/all {::sqb/order-by :person/name}) [:person/name :person/age]}]
+
+[{(:people/all {::sqb/offset 20 ::sqb/limit 10}) [:person/name :person/age]}]
+```
+
+Of course, someone else with a different taste may implement their
+query resolver to accept keyword parameters instead:
+
+```clj
+[{(:people/all ::sqb/offset 20 ::sqb/limit 10) [:person/name :person/age]}]
+```
+
+That's valid syntax, too.
+
+WIP
 
 ## Practise
 
