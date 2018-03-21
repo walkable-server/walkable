@@ -93,6 +93,22 @@ will result in
 "john" 3 4 7]
 ```
 
+## Who should use Walkable?
+
+TL;DR: Anyone who have both Clojure and SQL in their toolkit.
+
+To be more specific, anyone who belongs to at least one of these
+groups:
+
+ - Any Clojure developers who need to pull data from an SQL database
+   (maybe for a web/mobile app, maybe for doing some serious
+   calculation, maybe just to migrate away to Datomic :D )
+
+ - Clojure extremists who use SQL and think Clojure must be used in
+   both backend side (the JVM) and frontend side, and the two sides
+   must talk to each other using EDN data full of namespaced keywords
+   instead of some string-based query language like GraphQL.
+
 ## Installation
 
 ![Latest version](https://clojars.org/walkable/latest-version.svg)
