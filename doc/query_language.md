@@ -37,19 +37,22 @@ which properties you're asking for.
 For example, use this query
 
 ```clj
+;; query
 [:person/id :person/name :person/age]
 ```
 
 when you want to receive things like:
 
 ```clj
+;; returned value
 {:person/id   99
  :person/name "Alice"
  :person/age  40}
 ```
 
 the thing that receives a query and returns the above is called a
-query resolver or query parser in some other documentation.
+query resolver (or simply "query parser" in Om.next, Fulcro and
+Pathom's documentation).
 
 ### 2. Joins
 
@@ -57,6 +60,7 @@ Sometimes you want to include another entity that has some kind of
 relationship with the current entity.
 
 ```clj
+;; returned value
 {:person/friends [{:person/id   97
                    :person/name "Jon"}
                   {:person/id   98
@@ -74,11 +78,13 @@ relationship with the current entity.
 to achieve that, the query should be:
 
 ```clj
+;; query
 [:person/friends :person/mate :person/pets] ;; [^1]
 ```
 which is the same as:
 
 ```clj
+;; query
 [{:person/friends [*]}
  {:person/mate    [*]}
  {:person/pets    [*]}]
@@ -88,6 +94,7 @@ which means you let the query resolver dictate which properties to
 return for each join. Or you may explicitly tell your own list:
 
 ```clj
+;; query
 [{:person/friends [:person/id :person/name]}
  {:person/mate    [:person/id :person/name]}
  {:person/pets    [:pet/id    :pet/name]}]
@@ -113,12 +120,14 @@ the root of all queries (or the root of all **evals** :D)
 Some idents look just like joins:
 
 ```clj
+;; query
 [{:my-profile [:person/name :person/age]}]
 ```
 
 of course idents can have joins, too:
 
 ```clj
+;; query
 [{:my-profile [:person/name :person/age
                {:person/pets [:pet/name :pet/id]}]}]
 ```
@@ -132,6 +141,7 @@ one or more arguments specifying how to identify those entities.
 First, look at the ident vector:
 
 ```clj
+;; queries
 [:person/by-id 1]
 ;; and
 [:people-list/by-member-ids 1 2 3]
@@ -140,6 +150,7 @@ First, look at the ident vector:
 Okay, now see them in context:
 
 ```clj
+;; queries
 [{[:person/by-id 1] [:person/name :person/age]}]
 
 [{[:people-list/by-member-ids 1 2 3] [:person/name :person/age]}]
@@ -149,6 +160,7 @@ Allow yourself some time to grasp the syntax. Once you're comfortable,
 here is the above queries again with a join added:
 
 ```clj
+;; queries
 [{[:person/by-id 1] [:person/name :person/age
                      {:person/pets [:pet/name :pet/id]}]}]
 
@@ -162,12 +174,14 @@ have many of them in your query:
 These two queries:
 
 ```clj
+;; queries
 [{[:person/by-id 1] [:person/name :person/age]}]
 [{[:person/by-id 2] [:person/name :person/age]}]
 ```
 can be merged into one
 
 ```clj
+;; query
 [{[:person/by-id 1] [:person/name :person/age]}
  {[:person/by-id 2] [:person/name :person/age]}]
 ```
@@ -175,6 +189,7 @@ can be merged into one
 actually, idents can stem from anywhere, like this:
 
 ```clj
+;; query
 [{[:person/by-id 1] [:person/name :person/age
                      {[:person/by-id 2] [:person/name :person/age]}]}]
 ```
@@ -195,9 +210,12 @@ data. Parameters are the piece to communicate just that.
 There are two ways to denote parameters, the new and the legacy
 syntax. Let's go for the new one first.
 
+#### 4.1 New syntax for parameters
+
 ```clj
+;; query
 '[:person/name :person/height]
-;; vs
+;; vs modified query with params in the property `:person/height`
 '[:person/name (:person/height {:unit :cm})]
 ```
 
@@ -207,8 +225,10 @@ hash-map. For instance, with Walkable you can use some pre-defined
 parameters:
 
 ```clj
+;; query with params `{::sqb/order-by :person/name}` added to the ident `:people/all`
 [{(:people/all {::sqb/order-by :person/name}) [:person/name :person/age]}]
 
+;; query with params `{::sqb/offset 20 ::sqb/limit 10}` added to the ident `:people/all`
 [{(:people/all {::sqb/offset 20 ::sqb/limit 10}) [:person/name :person/age]}]
 ```
 
@@ -216,12 +236,42 @@ Of course, someone else with a different taste may implement their
 query resolver to accept keyword parameters instead:
 
 ```clj
-[{(:people/all ::sqb/offset 20 ::sqb/limit 10) [:person/name :person/age]}]
+;; query with params `'(::sqb/offset 20 ::sqb/limit 10)` added to the ident `:people/all`
+'[{(:people/all ::sqb/offset 20 ::sqb/limit 10) [:person/name :person/age]}]
+;; query with params `'(:unit :cm)` in the property `:person/height`
+'[:person/name (:person/height :unit :cm)]
 ```
 
 That's valid syntax, too.
 
-WIP
+#### 4.2 Legacy syntax for parameters
+
+> This section is required only if you're a user of om.next or fulcro
+  older than v2.2.1. Feel free to skip it otherwise.
+
+The syntax for parameters of properties is the same.
+
+For idents and joins, you put the whole query inside a list, followed
+by the parameters:
+
+```clj
+;; query with params `{::sqb/order-by :person/name}` added to the ident `:people/all`
+'[({:people/all [:person/name :person/age]}
+   {::sqb/order-by :person/name})]
+;; query with params `{::sqb/offset 20 ::sqb/limit 10}` added to the ident `:people/all`
+'[({:people/all [:person/name :person/age]}
+   {::sqb/offset 20 ::sqb/limit 10})]
+```
+
+These can be quite hard for human to follow if some child join also
+have parameters themselves. Fortunately, as you are using om.next /
+fulcro to build these queries from smaller ones from components, that
+would be no problem at all.
+
+Walkable can work with both new and legacy syntax for params. However
+the new one is only supported as of fulcro 2.2.1. If you're using
+om.next or older fulcro, you must use the legacy syntax otherwise your
+client-side app will crash.
 
 ## Practise
 
