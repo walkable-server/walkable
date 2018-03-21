@@ -51,7 +51,8 @@ when you want to receive things like:
 ```
 
 the thing that receives a query and returns the above is called a
-query resolver or query parser in some other documentation.
+query resolver (or simply "query parser" in Om.next, Fulcro and
+Pathom's documentation).
 
 ### 2. Joins
 
