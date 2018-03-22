@@ -228,7 +228,7 @@
                 ::ident-keywords
                 ::source-columns
                 ::ident-conditions
-                ::join-cardinality
+                ::cardinality
                 ::quote-marks
                 ::target-tables
                 ::batch-query]))
@@ -419,14 +419,14 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins join-cardinality quote-marks sqlite-union]
+           reversed-joins joins cardinality quote-marks sqlite-union]
     :or   {quote-marks backticks}
     :as   input-schema}]
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns ::extra-conditions
                                ::sqlite-union ::quote-marks
-                               ::reversed-joins ::joins ::join-cardinality])
+                               ::reversed-joins ::joins ::cardinality])
             input-schema)]
    :post [#(s/valid? ::sql-schema %)]}
   (let [idents                                            (flatten-multi-keys idents)
@@ -434,7 +434,7 @@
         extra-conditions                                  (flatten-multi-keys extra-conditions)
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
-        join-cardinality                                  (flatten-multi-keys join-cardinality)
+        cardinality                                       (flatten-multi-keys cardinality)
         true-columns                                      (set (apply concat columns (vals joins)))
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
@@ -452,7 +452,7 @@
                             (fn sqlite-batch-query [query-strings params]
                               (batch-query (map wrap-select query-strings) params))
                             batch-query)
-        :join-cardinality join-cardinality
+        :cardinality      cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names quote-marks true-columns)
@@ -642,7 +642,7 @@
                  target-columns
                  source-columns
                  join-statements
-                 join-cardinality]} sql-schema
+                 cardinality]} sql-schema
         k                           (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
@@ -705,7 +705,7 @@
                 (merge e child-joins)))
 
             one?
-            (= :one (get join-cardinality k))
+            (= :one (get cardinality k))
 
             do-join
             (if one?
