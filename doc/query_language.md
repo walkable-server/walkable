@@ -37,7 +37,7 @@ which properties you're asking for.
 For example, use this query
 
 ```clj
-;; query
+;; query of three prop keys:
 [:person/id :person/name :person/age]
 ```
 
@@ -78,8 +78,8 @@ relationship with the current entity.
 to achieve that, the query should be:
 
 ```clj
-;; query
-[:person/friends :person/mate :person/pets] ;; [^1]
+;; query of three join keys:
+[:person/friends :person/mate :person/pets]
 ```
 which is the same as:
 
@@ -90,8 +90,8 @@ which is the same as:
  {:person/pets    [*]}]
 ```
 
-which means you let the query resolver dictate which properties to
-return for each join. Or you may explicitly tell your own list:
+which means you let the query resolver dictate which child properties
+to return for each join. Or you may explicitly tell your own list:
 
 ```clj
 ;; query
@@ -114,6 +114,12 @@ zero or more such item.
 Actually the properties and joins above can't stand alone
 themselves. They must stem from somewhere: enter idents. Idents are
 the root of all queries (or the root of all **evals** :D)
+
+> I lied in the examples in section 1 and 2: such queries are not
+  enough for the query resolver to return such results. So what's
+  missing? You guess... Idents!
+
+Let's learn about two types of them.
 
 #### 3.1 Keyword idents
 
@@ -150,14 +156,22 @@ First, look at the ident vector:
 Okay, now see them in context:
 
 ```clj
-;; queries
+;; full queries
 [{[:person/by-id 1] [:person/name :person/age]}]
+```
 
+`[:person/by-id 1]` is called the ident key. `[:person/name` and
+`:person/age` are the child properties.
+
+```clj
 [{[:people-list/by-member-ids 1 2 3] [:person/name :person/age]}]
 ```
 
+`[:people-list/by-member-ids 1 2 3]` is the ident. Again,
+`[:person/name` and `:person/age` are the child properties.
+
 Allow yourself some time to grasp the syntax. Once you're comfortable,
-here is the above queries again with a join added:
+here is the above queries again with a child join added:
 
 ```clj
 ;; queries
@@ -194,11 +208,30 @@ actually, idents can stem from anywhere, like this:
                      {[:person/by-id 2] [:person/name :person/age]}]}]
 ```
 
-Here `[:person/by-id 2]` looks just like a join (such as
+Here `[:person/by-id 2]` looks just like a child join (such as
 `:person/mate`, `:person/pets`), but it has nothing to do with the
 entity `[:person/by-id 1]`.
 
-### 4. Parameters
+Todo: sample results from each query above.
+
+### 4. Key vs dispatch key
+
+After reading about properties vs joins vs idents, you may think:
+"This doesn't make sense! If an ident can sometimes look like a join,
+and a join can sometimes look like a property, then what's the point
+of defining a syntax at all?
+
+Well, the distinction is less in syntax and more in semantics. For
+each key, the author of query resolver should have decided if it's a
+property, a join or an ident. Looking at the dispatch key in the key
+itself is an efficient way to do it.
+
+What's a dispatch key? Let's learn to recognize them through some
+examples:
+
+Todo: examples of key -> dispatch key
+
+### 5. Parameters
 
 Sometimes you want the query resolver to modify a little bit of the
 data. Parameters are the piece to communicate just that.
@@ -210,7 +243,7 @@ data. Parameters are the piece to communicate just that.
 There are two ways to denote parameters, the new and the legacy
 syntax. Let's go for the new one first.
 
-#### 4.1 New syntax for parameters
+#### 5.1 New syntax for parameters
 
 ```clj
 ;; query
@@ -220,13 +253,13 @@ syntax. Let's go for the new one first.
 ```
 
 Just like a Clojure function's list of arguments, parameters may
-contain zero or more items. Personally, I prefer the use of one
-hash-map. For instance, with Walkable you can use some pre-defined
+contain zero or more items. Personally, I prefer the use of exactly
+one hash-map. For instance, with Walkable you can use some pre-defined
 parameters:
 
 ```clj
 ;; query with params `{::sqb/order-by :person/name}` added to the ident `:people/all`
-[{(:people/all {::sqb/order-by :person/name}) [:person/name :person/age]}]
+'[{(:people/all {::sqb/order-by :person/name}) [:person/name :person/age]}]
 
 ;; query with params `{::sqb/offset 20 ::sqb/limit 10}` added to the ident `:people/all`
 [{(:people/all {::sqb/offset 20 ::sqb/limit 10}) [:person/name :person/age]}]
@@ -244,7 +277,7 @@ query resolver to accept keyword parameters instead:
 
 That's valid syntax, too.
 
-#### 4.2 Legacy syntax for parameters
+#### 5.2 Legacy syntax for parameters
 
 > This section is required only if you're a user of om.next or fulcro
   older than v2.2.1. Feel free to skip it otherwise.
