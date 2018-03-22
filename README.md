@@ -56,7 +56,7 @@ Basically you define your schema like this:
                     ;; will produce
                     ;; "JOIN `person` ON `pet`.``owner` = `person`.`id`"
                     :pet/owner [:pet/owner :person/id]}
- :join-cardinality {:person/by-id :one
+ :cardinality      {:person/by-id :one
                     :person/pet   :many}}
 ```
 

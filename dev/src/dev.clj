@@ -104,7 +104,7 @@
               :extra-conditions {}
               :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
               :reversed-joins   {:cow/owner :farmer/cow}
-              :join-cardinality {:farmer/by-id :one
+              :cardinality      {:farmer/by-id :one
                                  :cow/owner    :one
                                  :farmer/cow   :one}})}
     eg-1))
@@ -129,7 +129,7 @@
               :extra-conditions {}
               :joins            {:toy/owner [:toy/owner-number :kid/number]}
               :reversed-joins   {:kid/toy :toy/owner}
-              :join-cardinality {:kid/by-id :one
+              :cardinality      {:kid/by-id :one
                                  :kid/toy   :one
                                  :toy/owner :one}})}
     eg-1))
@@ -189,7 +189,7 @@
               :joins            {:person/pet [:person/number :person-pet/person-number
                                               :person-pet/pet-index :pet/index]}
               :reversed-joins   {:pet/owner :person/pet}
-              :join-cardinality {:person/by-id :one
+              :cardinality      {:person/by-id :one
                                  :person/pet   :many}})}
     eg-1))
 
@@ -234,7 +234,7 @@
               :joins            {:person/pet [:person/number :person-pet/person-number
                                               :person-pet/pet-index :pet/index]}
               :reversed-joins   {:pet/owner :person/pet}
-              :join-cardinality {:person/by-id :one
+              :cardinality      {:person/by-id :one
                                  :person/pet   :many}})}
     eg-1))
 
@@ -267,11 +267,11 @@
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
               :pseudo-columns   {;; using sub query as a column
-                                 :human/two "(SELECT 2)"
+                                 :human/two    "(SELECT 2)"
                                  ;; using aggregate as a column
                                  :follow/count ["COUNT(?)" :follow/human-2]
                                  }
-              :join-cardinality {:human/by-id  :one
+              :cardinality      {:human/by-id        :one
                                  :human/follow-stats :one
-                                 :human/follow :many}})}
+                                 :human/follow       :many}})}
     eg-1))
