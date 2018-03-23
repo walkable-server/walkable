@@ -99,7 +99,7 @@
                                  :farmer/cow-index
                                  :farmer/number
                                  :farmer/name]
-              :idents           {:farmer/by-id [:= :farmer/number]
+              :idents           {:farmer/by-id :farmer/number
                                  :farmers/all  "farmer"}
               :extra-conditions {}
               :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
@@ -124,7 +124,7 @@
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
               :columns          [:kid/number :kid/name :toy/index :toy/color :toy/owner-number]
-              :idents           {:kid/by-id [:= :kid/number]
+              :idents           {:kid/by-id :kid/number
                                  :kids/all  "kid"}
               :extra-conditions {}
               :joins            {:toy/owner [:toy/owner-number :kid/number]}
@@ -181,7 +181,7 @@
               ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
               :required-columns {:pet/age    #{:pet/yob}
                                  :person/age #{:person/yob}}
-              :idents           {:person/by-id [:= :person/number]
+              :idents           {:person/by-id :person/number
                                  :people/all   "person"}
               :extra-conditions {[:person/by-id :people/all]
                                  [:or {:person/hidden [:= true]}
@@ -228,7 +228,7 @@
               ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
               :required-columns {:pet/age    #{:pet/yob}
                                  :person/age #{:person/yob}}
-              :idents           {:person/by-id [:= :person/number]
+              :idents           {:person/by-id :person/number
                                  :people/all   "person"}
               :extra-conditions {}
               :joins            {:person/pet [:person/number :person-pet/person-number
@@ -258,7 +258,7 @@
               :sqlite-union     sqlite-union
               :columns          [:human/number :human/name :human/yob]
               :required-columns {}
-              :idents           {:human/by-id [:= :human/number]
+              :idents           {:human/by-id :human/number
                                  :world/all   "human"}
               :extra-conditions {}
               :joins            {;; technically :human/follow and :human/follow-stats are the same join
