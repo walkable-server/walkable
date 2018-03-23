@@ -137,10 +137,10 @@
 ;; filters and conditions example
 #_
 (let [eg-1
-      '[{(:people/all {::sqb/filters  {:person/number [:< 10]}
-                       ::sqb/limit    1
-                       ::sqb/offset   1
-                       ::sqb/order-by [:person/name :desc]})
+      '[{(:people/all {:filters  {:person/number [:< 10]}
+                       :limit    1
+                       :offset   1
+                       :order-by [:person/name]})
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
