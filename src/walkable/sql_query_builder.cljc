@@ -474,15 +474,15 @@
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
   (let [{::keys [column-names]} sql-schema]
     {:offset
-     (when-let [offset (get-in env [:ast :params ::offset])]
+     (when-let [offset (get-in env [:ast :params :offset])]
        (when (integer? offset)
          offset))
      :limit
-     (when-let [limit (get-in env [:ast :params ::limit])]
+     (when-let [limit (get-in env [:ast :params :limit])]
        (when (integer? limit)
          limit))
      :order-by
-     (when-let [order-by (get-in env [:ast :params ::order-by])]
+     (when-let [order-by (get-in env [:ast :params :order-by])]
        (filters/->order-by-string column-names order-by))}))
 
 (defn process-conditions
@@ -522,7 +522,7 @@
         extra-condition (env/extra-condition env)
 
         supplied-condition
-        (get-in env [:ast :params ::filters])
+        (get-in env [:ast :params :filters])
 
         supplied-condition
         (when (s/valid? ::filters/clauses supplied-condition)

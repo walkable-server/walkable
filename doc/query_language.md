@@ -258,19 +258,19 @@ one hash-map. For instance, with Walkable you can use some pre-defined
 parameters:
 
 ```clj
-;; query with params `{::sqb/order-by :person/name}` added to the ident `:people/all`
-'[{(:people/all {::sqb/order-by :person/name}) [:person/name :person/age]}]
+;; query with params `{:order-by :person/name}` added to the ident `:people/all`
+'[{(:people/all {:order-by :person/name}) [:person/name :person/age]}]
 
-;; query with params `{::sqb/offset 20 ::sqb/limit 10}` added to the ident `:people/all`
-[{(:people/all {::sqb/offset 20 ::sqb/limit 10}) [:person/name :person/age]}]
+;; query with params `{:offset 20 :limit 10}` added to the ident `:people/all`
+[{(:people/all {:offset 20 :limit 10}) [:person/name :person/age]}]
 ```
 
 Of course, someone else with a different taste may implement their
 query resolver to accept keyword parameters instead:
 
 ```clj
-;; query with params `'(::sqb/offset 20 ::sqb/limit 10)` added to the ident `:people/all`
-'[{(:people/all ::sqb/offset 20 ::sqb/limit 10) [:person/name :person/age]}]
+;; query with params `'(:offset 20 :limit 10)` added to the ident `:people/all`
+'[{(:people/all :offset 20 :limit 10) [:person/name :person/age]}]
 ;; query with params `'(:unit :cm)` in the property `:person/height`
 '[:person/name (:person/height :unit :cm)]
 ```
@@ -288,12 +288,12 @@ For idents and joins, you put the whole query inside a list, followed
 by the parameters:
 
 ```clj
-;; query with params `{::sqb/order-by :person/name}` added to the ident `:people/all`
+;; query with params `{:order-by :person/name}` added to the ident `:people/all`
 '[({:people/all [:person/name :person/age]}
-   {::sqb/order-by :person/name})]
-;; query with params `{::sqb/offset 20 ::sqb/limit 10}` added to the ident `:people/all`
+   {:order-by :person/name})]
+;; query with params `{:offset 20 :limit 10}` added to the ident `:people/all`
 '[({:people/all [:person/name :person/age]}
-   {::sqb/offset 20 ::sqb/limit 10})]
+   {:offset 20 :limit 10})]
 ```
 
 These can be quite hard for human to follow if some child join also

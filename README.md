@@ -63,19 +63,20 @@ Basically you define your schema like this:
 then you can make queries like this:
 
 ```clj
-'[{(:people/all {::sqb/limit    5
-                 ::sqb/offset   10
-                  ;; remember the extra-conditions above? you can use the same syntax here:
-                 ::sqb/filters [:or {:person/id [:= 1]}
-                                {:person/yob [:in 1999 2000]}]
+'[{(:people/all {:limit    5
+                 :offset   10
+                 ;; remember the extra-conditions above? you can use the same syntax here:
+                 :filters [:or {:person/id [:= 1]}
+                           {:person/yob [:in 1999 2000]}]
                  ;; -> you've already limited what the user can access, so let them play freely
                  ;; with whatever left open to them.
 
-                 ::sqb/order-by [:person/id
-                                 :person/name :desc
-                                 ;; Note: sqlite doesn't support `:nils-first`, `:nils-last`
-                                 :person/yob :desc :nils-last]})
+                 :order-by [:person/id
+                            :person/name :desc
+                            ;; Note: sqlite doesn't support `:nils-first`, `:nils-last`
+                            :person/yob :desc :nils-last]})
    [:person/id :person/name]}]
+
 ```
 
 As you can see the filter syntax is in pure Clojure. It's not just for
