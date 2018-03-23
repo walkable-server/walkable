@@ -6,14 +6,15 @@ about how such a schema looks like as you glanced the example in
 **Overview** section. Now let's walk through each key of the schema
 map in details.
 
-> Note about SQL snippets below:
-> - they have been simplified for explanation purpose
-> - they use backticks as quote marks
+> Notes:
+> - SQL snippets have been simplified for explanation purpose
+> - Backticks are used as quote marks
+> - For clarity, part of the schema may not be included
 
 ## :idents
 
 Idents are the root of all queries. From an SQL dbms perspective, you
-must start from a table.
+must start your graph query from somewhere, and it's a table.
 
 ### Keyword idents
 
@@ -72,7 +73,59 @@ SELECT `id`, `name` FROM `person` WHERE `person`.`id` = 1
 
 ## :joins
 
-describes the "path" from the source
+Each join schema describes the "path" from the source table (of the
+source entity) to the target table (and optionally the join table).
+
+Let's see some examples.
+
+### Example 1:
+
+Assume table `cow` contains:
+
+```
+|----+-------|
+| id | color |
+|----+-------|
+| 10 | white |
+| 20 | brown |
+|----+-------|
+```
+
+and table `farmer` has:
+
+```
+|----+------+--------|
+| id | name | cow_id |
+|----+------+--------|
+|  1 | jon  |     10 |
+|  2 | mary |     20 |
+|----+------+--------|
+```
+
+and you want to get a farmer along with their cow using the query:
+
+```clj
+[{[:farmer/by-id 1]} [:farmer/name {:farmer/cow [:cow/id :cow/color]}]]
+```
+
+> For the join `:farmer/cow`, table `farmer` is the source and table
+  `cow` is the target.
+
+then you must define the join "path" like this:
+
+```clj
+;; schema
+{:joins {:farmer/cow [:farmer/cow-id :cow/id]}}
+```
+
+the above join path says: start with the value of column `farmer.cow_id` then find
+the correspondent in the column `cow.id`.
+
+todo: generated SQL queries here.
+
+### Example 2: A join involving a join table
+
+wip
 
 ## :reversed-joins
 
