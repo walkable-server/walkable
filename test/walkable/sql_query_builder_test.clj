@@ -118,27 +118,23 @@
 (deftest ident->condition-tests
   (is (= (sut/ident->condition
            {:ast {:key [:person/by-id 1]}}
-           [:= :person/id])
-        {:person/id [:= 1]}))
-  (is (= (sut/ident->condition
-           {:ast {:key [:people/by-ids 1 2 3]}}
-           [:in :person/id])
-        {:person/id [:in 1 2 3]})))
+           :person/id)
+        {:person/id [:= 1]})))
 
 (deftest separate-idents-test
-  (is (= (sut/separate-idents {:person/by-id  [:= :person/number]
-                               :person/by-yob [:= :person/yob]
+  (is (= (sut/separate-idents {:person/by-id  :person/number
+                               :person/by-yob :person/yob
                                :pets/all      "pet"
                                :people/all    "person"})
         {:unconditional-idents {:pets/all   "pet",
                                 :people/all "person"},
-         :conditional-idents   #:person {:by-id  [:= :person/number],
-                                         :by-yob [:= :person/yob]}})))
+         :conditional-idents   #:person {:by-id  :person/number,
+                                         :by-yob :person/yob}})))
 
 (deftest conditional-idents->target-tables-test
   (is (= (sut/conditional-idents->target-tables
-           {:person/by-id [:= :person/number]
-            :pets/by-ids  [:in :pet/index]})
+           {:person/by-id :person/number
+            :pets/by-ids  :pet/index})
         {:person/by-id "person", :pets/by-ids "pet"})))
 
 (deftest joins->target-tables-test

@@ -33,7 +33,7 @@ Basically you define your schema like this:
 ```clj
 {:idents           {;; query with `[:person/by-id 1]` will result in
                     ;; `FROM person WHERE person.id = 1`
-                    :person/by-id [:= :person/id]
+                    :person/by-id :person/id
                     ;; just select from `person` table without any constraints
                     :people/all "person"}
  :extra-conditions {;; enforce some constraints whenever this join is asked for
@@ -105,9 +105,9 @@ groups:
    calculation, maybe just to migrate away to Datomic :D )
 
  - Clojure extremists who use SQL and think Clojure must be used in
-   both backend side (the JVM) and frontend side, and the two sides
-   must talk to each other using EDN data full of namespaced keywords
-   instead of some string-based query language like GraphQL.
+   both backend side and frontend side, and the two sides must talk to
+   each other using EDN data full of namespaced keywords instead of
+   some string-based query language like GraphQL.
 
 ## Installation
 
@@ -149,6 +149,8 @@ Then you need to define your schema and compile it
      :joins       ...
      ...          ...}))
 ```
+
+Details about the schema is [here](doc/schema.md).
 
 Ready! It's time to run your graph queries
 
@@ -223,8 +225,8 @@ Walkable comes with some optimizations:
   applications. If you can think of any pattern of doing it, please
   open an issue.
 
-- Walkable does not support async sql query runners, so it's a no go for
-nodejs.
+- Walkable does not support async sql query runners at the moment, so
+it's a no go for nodejs.
 
 ## Support
 
@@ -232,9 +234,12 @@ I'm available for questions regarding walkable on `#walkable`
 clojurians slack channel. I'm also on `#fulcro` and
 [Clojureverse](https://clojureverse.org/)
 
-## Developing
+## Further reading
 
-See [developing.md](doc/developing.md)
+- [About the query language](doc/query_language.md)
+- [Schema guide (WIP]](doc/schema.md)
+- [Filters (TBD)](doc/filters.md)
+- [Developing Walkable](doc/developing.md)
 
 ## Legal
 

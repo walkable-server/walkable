@@ -287,14 +287,14 @@
                          child-source-columns)}))
 
 (s/def ::conditional-ident
-  (s/tuple keyword? (s/tuple ::filters/operators ::filters/namespaced-keyword)))
+  (s/tuple keyword? ::filters/namespaced-keyword))
 
 (defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
   [idents]
   {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
    :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [ident-key [_operator column-keyword]]]
+  (reduce (fn [result [ident-key column-keyword]]
             (assoc result ident-key
               (first (split-keyword column-keyword))))
     {} idents))
@@ -335,18 +335,14 @@
                     key-set)]
     (into {} keys+vals)))
 
-(s/def ::ident-condition
-  (s/tuple ::filters/operators ::filters/namespaced-keyword))
-
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
-  [env condition]
-  {:pre  [(s/valid? ::ident-condition condition)
+  [env key]
+  {:pre  [(s/valid? ::filters/namespaced-keyword key)
           (s/valid? (s/keys :req-un [::ast]) env)]
    :post [#(s/valid? ::filters/clauses %)]}
-  (let [params         (-> env :ast :key rest)
-        [operator key] condition]
-    {key (cons operator params)}))
+  (let [params (-> env :ast :key rest)]
+    {key (cons := params)}))
 
 (defn compile-extra-conditions
   [extra-conditions]
