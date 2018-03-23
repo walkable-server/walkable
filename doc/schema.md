@@ -78,7 +78,7 @@ source entity) to the target table (and optionally the join table).
 
 Let's see some examples.
 
-### Example 1:
+### Example 1: Join column living in source table
 
 Assume table `cow` contains:
 
@@ -127,7 +127,9 @@ tode: sample result.
 
 ### Example 2: Join column living in target table
 
-wip
+No big deal. The same as example 1.
+
+todo: clone example 1
 
 ### Example 3: A join involving a join table
 
