@@ -6,13 +6,69 @@ about how such a schema looks like as you glanced the example in
 **Overview** section. Now let's walk through each key of the schema
 map in details.
 
+> Note about SQL snippets below:
+> - they have been simplified for explanation purpose
+> - they use backticks as quote marks
+
 ## :idents
 
-root of all queries
+Idents are the root of all queries. From an SQL dbms perspective, you
+must start from a table.
 
-plain idents
+### Keyword idents
 
-idents whose key implies some condition
+Keyword idents can be defined as simple as:
+
+```clj
+;; schema
+{:idents {:people/all "person"}}
+```
+
+so queries like:
+
+```clj
+[:people/all [:person/id :person/name]]
+```
+
+will result in an SQL query like:
+
+```sql
+SELECT `id`, `name` FROM `person`
+```
+
+### Vector idents
+
+These are idents whose key implies some condition. Instead of
+providing just the table, you provide the column (as a namespaced
+keyword) whose value match the ident argument found in the ident key.
+
+For example, the following vector ident:
+
+```clj
+;; dispatch-key: :person/by-id
+;; ident arguments: 1
+[:person/by-id 1]
+```
+
+will require a schema like:
+
+```clj
+;; schema
+{:idents {:person/by-id :person/id}}
+```
+
+so queries like:
+
+```clj
+;; query
+[[:person/by-id 1] [:person/id :person/name]]
+```
+
+will result in an SQL query like:
+
+```sql
+SELECT `id`, `name` FROM `person` WHERE `person`.`id` = 1
+```
 
 ## :joins
 
@@ -65,8 +121,14 @@ or
 {:quote-marks ["\"", "\""]}
 ```
 
-For convenience, you can use the predefined vars `sqb/backticks` or
-`sqb/quotation-marks` instead.
+For convenience, you can use the predefined vars instead:
+
+```clj
+;; for mysql
+{:quote-marks sqb/backticks}
+;; or postgresql
+{:quote-marks sqb/quotation-marks}
+```
 
 The default quote-marks are the backticks, which work for mysql and
 sqlite.
@@ -96,7 +158,6 @@ SELECT * FROM (SELECT a, b FROM foo WHERE ...)
 
 ## :required-columns
 ## :pseudo-columns (Experimental)
-## :formulas (Experimental)
 
 ## Syntactic sugars
 
