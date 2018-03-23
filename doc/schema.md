@@ -118,19 +118,79 @@ then you must define the join "path" like this:
 {:joins {:farmer/cow [:farmer/cow-id :cow/id]}}
 ```
 
-the above join path says: start with the value of column `farmer.cow_id` then find
-the correspondent in the column `cow.id`.
+the above join path says: start with the value of column
+`farmer.cow_id` (the join column) then find the correspondent in the
+column `cow.id`.
 
 todo: generated SQL queries here.
+tode: sample result.
 
-### Example 2: A join involving a join table
+### Example 2: Join column living in target table
 
 wip
+
+### Example 3: A join involving a join table
+
+Assume the following tables:
+
+source table  `person`:
+
+```
+|----+------|
+| id | name |
+|----+------|
+|  1 | jon  |
+|  2 | mary |
+|----+------|
+```
+
+target table `pet`:
+
+```
+|----+--------|
+| id | name   |
+|----+--------|
+| 10 | kitty  |
+| 11 | maggie |
+| 20 | ginger |
+|----+--------|
+```
+
+join table `person_pet`:
+
+```
+|-----------+--------+---------------|
+| person_id | pet_id | adoption_year |
+|-----------+--------+---------------|
+|         1 |     10 |          2010 |
+|         1 |     11 |          2011 |
+|         2 |     20 |          2010 |
+|-----------+--------+---------------|
+```
+
+you may query for a person and their pets along with their adoption year
+
+```clj
+[{[:person/by-id 1] [:person/name {:person/pets [:pet/name :person-pet/adoption-year]}]}]
+```
+
+then the schema for the join is as simple as:
+
+```clj
+;; schema
+{:joins {:person/pets [:person/id :person-pet/person-id
+                       :person-pet/pet-id :pet/id]}}
+```
+
+todo: generated SQL queries
+todo: sample result
 
 ## :reversed-joins
 
 join specs are lengthy, to avoid typing the reversed path again
 also it helps with semantics.
+
+todo: example 1 and example 3 from `:join` section
 
 ## :columns
 
