@@ -180,19 +180,23 @@ this:
 ;; => [{:id 1, :color "red"} {:id 2, :color "blue"} ...]
 ```
 
-### More use cases
-
-Please see the file [dev.clj](dev/src/dev.clj) for more use
-cases. Consult [config.edn](dev/resources/walkable_demo/config.edn)
-for SQL migrations for those examples.
-
-### Note on examples' query params syntax
+### Note on examples' query params syntax for om.next users
 
 Walkable works with both `[({:k subquery} params)]` and `[{(:k
 params) subquery}]` syntax but in the examples I always use the later
 due to my personal preference. However it's only supported as of fulcro
 2.2.1. If you're using om.next or older fulcro, you must use the
 former syntax otherwise your client-side app will crash.
+
+## Further reading
+
+- [About the query language](doc/query_language.md)
+- [Schema guide (WIP)](doc/schema.md)
+- [Filters (TBD)](doc/filters.md)
+- [Developing Walkable](doc/developing.md)
+- Please see the file [dev.clj](dev/src/dev.clj) for executable
+examples. Consult [config.edn](dev/resources/walkable_demo/config.edn)
+for SQL migrations for those examples.
 
 ## Special thanks to:
 
@@ -233,13 +237,6 @@ it's a no go for nodejs.
 I'm available for questions regarding walkable on `#walkable`
 clojurians slack channel. I'm also on `#fulcro` and
 [Clojureverse](https://clojureverse.org/)
-
-## Further reading
-
-- [About the query language](doc/query_language.md)
-- [Schema guide (WIP)](doc/schema.md)
-- [Filters (TBD)](doc/filters.md)
-- [Developing Walkable](doc/developing.md)
 
 ## Legal
 
