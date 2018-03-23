@@ -237,7 +237,7 @@ clojurians slack channel. I'm also on `#fulcro` and
 ## Further reading
 
 - [About the query language](doc/query_language.md)
-- [Schema guide (WIP]](doc/schema.md)
+- [Schema guide (WIP)](doc/schema.md)
 - [Filters (TBD)](doc/filters.md)
 - [Developing Walkable](doc/developing.md)
 
