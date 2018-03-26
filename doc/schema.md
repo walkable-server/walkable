@@ -11,12 +11,12 @@ map in details.
 > - Backticks are used as quote marks
 > - For clarity, part of the schema may not be included
 
-## :idents
+## 1 :idents
 
 Idents are the root of all queries. From an SQL dbms perspective, you
 must start your graph query from somewhere, and it's a table.
 
-### Keyword idents
+### 1.1 Keyword idents
 
 Keyword idents can be defined as simple as:
 
@@ -37,7 +37,7 @@ will result in an SQL query like:
 SELECT `id`, `name` FROM `person`
 ```
 
-### Vector idents
+### 1.2 Vector idents
 
 These are idents whose key implies some condition. Instead of
 providing just the table, you provide the column (as a namespaced
@@ -71,7 +71,7 @@ will result in an SQL query like:
 SELECT `id`, `name` FROM `person` WHERE `person`.`id` = 1
 ```
 
-## :joins
+## 2 :joins
 
 Each join schema describes the "path" from the source table (of the
 source entity) to the target table (and optionally the join table).
@@ -105,6 +105,7 @@ and table `farmer` has:
 and you want to get a farmer along with their cow using the query:
 
 ```clj
+;; query
 [{[:farmer/by-id 1]} [:farmer/name {:farmer/cow [:cow/id :cow/color]}]]
 ```
 
@@ -295,20 +296,20 @@ SELECT * FROM "table"
 You need to provide the quote-marks as a vector of two strings
 
 ```clj
-;; for mysql
+;; schema for mysql
 {:quote-marks ["`", "`"]}
 ```
 
 or
 ```clj
-;; for postgres
+;; schema for postgres
 {:quote-marks ["\"", "\""]}
 ```
 
 For convenience, you can use the predefined vars instead:
 
 ```clj
-;; for mysql
+;; schema for mysql
 {:quote-marks sqb/backticks}
 ;; or postgresql
 {:quote-marks sqb/quotation-marks}
@@ -317,7 +318,7 @@ For convenience, you can use the predefined vars instead:
 The default quote-marks are the backticks, which work for mysql and
 sqlite.
 
-## :sqlite-union
+## 8 :sqlite-union
 
 Set it to `true` if you're using SQLite, otherwise ignore
 it. Basically SQLite don't allow to union queries directly.
@@ -340,8 +341,8 @@ SELECT * FROM (SELECT a, b FROM foo WHERE ...)
 
 `{:sqlite-union true}` is for enforcing just that.
 
-## :required-columns
-## :pseudo-columns (Experimental)
+## 9 :required-columns
+## 10 :pseudo-columns (Experimental)
 
 ## Syntactic sugars
 
