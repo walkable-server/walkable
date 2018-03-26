@@ -122,16 +122,31 @@ the above join path says: start with the value of column
 `farmer.cow_id` (the join column) then find the correspondent in the
 column `cow.id`.
 
-todo: generated SQL queries here.
-tode: sample result.
+Internally, Walkable will generate this query to fetch the entity
+whose ident is `[:farmer/by-id 1]`:
 
-### Example 2: Join column living in target table
+```sql
+SELECT `farmer`.`name`, `farmer`.`cow_id` FROM `farmer` WHERE `farmer`.`id` = 1
+```
 
-No big deal. The same as example 1.
+the value of column `farmer`.`cow_id` will be collected (for this
+example it's `10`). Walkable will then build the query for the join `:farmer/cow`:
 
-todo: clone example 1
+```sql
+SELECT `cow`.`id`, `cow`.`color` FROM `cow` WHERE `cow`.`id` = 10
+```
 
-### Example 3: A join involving a join table
+Finally, Walkable will combine the results of the above SQL queries
+and return the final result:
+
+```clj
+{[:farmer/by-id 1] #:farmer{:number 1,
+                            :name "jon",
+                            :cow #:cow{:index 10,
+                                       :color "white"}}}
+```
+
+### Example 2: A join involving a join table
 
 Assume the following tables:
 
@@ -184,31 +199,85 @@ then the schema for the join is as simple as:
                        :person-pet/pet-id :pet/id]}}
 ```
 
-todo: generated SQL queries
-todo: sample result
+Walkable will issue an SQL query for `[:person/by-id 1]`:
 
-## :reversed-joins
+```sql
+SELECT `person`.`name` FROM `person` WHERE `person`.`id` = 1
+```
+
+and another query for the join `:person/pets`:
+
+```sql
+SELECT `pet`.`name`, `person_pet`.`adoption_year`
+FROM `person_pet` JOIN `pet` ON `person_pet`.`pet_id` = `pet`.`id` WHERE `person_pet`.`person_id` = 1
+```
+
+and our not-so-atonishing result:
+
+```clj
+;; result
+{[:person/by-id 1] #:person{:id 1,
+                            :name "jon",
+                            :pets [{:pet/id 10,
+                                    :pet/name "kitty"
+                                    :person-pet/adoption-year 2010}
+                                   {:pet/id 11,
+                                    :pet/name "maggie"
+                                    :person-pet/adoption-year 2011}]}}
+```
+
+### Example 3: Join column living in target table
+
+No big deal. This is no more difficult than example 1.
+
+Assume table `farmer` contains:
+
+```
+|----+-------|
+| id | name  |
+|----+-------|
+| 1  | jon   |
+| 2  | mary  |
+|----+-------|
+```
+
+and table `cow` has:
+
+```
+|----+-------+----------|
+| id | name  | owner_id |
+|----+-------+----------|
+| 10 | white |     1    |
+| 20 | brown |     2    |
+|----+-------+----------|
+```
+
+The schema for this example can be a good exercise for the reader of
+this documentation. (Sorry, actually I'm just too lazy to type it
+here :D )
+
+## 3 :reversed-joins
 
 join specs are lengthy, to avoid typing the reversed path again
 also it helps with semantics.
 
 todo: example 1 and example 3 from `:join` section
 
-## :columns
+## 4 :columns
 
 list of available columns must be provided beforehand.
 
 - pre-compute strings
 - keywords not in the column set will be ignored
 
-## :cardinality
+## 5 :cardinality
 
 Idents and joins can have cardinality of either "many" (which is
 default) or "one".
 
-## :extra-conditions
+## 6 :extra-conditions
 
-## :quote-marks
+## 7 :quote-marks
 
 Different SQL databases use different strings to denote quotation. For
 instance, MySQL use a pair of backticks:
