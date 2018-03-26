@@ -98,12 +98,16 @@ will result in
 
 TL;DR: Anyone who have both Clojure and SQL in their toolkit.
 
-To be more specific, anyone who belongs to at least one of these
-groups:
+To be more specific, anyone at any level of enthusiasm:
 
  - Any Clojure developers who need to pull data from an SQL database
    (maybe for a web/mobile app, maybe for doing some serious
    calculation, maybe just to migrate away to Datomic :D )
+
+ - Clojure enthusiasts who have happen to have ORM-powered apps (ie
+   Korma, Django, Rails, most PHP systems, etc.) in production but
+   feel overwhelmed by the tedious task of developing new models (or
+   dreaded by the error-prone nature of modifying them.)
 
  - Clojure extremists who use SQL and think Clojure must be used in
    both backend side and frontend side, and the two sides must talk to
