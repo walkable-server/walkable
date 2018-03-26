@@ -168,9 +168,9 @@ Ready! It's time to run your graph queries
                     :user     "test_user"
                     :password "test_password"}
       my-run-query jdbc/query]
-  (pathom-parser {::sqb/sql-db    my-db
-                  ::sqb/run-query my-run-query
-                  ::sqb/schema    compiled-schema}
+  (pathom-parser {::sqb/sql-db     my-db
+                  ::sqb/run-query  my-run-query
+                  ::sqb/sql-schema compiled-schema}
                  my-query))
 ```
 
