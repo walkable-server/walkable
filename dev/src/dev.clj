@@ -144,6 +144,7 @@
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
+                        :person-pet/adoption-year
                         :pet/color]}]}]
 
       eg-2
@@ -154,6 +155,7 @@
           {:person/pet [:pet/index
                         :pet/age
                         :pet/color
+                        :person-pet/adoption-year
                         {:pet/owner [:person/name]}]}]}]
       parser
       example/pathom-parser]
@@ -173,6 +175,7 @@
                                  :person/hidden
                                  :person-pet/person-number
                                  :person-pet/pet-index
+                                 :person-pet/adoption-year
                                  :pet/index
                                  :pet/name
                                  :pet/yob
