@@ -421,4 +421,26 @@ Please see [dev.clj](dev/src/dev.clj) for examples.
 
 ## Syntactic sugars
 
-### Multiple dispatch keys for the same configuration
+### Multiple dispatch keys for `:idents`, `:extra-conditions`,
+    `:joins` and `:cardinality`.
+
+If two or more dispatch key share the same configuration, it's handy
+to have them in the same entry. For example:
+
+instead of:
+
+```clj
+;; schema
+{:idents {:people/all "person"
+          :my-friends "person"}}
+```
+
+this is shorter:
+
+```clj
+;; schema
+{:idents {[:people/all :my-friends]
+          "person"}}
+```
+
+This also applies to `:extra-conditions`, `:joins` and `:cardinality`.
