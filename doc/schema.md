@@ -326,6 +326,8 @@ default) or `:one`. You declare that by their dispatch keys:
 
 ## 6 :extra-conditions
 
+Please see [doc/filters.md]
+
 ## 7 :quote-marks
 
 Different SQL databases use different strings to denote quotation. For
@@ -389,8 +391,33 @@ SELECT * FROM (SELECT a, b FROM foo WHERE ...)
 
 `{:sqlite-union true}` is for enforcing just that.
 
-## 9 :required-columns
-## 10 :pseudo-columns (Experimental)
+## 9 :required-columns (Experimental - Subject to change)
+
+> You need to understand Pathom plugins to make use of this.
+
+Automatically fetch some columns of the same level whenever a
+namespace keyword is asked for. This is useful when you want to derive
+a property from some SQL columns using Clojure code (to be specific,
+as Pathom plugins)
+
+Please see [example.clj](dev/src/walkable_demo/handler/example.clj)
+for examples. Things to look at:
+
+- `derive-attributes` which calculates `:pet/age` and `:person/age`
+ from `:pet/yob` and `:person/yob` respectively.
+
+- required inputs for `:pet/age` and `:person/age` in
+  `:required-columns` schema:
+
+```clj
+;; schema
+{:required-columns {:pet/age    #{:pet/yob}
+                    :person/age #{:person/yob}}}
+```
+
+## 10 :pseudo-columns (Experimental - Subject to change)
+
+Please see [dev.clj](dev/src/dev.clj) for examples.
 
 ## Syntactic sugars
 
