@@ -421,8 +421,7 @@ Please see [dev.clj](/dev/src/dev.clj) for examples.
 
 ## Syntactic sugars
 
-### Multiple dispatch keys for `:idents`, `:extra-conditions`,
-`:joins` and `:cardinality`.
+### Multiple dispatch keys for `:idents`, `:extra-conditions`, `:joins` and `:cardinality`.
 
 If two or more dispatch key share the same configuration, it's handy
 to have them in the same entry. For example:
