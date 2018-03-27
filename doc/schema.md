@@ -287,10 +287,30 @@ semantics.
 
 ## 4 :columns
 
-list of available columns must be provided beforehand.
+A set of available columns must be provided at compile time so
+Walkable can pre-compute part of SQL query strings.
 
-- pre-compute strings
-- keywords not in the column set will be ignored
+```clj
+{:columns #{:farmer/name
+            :cow/color}}
+```
+
+Walkable will automatically include columns found in `:joins` paths so
+you don't have to.
+
+Please note: keywords not found in the column set will be
+ignored. That means if you forget to include any of them, you can't
+use the missing one in a query's property or filter.
+
+> The rationale for having a pre-defined set of columns is that your
+  query resolver doesn't have to limit itself to an SQL database as a
+  single source of data. If Walkable can't match a keyword to a
+  column, an ident or a join, it will be passed down to the next
+  plugin in the Pathom plugin chain.
+
+On the other hand, you don't have to include every single column in
+your database if you know you will never use some of them in a query's
+property or filter.
 
 ## 5 :cardinality
 
