@@ -144,6 +144,7 @@
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
+                        :person-pet/adoption-year
                         :pet/color]}]}]
 
       eg-2
@@ -154,6 +155,7 @@
           {:person/pet [:pet/index
                         :pet/age
                         :pet/color
+                        :person-pet/adoption-year
                         {:pet/owner [:person/name]}]}]}]
       parser
       example/pathom-parser]
@@ -173,6 +175,7 @@
                                  :person/hidden
                                  :person-pet/person-number
                                  :person-pet/pet-index
+                                 :person-pet/adoption-year
                                  :pet/index
                                  :pet/name
                                  :pet/yob
@@ -214,16 +217,18 @@
              ;; which columns are available in SQL table?
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
-              :columns          [:person/number
-                                 :person/name
+              :columns          [:person/name
                                  :person/yob
                                  :person/hidden
-                                 :person-pet/person-number
-                                 :person-pet/pet-index
-                                 :pet/index
                                  :pet/name
                                  :pet/yob
-                                 :pet/color]
+                                 :pet/color
+                                 ;; already declared in :joins so not needed here
+                                 ;; :person/number
+                                 ;; :person-pet/person-number
+                                 ;; :person-pet/pet-index
+                                 ;; :pet/index
+                                 ]
               ;; extra columns required when an attribute is being asked for
               ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
               :required-columns {:pet/age    #{:pet/yob}

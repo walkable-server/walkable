@@ -106,7 +106,7 @@ and you want to get a farmer along with their cow using the query:
 
 ```clj
 ;; query
-[{[:farmer/by-id 1]} [:farmer/name {:farmer/cow [:cow/id :cow/color]}]]
+[{[:farmer/by-id 1] [:farmer/name {:farmer/cow [:cow/id :cow/color]}]}]
 ```
 
 > For the join `:farmer/cow`, table `farmer` is the source and table
@@ -259,17 +259,58 @@ here :D )
 
 ## 3 :reversed-joins
 
-join specs are lengthy, to avoid typing the reversed path again
-also it helps with semantics.
+A handy way to avoid typing the schema for joins whose path is just
+reversed version of another.
 
-todo: example 1 and example 3 from `:join` section
+The schema for such a join is straightforward:
+
+```clj
+;; schema
+{:joins          {:farmer/cow [:farmer/cow-id :cow/id]}
+ :reversed-joins {:cow/owner :farmer/cow}}
+```
+
+so you can go both ways:
+
+```clj
+;; queries:
+
+;; - find the cow of a given farmer
+[{[:farmer/by-id 1] [:farmer/name {:farmer/cow [:cow/id :cow/color]}]}]
+
+;; - find the owner of a given cow
+[{[:cow/by-id 10] [:cow/id :cow/color {:cow/owner [:farmer/name]}]}]
+```
+
+Also, another reason to use `:reversed-joins` is that it helps with
+semantics.
 
 ## 4 :columns
 
-list of available columns must be provided beforehand.
+A set of available columns must be provided at compile time so
+Walkable can pre-compute part of SQL query strings.
 
-- pre-compute strings
-- keywords not in the column set will be ignored
+```clj
+{:columns #{:farmer/name
+            :cow/color}}
+```
+
+Walkable will automatically include columns found in `:joins` paths so
+you don't have to.
+
+Please note: keywords not found in the column set will be
+ignored. That means if you forget to include any of them, you can't
+use the missing one in a query's property or filter.
+
+> The rationale for having a pre-defined set of columns is that your
+  query resolver doesn't have to limit itself to an SQL database as a
+  single source of data. If Walkable can't match a keyword to a
+  column, an ident or a join, it will be passed down to the next
+  plugin in the Pathom plugin chain.
+
+On the other hand, you don't have to include every single column in
+your database if you know you will never use some of them in a query's
+property or filter.
 
 ## 5 :cardinality
 
