@@ -326,7 +326,7 @@ default) or `:one`. You declare that by their dispatch keys:
 
 ## 6 :extra-conditions
 
-Please see [doc/filters.md]
+Please see [documentation for Filters](/doc/filters.md)
 
 ## 7 :quote-marks
 
@@ -400,7 +400,7 @@ namespace keyword is asked for. This is useful when you want to derive
 a property from some SQL columns using Clojure code (to be specific,
 as Pathom plugins)
 
-Please see [example.clj](dev/src/walkable_demo/handler/example.clj)
+Please see [example.clj](/dev/src/walkable_demo/handler/example.clj)
 for examples. Things to look at:
 
 - `derive-attributes` which calculates `:pet/age` and `:person/age`
@@ -417,12 +417,12 @@ for examples. Things to look at:
 
 ## 10 :pseudo-columns (Experimental - Subject to change)
 
-Please see [dev.clj](dev/src/dev.clj) for examples.
+Please see [dev.clj](/dev/src/dev.clj) for examples.
 
 ## Syntactic sugars
 
 ### Multiple dispatch keys for `:idents`, `:extra-conditions`,
-    `:joins` and `:cardinality`.
+`:joins` and `:cardinality`.
 
 If two or more dispatch key share the same configuration, it's handy
 to have them in the same entry. For example:
