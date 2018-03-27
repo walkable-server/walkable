@@ -314,10 +314,19 @@ property or filter.
 
 ## 5 :cardinality
 
-Idents and joins can have cardinality of either "many" (which is
-default) or "one".
+Idents and joins can have cardinality of either `:many` (which is
+default) or `:one`. You declare that by their dispatch keys:
+
+```clj
+;; schema
+{:cardinality {:person/by-id :one
+               ;; you can skip all `:many`!
+               :people/all   :many}}
+```
 
 ## 6 :extra-conditions
+
+Please see [doc/filters.md]
 
 ## 7 :quote-marks
 
@@ -382,9 +391,56 @@ SELECT * FROM (SELECT a, b FROM foo WHERE ...)
 
 `{:sqlite-union true}` is for enforcing just that.
 
-## 9 :required-columns
-## 10 :pseudo-columns (Experimental)
+## 9 :required-columns (Experimental - Subject to change)
+
+> You need to understand Pathom plugins to make use of this.
+
+Automatically fetch some columns of the same level whenever a
+namespace keyword is asked for. This is useful when you want to derive
+a property from some SQL columns using Clojure code (to be specific,
+as Pathom plugins)
+
+Please see [example.clj](dev/src/walkable_demo/handler/example.clj)
+for examples. Things to look at:
+
+- `derive-attributes` which calculates `:pet/age` and `:person/age`
+ from `:pet/yob` and `:person/yob` respectively.
+
+- required inputs for `:pet/age` and `:person/age` in
+  `:required-columns` schema:
+
+```clj
+;; schema
+{:required-columns {:pet/age    #{:pet/yob}
+                    :person/age #{:person/yob}}}
+```
+
+## 10 :pseudo-columns (Experimental - Subject to change)
+
+Please see [dev.clj](dev/src/dev.clj) for examples.
 
 ## Syntactic sugars
 
-### Multiple dispatch keys for the same configuration
+### Multiple dispatch keys for `:idents`, `:extra-conditions`,
+    `:joins` and `:cardinality`.
+
+If two or more dispatch key share the same configuration, it's handy
+to have them in the same entry. For example:
+
+instead of:
+
+```clj
+;; schema
+{:idents {:people/all "person"
+          :my-friends "person"}}
+```
+
+this is shorter:
+
+```clj
+;; schema
+{:idents {[:people/all :my-friends]
+          "person"}}
+```
+
+This also applies to `:extra-conditions`, `:joins` and `:cardinality`.
