@@ -259,10 +259,31 @@ here :D )
 
 ## 3 :reversed-joins
 
-join specs are lengthy, to avoid typing the reversed path again
-also it helps with semantics.
+A handy way to avoid typing the schema for joins whose path is just
+reversed version of another.
 
-todo: example 1 and example 3 from `:join` section
+The schema for such a join is straightforward:
+
+```clj
+;; schema
+{:joins          {:farmer/cow [:farmer/cow-id :cow/id]}
+ :reversed-joins {:cow/owner :farmer/cow}}
+```
+
+so you can go both ways:
+
+```clj
+;; queries:
+
+;; - find the cow of a given farmer
+[{[:farmer/by-id 1] [:farmer/name {:farmer/cow [:cow/id :cow/color]}]}]
+
+;; - find the owner of a given cow
+[{[:cow/by-id 10] [:cow/id :cow/color {:cow/owner [:farmer/name]}]}]
+```
+
+Also, another reason to use `:reversed-joins` is that it helps with
+semantics.
 
 ## 4 :columns
 
