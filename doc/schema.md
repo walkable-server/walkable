@@ -314,8 +314,15 @@ property or filter.
 
 ## 5 :cardinality
 
-Idents and joins can have cardinality of either "many" (which is
-default) or "one".
+Idents and joins can have cardinality of either `:many` (which is
+default) or `:one`. You declare that by their dispatch keys:
+
+```clj
+;; schema
+{:cardinality {:person/by-id :one
+               ;; you can skip all `:many`!
+               :people/all   :many}}
+```
 
 ## 6 :extra-conditions
 
