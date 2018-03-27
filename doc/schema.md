@@ -106,7 +106,7 @@ and you want to get a farmer along with their cow using the query:
 
 ```clj
 ;; query
-[{[:farmer/by-id 1]} [:farmer/name {:farmer/cow [:cow/id :cow/color]}]]
+[{[:farmer/by-id 1] [:farmer/name {:farmer/cow [:cow/id :cow/color]}]}]
 ```
 
 > For the join `:farmer/cow`, table `farmer` is the source and table
