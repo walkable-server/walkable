@@ -326,7 +326,7 @@ default) or `:one`. You declare that by their dispatch keys:
 
 ## 6 :extra-conditions
 
-Please see [documentation for Filters](/doc/filters.md)
+Please see documentation for [Filters](/doc/filters.md)
 
 ## 7 :quote-marks
 
@@ -443,3 +443,9 @@ this is shorter:
 ```
 
 This also applies to `:extra-conditions`, `:joins` and `:cardinality`.
+
+## Advanced features
+
+### Lambda form for `:extra-conditions`
+
+Please see [dev.clj](/dev/src/dev.clj) for examples.
