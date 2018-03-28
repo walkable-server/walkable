@@ -416,7 +416,10 @@
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
            reversed-joins joins cardinality quote-marks sqlite-union]
-    :or   {quote-marks backticks}
+    :or   {quote-marks      backticks
+           extra-conditions {}
+           joins            {}
+           cardinality      {}}
     :as   input-schema}]
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
