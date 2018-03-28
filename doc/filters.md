@@ -16,15 +16,15 @@ zero or more "conditions" combined together using `:and` or `:or`
 Examples:
 
 ```clj
-;; column `person`.`foo`
+;; condition for column `person`.`foo`
 ;; operator `:nil?` which requires no arguments
 [:person/foo [:nil?]]
 
-;; column `person`.`name`
+;; condition for column `person`.`name`
 ;; operator `:like` which requires one argument
 [:person/name [:like "jon%"]]
 
-;; column `person`.`id`
+;; condition for column `person`.`id`
 ;; operator `:in` is supplied with three arguments
 [:person/id [:in 10 11 12]]
 ;; finally argument list will be flattened, so this is valid, too:
@@ -63,6 +63,7 @@ Arguments must be either string, number or column name (as namespaced
 keyword) like this:
 
 ```clj
+;; condition
 [:person/column-a [:< :person/column-b]]
 ```
 
@@ -70,21 +71,22 @@ keyword) like this:
 
 ```clj
 ;; Better looking, isn't it?
+;; condition
 {:table/column [:sql-operator zero-or-more-arguments]}
 ```
 
 Vector-style examples rewritten in map style:
 
 ```clj
-;; column `person`.`foo`
+;; condition for column `person`.`foo`
 ;; operator `:nil?` which requires no arguments
 {:person/foo [:nil?]}
 
-;; column `person`.`name`
+;; condition for column `person`.`name`
 ;; operator `:like` which requires one argument
 {:person/name [:like "jon%"]}
 
-;; column `person`.`id`
+;; condition for column `person`.`id`
 ;; operator `:in` is supplied with three arguments
 {:person/id [:in 10 11 12]}
 {:person/id [:in #{10 11 12}]}
@@ -104,20 +106,6 @@ each condition:
       {:person/yob [:< 1970]}]
 ```
 
-### 2.4 Use `:and` and `:or` to combine conditions of the same column
-
-```clj
-;; filters
-[:or {:person/yob [:< 1970]}
-     {:person/yob [:> 1980]}]
-;; the same as:
-{:person/yob [:or [:< 1970]
-                  [:> 1980]]}
-;; the same, vector style:
-[:person/yob [:or [:< 1970]
-                  [:> 1980]]]
-```
-
 ## 3. Filter sets:
 
 ```clj
@@ -130,7 +118,7 @@ SELECT ... WHERE `person`.`id` < 10
 ```
 
 ```clj
-;; two conditions combined with an `:and`
+;; filter set of two conditions combined with an `:and`
 [:and {:person/id [:in #{10 11 12}]}
       {:person/yob [:< 1970]}]
 ;; `:and` is implied. The above is the same as:
@@ -166,4 +154,50 @@ you can have many conditions nested in however complex combination of
                [:and condition-5 condition-6]]]]
 ```
 
-## 4 Extra-conditions vs supplied-conditions
+Use `:and` and `:or` to combine conditions of the same column
+
+```clj
+;; filter set with two conditions for `person`.`yob`
+[:or {:person/yob [:< 1970]}
+     {:person/yob [:> 1980]}]
+;; the same as:
+{:person/yob [:or [:< 1970]
+                  [:> 1980]]}
+;; the same, vector style:
+[:person/yob [:or [:< 1970]
+                  [:> 1980]]]
+```
+
+## 4 Using filters
+
+### 4.1 Using directly in queries
+
+```clj
+[(:people/all {:filters [:or {:person/name [:like "jon%"]}
+                             {:person/yob [:< 1970]}]})
+ [:person/name :person/yob]]
+```
+
+> This is called `supplied-conditions` in Walkable query builder
+  engine's source code.
+
+### 4.1 In `:extra-conditions` schema
+
+You may want to enforce filters for specific idents/joins:
+
+- For DRY reason: you don't want to retype the same filter set again
+  and again.
+
+- For security reason: once you define some constraints to limit what
+  the clients can access for an ident or join, they're free to play
+  with whatever left open to them.
+
+```clj
+;; schema
+{:extra-conditions {:people/all {:person/hidden [:= false]}
+;; any valid filter set will work
+                    :person/friends {:person/name
+                                     [:or
+                                      [:like "jon%"]
+                                      [:like "mary%"]]}}}
+```
