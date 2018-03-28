@@ -67,7 +67,9 @@ keyword) like this:
 [:person/column-a [:< :person/column-b]]
 ```
 
-### 2.2 Single condition, map style
+## 2 Condition, map style
+
+### 2.1 Single condition, map style
 
 ```clj
 ;; Better looking, isn't it?
@@ -92,7 +94,7 @@ Vector-style examples rewritten in map style:
 {:person/id [:in #{10 11 12}]}
 ```
 
-### 2.3 Map style, `:and` implied
+### 2.2 Map style, `:and` implied
 
 Using multiple condition in a condition map implies an `:and` between
 each condition:
