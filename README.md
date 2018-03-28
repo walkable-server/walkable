@@ -36,6 +36,7 @@ Basically you define your schema like this:
                     :person/by-id :person/id
                     ;; just select from `person` table without any constraints
                     :people/all "person"}
+ :columns          #{:person/name :person/yob}
  :extra-conditions {;; enforce some constraints whenever this join is asked for
                     :pet/owner [:and
                                 {:person/hidden [:= true]}
@@ -197,8 +198,8 @@ former syntax otherwise your client-side app will crash.
 ## Further reading
 
 - [About the query language](doc/query_language.md)
-- [Schema guide (WIP)](doc/schema.md)
-- [Filters (TBD)](doc/filters.md)
+- [Schema guide](doc/schema.md)
+- [Filters](doc/filters.md)
 - [Developing Walkable](doc/developing.md)
 - Please see the file [dev.clj](dev/src/dev.clj) for executable
 examples. Consult [config.edn](dev/resources/walkable_demo/config.edn)
@@ -226,7 +227,8 @@ Walkable comes with some optimizations:
   of final SQL query strings.
 
 - Reduce roundtrips between Clojure and SQL server by combining
-  similar queries introduced by the same om.next join query.
+  similar queries introduced by the same om.next join query. (aka N+1
+  problem)
 
 ## Limitation
 
@@ -235,8 +237,8 @@ Walkable comes with some optimizations:
   applications. If you can think of any pattern of doing it, please
   open an issue.
 
-- Walkable does not support async sql query runners at the moment, so
-it's a no go for nodejs.
+- Current version of Walkable does not support async sql query runners
+at the moment, so it's a no go for nodejs.
 
 ## Support
 
