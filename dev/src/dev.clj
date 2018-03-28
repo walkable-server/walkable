@@ -22,6 +22,7 @@
             [walkable-demo.handler.example :as example]
             [walkable.sql-query-builder :as sqb]))
 
+;; <<< Beginning of Duct framework helpers
 (def wrap-logger #'duct.database.sql.hikaricp/wrap-logger)
 
 ;; fix a bug in duct/hikari-cp module
@@ -66,7 +67,11 @@
   (e "DROP TABLE `foo`")
   )
 
-(defn run-print-query [& xs]
+;; End of Duct framework helpers >>>
+
+(defn run-print-query
+  "jdbc/query wrapped by println"
+  [& xs]
   (let [[q & args] (rest xs)]
     (println q)
     (println args))
@@ -79,7 +84,12 @@
 ;; eg mysql, postgresql
 (def sqlite-union true)
 
-;; simple join examples
+;; Simple join examples
+
+;; I named the primary columns "index" and "number" instead of "id" to
+;; ensure arbitrary columns will work.
+
+;; Example: join column living in source table
 #_
 (let [eg-1
       '[{[:farmer/by-id 1] [:farmer/number :farmer/name
@@ -94,9 +104,9 @@
            (sqb/compile-schema
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
-              :columns          [:cow/index
-                                 :cow/color
-                                 :farmer/cow-index
+              ;; columns already declared in :joins are not needed
+              ;; here
+              :columns          [:cow/color
                                  :farmer/number
                                  :farmer/name]
               :idents           {:farmer/by-id :farmer/number
@@ -109,6 +119,7 @@
                                  :farmer/cow   :one}})}
     eg-1))
 
+;; Example: join column living in target table
 #_
 (let [eg-1
       '[{[:kid/by-id 1] [:kid/number :kid/name
@@ -123,7 +134,7 @@
            (sqb/compile-schema
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
-              :columns          [:kid/number :kid/name :toy/index :toy/color :toy/owner-number]
+              :columns          [:kid/name :toy/index :toy/color]
               :idents           {:kid/by-id :kid/number
                                  :kids/all  "kid"}
               :extra-conditions {}
@@ -134,7 +145,11 @@
                                  :toy/owner :one}})}
     eg-1))
 
-;; filters and conditions example
+;; Example demonstrates:
+;; - filters & pagination (offset, limit, order-by) in query
+;; - join involving a join table
+;; - extra-conditions
+;; - derive-attribute plugin
 #_
 (let [eg-1
       '[{(:people/all {:filters  {:person/number [:< 10]}
@@ -144,6 +159,7 @@
          [:person/number :person/name
           {:person/pet [:pet/index
                         :pet/age
+                        ;; columns from join table work, too
                         :person-pet/adoption-year
                         :pet/color]}]}]
 
@@ -159,24 +175,17 @@
                         {:pet/owner [:person/name]}]}]}]
       parser
       example/pathom-parser]
-  (parser {;; extra env data, eg current user id provided by Ring session
-           :current-user   1
-
-           ::sqb/sql-db    (db)
+  (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
            (sqb/compile-schema
              ;; which columns are available in SQL table?
              {:quote-marks      quote-marks
               :sqlite-union     sqlite-union
-              :columns          [:person/number
-                                 :person/name
+              :columns          [:person/name
                                  :person/yob
                                  :person/hidden
-                                 :person-pet/person-number
-                                 :person-pet/pet-index
                                  :person-pet/adoption-year
-                                 :pet/index
                                  :pet/name
                                  :pet/yob
                                  :pet/color]
@@ -194,9 +203,10 @@
               :reversed-joins   {:pet/owner :person/pet}
               :cardinality      {:person/by-id :one
                                  :person/pet   :many}})}
+    ;; try eg-2, too
     eg-1))
 
-;; placeholder example
+;; Placeholder example
 #_
 (let [eg-1
       '[{:people/all
@@ -222,13 +232,7 @@
                                  :person/hidden
                                  :pet/name
                                  :pet/yob
-                                 :pet/color
-                                 ;; already declared in :joins so not needed here
-                                 ;; :person/number
-                                 ;; :person-pet/person-number
-                                 ;; :person-pet/pet-index
-                                 ;; :pet/index
-                                 ]
+                                 :pet/color]
               ;; extra columns required when an attribute is being asked for
               ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
               :required-columns {:pet/age    #{:pet/yob}
@@ -243,7 +247,37 @@
                                  :person/pet   :many}})}
     eg-1))
 
-;; self-join example
+;; Self-join example
+#_
+(let [eg-1
+      '[{:world/all
+         [:human/number :human/name
+          {:human/follow [:human/number
+                          :human/name
+                          :human/yob]}]}]
+      parser
+      example/pathom-parser]
+  (parser {::sqb/sql-db    (db)
+           ::sqb/run-query run-print-query
+           ::sqb/sql-schema
+           (sqb/compile-schema
+             {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
+              :columns          [:human/number :human/name :human/yob]
+              :required-columns {}
+              :idents           {:human/by-id :human/number
+                                 :world/all   "human"}
+              :extra-conditions {}
+              :joins            {:human/follow
+                                 [:human/number :follow/human-1 :follow/human-2 :human/number]}
+              :reversed-joins   {}
+              :cardinality      {:human/by-id        :one
+                                 :human/follow-stats :one
+                                 :human/follow       :many}})}
+    eg-1))
+
+;; :pseudo-columns example
+;; experimental - subject to change
 #_
 (let [eg-1
       '[{:world/all
@@ -266,12 +300,12 @@
               :idents           {:human/by-id :human/number
                                  :world/all   "human"}
               :extra-conditions {}
-              :joins            {;; technically :human/follow and :human/follow-stats are the same join
+              :joins            { ;; technically :human/follow and :human/follow-stats are the same join
                                  ;; but they have different cardinality
                                  [:human/follow :human/follow-stats]
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
-              :pseudo-columns   {;; using sub query as a column
+              :pseudo-columns   { ;; using sub query as a column
                                  :human/two    "(SELECT 2)"
                                  ;; using aggregate as a column
                                  :follow/count ["COUNT(?)" :follow/human-2]
