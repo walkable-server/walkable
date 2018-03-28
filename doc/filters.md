@@ -4,68 +4,9 @@ Filters are Walkable's DSL to describe conditions in SQL's `WHERE`
 clauses using pure Clojure data structure. A set of filters contains
 zero or more "conditions" combined together using `:and` or `:or`
 
-> Warning: this file is just brain dump atm.
+## 1 Single condition, vector style
 
-Todo:
- - add condition's argument section
- - extra-conditions vs supplied-conditions
- - table of built-in operators
- - how sql parameterization works
- - reorganize this file!!!
-
-## 1. Filter sets:
-
-```clj
-;; a single condition
-{:person/id [:< 10]}
-```
-
-```sql
-SELECT ... WHERE `person`.`id` < 10
-```
-
-```clj
-;; two conditions combined with an `:and`
-[:and {:person/id [:in #{10 11 12}]}
-      {:person/yob [:< 1970]}]
-;; `:and` is implied. The above is the same as:
-[{:person/id [:in #{10 11 12}]}
- {:person/yob [:< 1970]}]
-```
-
-```sql
-SELECT ...
-WHERE `person`.`id` IN (10, 11, 12)
-  AND `person`.`yob` < 1970
-```
-
-```clj
-;; `:or` is a valid combinator
-[:or {:person/name [:like "jon%"]}
-     {:person/name [:like "jan%"]}]
-```
-
-```sql
-SELECT ...
-WHERE `person`.`name` LIKE "jon%"
-   OR `person`.`name` LIKE "jan%"
-```
-
-you can have many conditions nested in however complex combination of
-`:and` and `:or`:
-
-```clj
-[:or [:and condition-1 condition-2]
-     [:and condition-3
-          [:or condition-4
-               [:and condition-5 condition-6]]]]
-```
-
-## 2. Anatomy of a condition
-
-The structure of a condition:
-
-### 2.1 Single condition, vector style
+### 1.1 Structure of a condition
 
 ```clj
 ;; structure
@@ -90,6 +31,39 @@ Examples:
 [:person/id [:in #{10 11 12}]]
 ;; -> using a Clojure set is helpful in this case
 ;; so duplications are removed
+```
+### 1.2 Operators
+
+Table of built-in operators
+
+|--------------+---------------------|
+| operator     | SQL equivalent      |
+|--------------+---------------------|
+| :nil?        | IS NULL             |
+| :not-nil?    | IS NOT              |
+| :=           | =                   |
+| :<           | <                   |
+| :>           | >                   |
+| :<=          | <=                  |
+| :>=          | >=                  |
+| :<>          | <>                  |
+| :like        | LIKE                |
+| :not=        | !=                  |
+| :not-like    | NOT LIKE            |
+| :between     | BETWEEN ? AND ?     |
+| :not-between | NOT BETWEEN ? AND ? |
+| :in          | IN (?, ?, ...)      |
+| :not-in      | NOT IN (?, ?, ...)  |
+|--------------+---------------------|
+
+
+### 1.3 Operators' arguments
+
+Arguments must be either string, number or column name (as namespaced
+keyword) like this:
+
+```clj
+[:person/column-a [:< :person/column-b]]
 ```
 
 ### 2.2 Single condition, map style
@@ -143,3 +117,53 @@ each condition:
 [:person/yob [:or [:< 1970]
                   [:> 1980]]]
 ```
+
+## 3. Filter sets:
+
+```clj
+;; a single condition
+{:person/id [:< 10]}
+```
+
+```sql
+SELECT ... WHERE `person`.`id` < 10
+```
+
+```clj
+;; two conditions combined with an `:and`
+[:and {:person/id [:in #{10 11 12}]}
+      {:person/yob [:< 1970]}]
+;; `:and` is implied. The above is the same as:
+[{:person/id [:in #{10 11 12}]}
+ {:person/yob [:< 1970]}]
+```
+
+```sql
+SELECT ...
+WHERE `person`.`id` IN (10, 11, 12)
+  AND `person`.`yob` < 1970
+```
+
+```clj
+;; `:or` is a valid combinator
+[:or {:person/name [:like "jon%"]}
+     {:person/name [:like "jan%"]}]
+```
+
+```sql
+SELECT ...
+WHERE `person`.`name` LIKE "jon%"
+   OR `person`.`name` LIKE "jan%"
+```
+
+you can have many conditions nested in however complex combination of
+`:and` and `:or`:
+
+```clj
+[:or [:and condition-1 condition-2]
+     [:and condition-3
+          [:or condition-4
+               [:and condition-5 condition-6]]]]
+```
+
+## 4 Extra-conditions vs supplied-conditions
