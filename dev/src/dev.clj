@@ -206,6 +206,32 @@
     ;; try eg-2, too
     eg-1))
 
+;; advanced filters example
+;; lambda form in :extra-conditions
+#_
+(let [eg-1
+      '[{:me [:person/number :person/name :person/yob]}]
+      parser
+      example/pathom-parser]
+  (parser { ;; extra env data, eg current user id provided by Ring session
+           :current-user 1
+
+           ::sqb/sql-db    (db)
+           ::sqb/run-query run-print-query
+           ::sqb/sql-schema
+           (sqb/compile-schema
+             ;; which columns are available in SQL table?
+             {:quote-marks      quote-marks
+              :sqlite-union     sqlite-union
+              :columns          [:person/number :person/name :person/yob]
+              ;; extra columns required when an attribute is being asked for
+              ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+              :idents           {:me "person"}
+              :extra-conditions {:me
+                                 (fn [{:keys [current-user] :as env}]
+                                   {:person/number [:= current-user]})}})}
+    eg-1))
+
 ;; Placeholder example
 #_
 (let [eg-1
