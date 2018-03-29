@@ -36,6 +36,7 @@ Examples:
 
 Table of built-in operators
 
+```txt
 |--------------+---------------------|
 | operator     | SQL equivalent      |
 |--------------+---------------------|
@@ -55,7 +56,7 @@ Table of built-in operators
 | :in          | IN (?, ?, ...)      |
 | :not-in      | NOT IN (?, ?, ...)  |
 |--------------+---------------------|
-
+```
 
 ### 1.3 Operators' arguments
 
