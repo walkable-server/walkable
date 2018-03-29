@@ -448,4 +448,8 @@ This also applies to `:extra-conditions`, `:joins` and `:cardinality`.
 
 ### Lambda form for `:extra-conditions`
 
+Instead of specifying a filters set for an ident or a join, you can
+use a function that returns such filters set. The function accepts
+`env` as its argument.
+
 Please see [dev.clj](/dev/src/dev.clj) for examples.

@@ -1,21 +1,202 @@
 (ns walkable.sql-query-builder.filters
   (:require [clojure.spec.alpha :as s]))
 
-(s/def ::operators
-  #{:nil? :not-nil?
-    := :< :> :<= :>= :<> :like
-    :not= :not-like
-    :between :not-between
-    :in :not-in})
+(defmulti operator? identity)
 
-(defn count-params
-  [operator]
-  (case operator
-    (:nil? :not-nil?) 0
-    (:= :< :> :<= :>= :like :not= :<> :!= :not-like) 1
-    (:between :not-between) 2
-    ;; default
-    nil))
+(defmethod operator? :default
+  [_k]
+  false)
+
+(defmulti disallow-no-column? identity)
+
+(defmethod disallow-no-column? :default
+  [_k]
+  true)
+
+(defmulti valid-params-count?
+  (fn [operator n] operator))
+
+(defmethod valid-params-count? :default
+  [_operator _n]
+  true)
+
+(defn parameterize-tuple [n]
+  (str
+    "("
+    (clojure.string/join ", "
+      (repeat n \?))
+    ")"))
+
+(defmulti parameterize-operator
+  (fn [operator column _params] operator))
+
+;; built-in operators
+
+;; nil?
+(defmethod operator? :nil?
+  [_k] true)
+
+(defmethod valid-params-count? :nil?
+  [_operator n] (= n 0))
+
+(defmethod parameterize-operator :nil?
+  [_operator column _params]
+  (str column " IS NULL"))
+
+;; not-nil?
+(defmethod operator? :not-nil?
+  [_k] true)
+
+(defmethod valid-params-count? :not-nil?
+  [_operator n] (= n 0))
+
+(defmethod parameterize-operator :not-nil?
+  [_operator column _params]
+  (str column " IS NOT NULL"))
+
+;; =
+(defmethod operator? :=
+  [_k] true)
+
+(defmethod valid-params-count? :=
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :=
+  [_operator column _params]
+  (str column " = ?"))
+
+;; <
+(defmethod operator? :<
+  [_k] true)
+
+(defmethod valid-params-count? :<
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :<
+  [_operator column _params]
+  (str column " < ?"))
+
+;; >
+(defmethod operator? :>
+  [_k] true)
+
+(defmethod valid-params-count? :>
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :>
+  [_operator column _params]
+  (str column " > ?"))
+
+;; <=
+(defmethod operator? :<=
+  [_k] true)
+
+(defmethod valid-params-count? :<=
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :<=
+  [_operator column _params]
+  (str column " <= ?"))
+
+;; >=
+(defmethod operator? :>=
+  [_k] true)
+
+(defmethod valid-params-count? :>=
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :>=
+  [_operator column _params]
+  (str column " >= ?"))
+
+;; <>
+(defmethod operator? :<>
+  [_k] true)
+
+(defmethod valid-params-count? :<>
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :<>
+  [_operator column _params]
+  (str column " <> ?"))
+
+;; like
+(defmethod operator? :like
+  [_k] true)
+
+(defmethod valid-params-count? :like
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :like
+  [_operator column _params]
+  (str column " LIKE ?"))
+
+;; not=
+(defmethod operator? :not=
+  [_k] true)
+
+(defmethod valid-params-count? :not=
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :not=
+  [_operator column _params]
+  (str column " != ?"))
+
+;; not-like
+(defmethod operator? :not-like
+  [_k] true)
+
+(defmethod valid-params-count? :not-like
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :not-like
+  [_operator column _params]
+  (str column  " NOT LIKE ?"))
+
+;; between
+(defmethod operator? :between
+  [_k] true)
+
+(defmethod valid-params-count? :between
+  [_operator n] (= n 2))
+
+(defmethod parameterize-operator :between
+  [_operator column _params]
+  (str column " BETWEEN ? AND ?"))
+
+;; not-between
+(defmethod operator? :not-between
+  [_k] true)
+
+(defmethod valid-params-count? :not-between
+  [_operator n] (= n 2))
+
+(defmethod parameterize-operator :not-between
+  [_operator column _params]
+  (str column " NOT BETWEEN ? AND ?"))
+
+;; in
+(defmethod operator? :in
+  [_k] true)
+
+;; - in can have any number of params
+
+(defmethod parameterize-operator :in
+  [_operator column params]
+  (str column " IN " (parameterize-tuple (count params))))
+
+;; not-in
+(defmethod operator? :not-in
+  [_k] true)
+
+;; - not-in can have any number of params
+
+(defmethod parameterize-operator :not-in
+  [_operator column params]
+  (str column " NOT IN " (parameterize-tuple (count params))))
+
+;; specs
+(s/def ::operators operator?)
 
 (defn namespaced-keyword?
   [x]
@@ -32,9 +213,9 @@
       (s/alt
         :params (s/* ::condition-value)
         :params (s/coll-of ::condition-value)))
-    #(if-let [n (count-params (:operator %))]
-       (= n (count (second (:params %))))
-       true)))
+    (fn [{:keys [operator params]}]
+      (valid-params-count? operator
+        (count (second params))))))
 
 (s/def ::conditions
   (s/or
@@ -48,15 +229,16 @@
 
 (defn combine
   [operator conditions]
-  (if (= 1 (count conditions))
-    conditions
-    (concat
-      ["("]
-      (interpose (if (= :or operator)
-                   " OR "
-                   " AND ")
-        conditions)
-      [")"])))
+  (let [conditions (remove nil? conditions)]
+    (if (= 1 (count conditions))
+      conditions
+      (concat
+        ["("]
+        (interpose (if (= :or operator)
+                     " OR "
+                     " AND ")
+          conditions)
+        [")"]))))
 
 (defn combination-match?
   ([k x]
@@ -77,7 +259,8 @@
 (s/def ::clauses
   (s/or
     :clauses (s/coll-of (s/cat
-                          :key #(and (keyword? %) (namespace %))
+                          :key #(or (and (keyword? %) (namespace %))
+                                  (= % :_))
                           :conditions ::conditions)
                :into [])
     :clauses (s/cat
@@ -88,43 +271,6 @@
   (and (vector? x)
     (= 2 (count x))
     (= :clauses (first x))))
-
-(defn parameterize-tuple [n]
-  (str
-    "("
-    (clojure.string/join ", "
-      (repeat n \?))
-    ")"))
-
-(defn parameterize-operator
-  [operator key params]
-  (case operator
-    :nil?
-    (str key " IS NULL")
-
-    :not-nil?
-    (str key " IS NOT NULL")
-
-    (:= :< :> :<= :>= :like :<> :!=)
-    (str key " " (name operator) " ?")
-
-    :not-like
-    (str key  " NOT LIKE ?")
-
-    :not=
-    (str key " != ?")
-
-    :between
-    (str key " BETWEEN ? AND ?")
-
-    :not-between
-    (str key " NOT BETWEEN ? AND ?")
-
-    :in
-    (str key " IN " (parameterize-tuple (count params)))
-
-    :not-in
-    (str key " NOT IN " (parameterize-tuple (count params)))))
 
 (declare process-multi)
 (declare process-clauses)
@@ -156,9 +302,11 @@
     (combination-match? :operator x)
     (let [{:keys [operator params]} x
           params                    (second params)]
-      {:condition (parameterize-operator operator
-                    (get keymap key) params)
-       :params    params})))
+      (when-not (and (= key :_)
+                  (disallow-no-column? operator))
+        {:condition (parameterize-operator operator
+                      (get keymap key) params)
+         :params    params}))))
 
 (defn parameterize
   [env clauses]
