@@ -184,7 +184,7 @@ Use `:and` and `:or` to combine conditions of the same column
 > This is called `supplied-conditions` in Walkable query builder
   engine's source code.
 
-### 4.1 In `:extra-conditions` schema
+### 4.2 In `:extra-conditions` schema
 
 You may want to enforce filters for specific idents/joins:
 
@@ -203,4 +203,13 @@ You may want to enforce filters for specific idents/joins:
                                      [:or
                                       [:like "jon%"]
                                       [:like "mary%"]]}}}
+```
+
+## 5 Define your own operator
+
+There are two `multimethod`s in `walkable.sql-query-builder.filters`
+namespace you must implement in order to define your own operator.
+
+```clj
+(require '[walkable.sql-query-builder.filters :as sqbf])
 ```
