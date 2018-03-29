@@ -229,15 +229,16 @@
 
 (defn combine
   [operator conditions]
-  (if (= 1 (count conditions))
-    conditions
-    (concat
-      ["("]
-      (interpose (if (= :or operator)
-                   " OR "
-                   " AND ")
-        conditions)
-      [")"])))
+  (let [conditions (remove nil? conditions)]
+    (if (= 1 (count conditions))
+      conditions
+      (concat
+        ["("]
+        (interpose (if (= :or operator)
+                     " OR "
+                     " AND ")
+          conditions)
+        [")"]))))
 
 (defn combination-match?
   ([k x]
