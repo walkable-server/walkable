@@ -301,9 +301,11 @@
     (combination-match? :operator x)
     (let [{:keys [operator params]} x
           params                    (second params)]
-      {:condition (parameterize-operator operator
-                    (get keymap key) params)
-       :params    params})))
+      (when-not (and (= key :_)
+                  (disallow-no-column? operator))
+        {:condition (parameterize-operator operator
+                      (get keymap key) params)
+         :params    params}))))
 
 (defn parameterize
   [env clauses]
