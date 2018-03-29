@@ -7,6 +7,12 @@
   [_k]
   false)
 
+(defmulti allow-no-column? identity)
+
+(defmethod allow-no-column? :default
+  [_k]
+  false)
+
 (defmulti valid-params-count?
   (fn [operator n] operator))
 
