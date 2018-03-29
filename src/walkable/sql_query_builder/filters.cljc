@@ -258,7 +258,8 @@
 (s/def ::clauses
   (s/or
     :clauses (s/coll-of (s/cat
-                          :key #(and (keyword? %) (namespace %))
+                          :key #(or (and (keyword? %) (namespace %))
+                                  (= % :_))
                           :conditions ::conditions)
                :into [])
     :clauses (s/cat
