@@ -318,6 +318,19 @@
     (combine combinator (map #(process-clauses env %) x))
     (process-clauses env x)))
 
+(defn raw-string+params
+  [operator column params]
+  (if (or (string? column) (= key :_))
+    {:raw-string (parameterize-operator operator column params)
+     :params     params}
+    (let [[raw-column & column-params] column
+          raw-string-placeholder       (parameterize-operator operator "%s" params)
+          [s1 s2]                      (string/split raw-string-placeholder #"%s")
+          n                            (->> s1 seq (filter #(= \? %)) count)
+          [p1 p2]                      (split-at n params)]
+      {:raw-string (str s1 raw-column s2)
+       :params     (concat p1 column-params p2)})))
+
 (defn process-clauses
   [{:keys [key keymap] :as env} x]
   (cond
