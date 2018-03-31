@@ -201,6 +201,29 @@
   [_operator column params]
   (str column " NOT IN " (parameterize-tuple (count params))))
 
+(defn mask-unsafe-params
+  "Helper function for inline-safe-params. Receives two arguments:
+  - params: a vector of condition params
+  - column-names: a map of namespaced keywords to their column names
+
+  Returns two lists:
+  - masked: the original params list with unsafe one replaced with '?'
+  - unmasked: the new params list with only unsafe ones."
+  [params column-names]
+  (-> (fn [result x]
+            (if (or (number? x)
+                  (and (namespaced-keyword? x)
+                    (get column-names x)))
+              (-> result
+                (update  :masked conj
+                  (if (keyword? x)
+                    (get column-names x)
+                    x)))
+              (-> result
+                (update  :masked conj \?)
+                (update  :unmasked conj x))))
+    (reduce {:masked [] :unmasked []} params)))
+
 ;; specs
 (s/def ::operators operator?)
 
