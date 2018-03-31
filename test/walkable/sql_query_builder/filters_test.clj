@@ -1,7 +1,7 @@
 (ns walkable.sql-query-builder.filters-test
   (:require [walkable.sql-query-builder.filters :as sut]
             [clojure.spec.alpha :as s]
-            [clojure.test :as t :refer [deftest is]]))
+            [clojure.test :as t :refer [deftest testing is]]))
 
 (deftest parameterize-tuple-tests
   (is (= (sut/parameterize-tuple 0)
@@ -66,27 +66,40 @@
                      :p/b "p.b"
                      :p/c "p.c"}}
            (s/conform ::sut/clauses {:p/c [:= 7]
-                                     :p/b [:in #{6 4 7 2}]
+                                     :p/b [:in #{6 "a" 7 "b"}]
                                      :p/a [:> 5]}))
         '("("
-          {:condition "p.c = ?", :params [7]}
+          {:condition "p.c = 7", :params []}
           " AND "
-          {:condition "p.b IN (?, ?, ?, ?)", :params #{7 4 6 2}}
+          {:condition "p.b IN (7, 6, ?, ?)", :params ["a" "b"]}
           " AND "
-          {:condition "p.a > ?", :params [5]} ")"))))
+          {:condition "p.a > 5", :params []} ")"))))
 
 (deftest parameterize-tests
-  (is (= (sut/parameterize
-           {:key    nil
-            :keymap {:person/number "p.n"}}
-           [#:person{:number [:= 2]}])
-        '["p.n = ?" (2)]))
-  (is (= (sut/parameterize
-           {:key    nil
-            :keymap {:person/number "p.n"}}
-           [:or [#:person{:number [:= 2]}]
-            [#:person{:number [:= 3]}]])
-        '["(p.n = ? OR p.n = ?)" (2 3)]))
+  (testing "parameterize with unsafe params"
+   (is (= (sut/parameterize
+             {:key    nil
+              :keymap {:person/number "p.n"}}
+             [#:person{:number [:= "a"]}])
+          ["p.n = ?" ["a"]])))
+  (testing "parameterize with safe params"
+    (is (= (sut/parameterize
+             {:key    nil
+              :keymap {:person/number "p.n"}}
+             [#:person{:number [:= 2]}])
+          ["p.n = 2" []]))
+    (is (= (sut/parameterize
+             {:key    nil
+              :keymap {:person/number "p.n"
+                       :person/value  "p.v"}}
+             [#:person{:number [:= :person/value]}])
+          ["p.n = p.v" []]))
+    (is (= (sut/parameterize
+             {:key    nil
+              :keymap {:person/number "p.n"}}
+             [:or [#:person{:number [:= 2]}]
+              [#:person{:number [:= 3]}]])
+          ["(p.n = 2 OR p.n = 3)" []])))
   (is (= (sut/parameterize
            {:key    nil
             :keymap {:p/a "p.a"
@@ -97,8 +110,8 @@
              {:p/c [:= 7]}]
             [{:p/a [:= 11] :p/b [[[:= 222]]]}
              {:p/c [:or  [:= -3] [:= -2]]}]])
-        ["(((p.a = ? AND p.b = ?) AND p.c = ?) OR ((p.a = ? AND p.b = ?) AND (p.c = ? OR p.c = ?)))"
-         '(9 2 7 11 222 -3 -2)])))
+        ["(((p.a = 9 AND p.b = 2) AND p.c = 7) OR ((p.a = 11 AND p.b = 222) AND (p.c = -3 OR p.c = -2)))"
+         []])))
 
 (deftest ->order-by-string-tests
   (is (= (sut/->order-by-string {:person/name "p.n" :person/age "p.a"}
