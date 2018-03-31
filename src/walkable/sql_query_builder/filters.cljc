@@ -350,16 +350,16 @@
 
     (combination-match? :operator x)
     (let [{:keys [operator params]} x
-          params                    (second params)]
-      (when-not (and (= key :_)
-                  (disallow-no-column? operator))
+          params                    (second params)
+          column                    (get keymap key)]
+      (when (and (or (= key :_) column)
+              (not (and (= key :_)
+                     (disallow-no-column? operator))))
         (->> {:raw-string :condition}
           (set/rename-keys
             (inline-safe-params
-              {:raw-string   (parameterize-operator operator
-                               (get keymap key) params)
-               :params       params
-               :column-names keymap})))))))
+              (assoc (raw-string+params operator column params)
+                :column-names keymap))))))))
 
 (defn parameterize
   [env clauses]
