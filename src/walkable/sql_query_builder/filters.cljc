@@ -1,6 +1,10 @@
 (ns walkable.sql-query-builder.filters
   (:require [clojure.spec.alpha :as s]))
 
+(defn namespaced-keyword?
+  [x]
+  (and (keyword? x) (namespace x)))
+
 (defmulti operator? identity)
 
 (defmethod operator? :default
@@ -197,10 +201,6 @@
 
 ;; specs
 (s/def ::operators operator?)
-
-(defn namespaced-keyword?
-  [x]
-  (and (keyword? x) (namespace x)))
 
 (s/def ::condition-value
   #(or (number? %) (string? %) (boolean? %) (namespaced-keyword? %)))
