@@ -1,5 +1,11 @@
 (ns walkable.sql-query-builder.filters
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]
+            [clojure.set :as set]))
+
+(defn namespaced-keyword?
+  [x]
+  (and (keyword? x) (namespace x)))
 
 (defmulti operator? identity)
 
@@ -195,12 +201,42 @@
   [_operator column params]
   (str column " NOT IN " (parameterize-tuple (count params))))
 
+(defn mask-unsafe-params
+  "Helper function for inline-safe-params. Receives two arguments:
+  - params: a vector of condition params
+  - column-names: a map of namespaced keywords to their column names
+
+  Returns two lists:
+  - masked: the original params list with unsafe one replaced with '?'
+  - unmasked: the new params list with only unsafe ones."
+  [params column-names]
+  (-> (fn [result x]
+            (if (or (number? x)
+                  (and (namespaced-keyword? x)
+                    (get column-names x)))
+              (-> result
+                (update  :masked conj
+                  (if (keyword? x)
+                    (get column-names x)
+                    x)))
+              (-> result
+                (update  :masked conj \?)
+                (update  :unmasked conj x))))
+    (reduce {:masked [] :unmasked []} params)))
+
+(defn inline-safe-params
+  "Replaces '?' placeholders in a raw string with inlined values if
+  the value is of type `number?` or is a valid column name."
+  [{:keys [raw-string params column-names]}]
+  (let [{:keys [masked unmasked]} (mask-unsafe-params params column-names)]
+    {:params     unmasked
+     :raw-string (apply str
+                   (interleave
+                     (string/split raw-string #"\?")
+                     (conj masked nil)))}))
+
 ;; specs
 (s/def ::operators operator?)
-
-(defn namespaced-keyword?
-  [x]
-  (and (keyword? x) (namespace x)))
 
 (s/def ::condition-value
   #(or (number? %) (string? %) (boolean? %) (namespaced-keyword? %)))
@@ -304,9 +340,13 @@
           params                    (second params)]
       (when-not (and (= key :_)
                   (disallow-no-column? operator))
-        {:condition (parameterize-operator operator
-                      (get keymap key) params)
-         :params    params}))))
+        (->> {:raw-string :condition}
+          (set/rename-keys
+            (inline-safe-params
+              {:raw-string   (parameterize-operator operator
+                               (get keymap key) params)
+               :params       params
+               :column-names keymap})))))))
 
 (defn parameterize
   [env clauses]
