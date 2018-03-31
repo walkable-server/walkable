@@ -15,6 +15,13 @@
   (is (= (sut/mask-unsafe-params [:a/b "x" :c/d 2 3 "y"] {:a/b "a.b" :c/d "c.d"})
         {:masked ["a.b" \? "c.d" 2 3 \?], :unmasked ["x" "y"]})))
 
+(deftest inline-safe-params-test
+  (is (= (sut/inline-safe-params
+         {:raw-string   "a = ? AND b = ? AND c = ? OR d > ?"
+          :params       [:a/b "d" :c/d 2]
+          :column-names {:a/b "a.b" :c/d "c.d"}})
+      {:params ["d"], :raw-string "a = a.b AND b = ? AND c = c.d OR d > 2"})))
+
 (deftest conform-conditions-tests
   (is (= (s/conform ::sut/conditions [:nil?])
         [:condition {:operator :nil?, :params [:params []]}]))
