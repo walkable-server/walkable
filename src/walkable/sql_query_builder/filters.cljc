@@ -340,9 +340,13 @@
           params                    (second params)]
       (when-not (and (= key :_)
                   (disallow-no-column? operator))
-        {:condition (parameterize-operator operator
-                      (get keymap key) params)
-         :params    params}))))
+        (->> {:raw-string :condition}
+          (set/rename-keys
+            (inline-safe-params
+              {:raw-string   (parameterize-operator operator
+                               (get keymap key) params)
+               :params       params
+               :column-names keymap})))))))
 
 (defn parameterize
   [env clauses]
