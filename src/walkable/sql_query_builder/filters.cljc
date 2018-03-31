@@ -224,6 +224,17 @@
                 (update  :unmasked conj x))))
     (reduce {:masked [] :unmasked []} params)))
 
+(defn inline-safe-params
+  "Replaces '?' placeholders in a raw string with inlined values if
+  the value is of type `number?` or is a valid column name."
+  [{:keys [raw-string params column-names]}]
+  (let [{:keys [masked unmasked]} (mask-unsafe-params params column-names)]
+    {:params     unmasked
+     :raw-string (apply str
+                   (interleave
+                     (string/split raw-string #"\?")
+                     (conj masked nil)))}))
+
 ;; specs
 (s/def ::operators operator?)
 
