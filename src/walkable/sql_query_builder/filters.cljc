@@ -1,5 +1,7 @@
 (ns walkable.sql-query-builder.filters
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]
+            [clojure.set :as set]))
 
 (defn namespaced-keyword?
   [x]
