@@ -306,8 +306,11 @@
 ;; experimental - subject to change
 #_
 (let [eg-1
-      '[{:world/all
+      ;; use pseudo-columns in in filters!
+      '[{(:world/all {:filters {:human/age [:= 38]}})
          [:human/number :human/name :human/two
+          ;; use pseudo-columns in in filters!
+          :human/age
           ;; see :pseudo-columns below
           {:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
@@ -332,6 +335,7 @@
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
               :pseudo-columns   { ;; using sub query as a column
+                                 :human/age ["(? - ?)" 2018 :human/yob]
                                  :human/two    "(SELECT 2)"
                                  ;; using aggregate as a column
                                  :follow/count ["COUNT(?)" :follow/human-2]
