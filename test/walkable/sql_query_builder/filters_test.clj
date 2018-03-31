@@ -11,6 +11,10 @@
   (is (= (sut/parameterize-tuple 5)
         "(?, ?, ?, ?, ?)")))
 
+(deftest mask-unsafe-params-test
+  (is (= (sut/mask-unsafe-params [:a/b "x" :c/d 2 3 "y"] {:a/b "a.b" :c/d "c.d"})
+        {:masked ["a.b" \? "c.d" 2 3 \?], :unmasked ["x" "y"]})))
+
 (deftest conform-conditions-tests
   (is (= (s/conform ::sut/conditions [:nil?])
         [:condition {:operator :nil?, :params [:params []]}]))
