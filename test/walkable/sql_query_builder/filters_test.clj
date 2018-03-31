@@ -59,6 +59,18 @@
                                                               [:condition {:operator :=,
                                                                            :params [:params [-2]]}]]}]]}])))
 
+(deftest raw-string+params-test
+  (is (= (with-redefs [sut/parameterize-operator (fn [_operator column params]
+                                                   (str "? AND ? " column " ?"))]
+           (sut/raw-string+params :mock "`a`.`b`" [1 "a" 2]))
+        {:raw-string "? AND ? `a`.`b` ?", :params [1 "a" 2]}))
+  (is (= (with-redefs [sut/parameterize-operator (fn [_operator column params]
+                                                   (str "? AND ? " column " ?"))]
+           (sut/raw-string+params :mock
+             ["CONCAT(?, ?, ?)" :a/b "x" 99]
+             [1 "y" 2]))
+        {:raw-string "? AND ? CONCAT(?, ?, ?) ?", :params [1 "y" :a/b "x" 99 2]})))
+
 (deftest process-clauses-tests
   (is (= (sut/process-clauses
            {:key    nil
