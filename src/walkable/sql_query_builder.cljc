@@ -566,13 +566,18 @@
 
 (defn parameterize-all-selection
   [env columns-to-query]
-  (let [xs (process-selection env columns-to-query)]
-    [(->> xs
-       (map (fn with-as [{:keys [selection alias]}]
-              (str selection " AS " alias)))
-       (clojure.string/join ", "))
-
-     (apply concat (map :selection-params xs))]))
+  (let [xs           (process-selection env columns-to-query)
+        s            (->> xs
+                       (map (fn with-as [{:keys [selection alias]}]
+                              (str selection " AS " alias)))
+                       (clojure.string/join ", "))
+        params       (apply concat (map :selection-params xs))
+        column-names (-> env ::sql-schema ::column-names)]
+    (->> (filters/inline-safe-params
+           {:raw-string   s
+            :params       params
+            :column-names column-names})
+      ((juxt :raw-string :params)))))
 
 (defn process-all-params
   "Replaces any keyword found in all-params with their corresponding
