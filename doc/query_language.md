@@ -229,7 +229,16 @@ itself is an efficient way to do it.
 What's a dispatch key? Let's learn to recognize them through some
 examples:
 
-Todo: examples of key -> dispatch key
+```
+|-------------------+---------------+---------------|
+| key               | type          | dispatch-key  |
+|-------------------+---------------+---------------|
+| :people/all       | keyword ident | :people/all   |
+| [:person/by-id 1] | vector ident  | :person/by-id |
+| :person/pets      | join          | :human/pets   |
+|-------------------+---------------+---------------|
+
+```
 
 ### 5. Parameters
 
