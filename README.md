@@ -1,5 +1,10 @@
 # Walkable
 
+![Walkable logo](doc/walkable.png)
+
+Everything you need from an SQL database should be within walking
+distance.
+
 > Bad programmers worry about the code. Good programmers worry about
 data structures and their relationships.
 > - Linus Torvalds
@@ -9,11 +14,6 @@ data structures and their relationships.
   self-evident. Data structures, not algorithms, are central to
   programming.
 > - Rob Pike
-
-![Walkable logo](doc/walkable.png)
-
-Everything you need from an SQL database should be within walking
-distance.
 
 Walkable is a serious way to fetch data from SQL for Clojure:
 Datomic/om.next pull syntax, Clojure flavored filtering and more.
