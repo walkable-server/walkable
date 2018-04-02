@@ -207,8 +207,52 @@ You may want to enforce filters for specific idents/joins:
 
 ## 5 Define your own operator
 
-There are two `multimethod`s in `walkable.sql-query-builder.filters`
-namespace you must implement in order to define your own operator.
+There are some `multimethod`s in `walkable.sql-query-builder.filters`
+namespace you need implement in order to define your own
+operator. They are: `operator?` (mundane), `parameterize-operator`
+(mundane), `valid-params-count?` (optional) and `disallow-no-column?`
+(optional).
+
+This is how the built-in operator `:in` was defined:
+
+```clj
+;; in
+(defn parameterize-tuple [n]
+  (str
+    "("
+    (clojure.string/join ", "
+      (repeat n \?))
+    ")"))
+
+(defmethod operator? :in
+  [_k] true)
+
+(defmethod parameterize-operator :in
+  [_operator column params]
+  (str column " IN " (parameterize-tuple (count params))))
+```
+
+This is how the built-in operator `:=` was defined:
+```clj
+(defmethod operator? :=
+  [_k] true)
+
+(defmethod valid-params-count? :=
+  [_operator n] (= n 1))
+
+(defmethod parameterize-operator :=
+  [_operator column _params]
+  (str column " = ?"))
+```
+
+As you can see, the `:in` operator can work with any number of
+parameters, hence it doesn't need to implement `valid-params-count?`
+multimethod (which returs `true` by default). In contrast, the `:=`
+operator requires exactly one parameter, hence it must check if the
+parameter count equals `1`.
+
+
+todo: explain `disallow-no-column?`
 
 ```clj
 (require '[walkable.sql-query-builder.filters :as sqbf])
