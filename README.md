@@ -36,6 +36,15 @@ app without worrying about SQL injection.
 
 You can learn about the above query language [here](doc/query_language.md)
 
+## Walkable is NOT about om.next
+
+People may have the impression that Walkable (and Pathom) is specific
+to om.next. That is NOT the case! Walkable requires a query language
+that is expressive and based off data structure. Om.next query
+language happens to satisfy that.
+
+Walkable's goal is become the ultimate SQL library for Clojure.
+
 ## Overview
 
 Basically you define your schema like this:
