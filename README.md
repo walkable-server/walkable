@@ -122,7 +122,8 @@ To be more specific, anyone at any level of enthusiasm:
 
  - Any Clojure developers who need to pull data from an SQL database
    (maybe for a web/mobile app, maybe for doing some serious
-   calculation, maybe just to migrate away to Datomic :D )
+   calculation, maybe just to migrate away to Datomic :D ) [todo:
+   link to comparison with other sql libraries]
 
  - Clojure enthusiasts who have happen to have ORM-powered apps (ie
    Korma, Django, Rails, most PHP systems, etc.) in production but
@@ -132,7 +133,9 @@ To be more specific, anyone at any level of enthusiasm:
  - Clojure extremists who use SQL and think Clojure must be used in
    both backend side and frontend side, and the two sides must talk to
    each other using EDN data full of namespaced keywords instead of
-   some string-based query language like GraphQL.
+   some string-based query language like GraphQL. Think not only 
+   om.next/fulcro but also reframe/reagent, hoplon, rum/prum, keechma,
+   qlkit, quiescent etc.
 
 ## Installation
 
