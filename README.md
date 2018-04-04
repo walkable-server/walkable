@@ -209,15 +209,7 @@ this:
 ;; => [{:id 1, :color "red"} {:id 2, :color "blue"} ...]
 ```
 
-### Note on examples' query params syntax for om.next users
-
-Walkable works with both `[({:k subquery} params)]` and `[{(:k
-params) subquery}]` syntax but in the examples I always use the later
-due to my personal preference. However it's only supported as of fulcro
-2.2.1. If you're using om.next or older fulcro, you must use the
-former syntax otherwise your client-side app will crash.
-
-## Further reading
+## Documentation
 
 - [About the query language](doc/query_language.md)
 - [Schema guide](doc/schema.md)
