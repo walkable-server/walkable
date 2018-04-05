@@ -120,6 +120,48 @@
                                  :farmer/cow   :one}})}
     eg-1))
 
+;; the same above, but using async version
+#_
+(let [eg-1
+      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
+                            {:farmer/cow [:cow/index :cow/color]}]}]
+
+      parser
+      (p/async-parser
+        {::p/plugins
+         [(p/env-plugin
+            {::p/reader
+             [sqb/async-pull-entities p/map-reader]})]})]
+  (async/go
+    (println "final result"
+      (<! (parser {::sqb/sql-db    (db)
+                   ::sqb/run-query (fn [db q]
+                                     (let [c (promise-chan)]
+                                       (async/go
+                                         (let [r (run-print-query db q)]
+                                           ;; (println "back from sql: " r)
+                                           (>! c r)))
+                                       c))
+
+                   ::sqb/sql-schema
+                   (sqb/compile-schema
+                     {:quote-marks      quote-marks
+                      :sqlite-union     sqlite-union
+                      ;; columns already declared in :joins are not needed
+                      ;; here
+                      :columns          [:cow/color
+                                         :farmer/number
+                                         :farmer/name]
+                      :idents           {:farmer/by-id :farmer/number
+                                         :farmers/all  "farmer"}
+                      :extra-conditions {}
+                      :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
+                      :reversed-joins   {:cow/owner :farmer/cow}
+                      :cardinality      {:farmer/by-id :one
+                                         :cow/owner    :one
+                                         :farmer/cow   :one}})}
+            eg-1)))))
+
 ;; Example: join column living in target table
 #_
 (let [eg-1
