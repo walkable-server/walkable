@@ -17,6 +17,7 @@
             [walkable-demo.handler.example :refer [pathom-parser]]
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
+            [clojure.core.async :as async :refer [go-loop >! <! chan to-chan promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable-demo.handler.example :as example]
