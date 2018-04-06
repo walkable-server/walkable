@@ -84,6 +84,22 @@
 ;; eg mysql, postgresql
 (def sqlite-union true)
 
+(def ^{:doc "Simple walkable sql resolver"}
+  parser
+  (p/parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/pull-entities p/map-reader]})]}))
+
+(def ^{:doc "Simple walkable sql resolver. Async version"}
+  async-parser
+  (p/async-parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/async-pull-entities p/map-reader]})]}))
+
 ;; Simple join examples
 
 ;; I named the primary columns "index" and "number" instead of "id" to
