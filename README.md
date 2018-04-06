@@ -16,7 +16,7 @@ data structures and their relationships.
 > - Linus Torvalds
 
 Walkable is a serious way to fetch data from SQL for Clojure:
-Datomic/om.next pull syntax, Clojure flavored filtering and more.
+Datomic® pull syntax, Clojure flavored filtering and more.
 
 [![Build Status](https://travis-ci.org/walkable-server/walkable.svg?branch=master)](https://travis-ci.org/walkable-server/walkable)
 
@@ -221,7 +221,7 @@ for SQL migrations for those examples.
 
 ## Special thanks to:
 
- - Rich Hickey & Cognitect team for Clojure and Datomic
+ - Rich Hickey & Cognitect™ team for Clojure and Datomic®
 
  - David Nolen for bringing many fresh ideas to the community including om.next
 
