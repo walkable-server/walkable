@@ -20,7 +20,6 @@
             [clojure.core.async :as async :refer [go-loop >! <! chan to-chan promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
-            [walkable-demo.handler.example :as example]
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
