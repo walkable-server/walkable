@@ -263,3 +263,5 @@ clojurians slack channel. I'm also on `#fulcro` and
 ## Legal
 
 Copyright © 2018 Hoàng Minh Thắng
+
+Datomic® is a registered trademark of Cognitect, Inc. 
