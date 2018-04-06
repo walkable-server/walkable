@@ -17,9 +17,9 @@
             [walkable-demo.handler.example :refer [pathom-parser]]
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
+            [clojure.core.async :as async :refer [go-loop >! <! chan to-chan promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
-            [walkable-demo.handler.example :as example]
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
@@ -77,12 +77,37 @@
     (println args))
   (apply jdbc/query xs))
 
+(defn async-run-print-query
+  [db q]
+  (let [c (promise-chan)]
+    (async/go
+      (let [r (run-print-query db q)]
+        ;; (println "back from sql: " r)
+        (>! c r)))
+    c))
+
 ;; use sqb/quotation-marks if you use postgresql
 (def quote-marks sqb/backticks)
 
 ;; set to false if you use anything else but sqlite
 ;; eg mysql, postgresql
 (def sqlite-union true)
+
+(def ^{:doc "Simple walkable sql resolver"}
+  parser
+  (p/parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/pull-entities p/map-reader]})]}))
+
+(def ^{:doc "Simple walkable sql resolver. Async version"}
+  async-parser
+  (p/async-parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/async-pull-entities p/map-reader]})]}))
 
 ;; Simple join examples
 
@@ -93,10 +118,7 @@
 #_
 (let [eg-1
       '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/cow [:cow/index :cow/color]}]}]
-
-      parser
-      example/pathom-parser]
+                            {:farmer/cow [:cow/index :cow/color]}]}]]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
 
@@ -119,14 +141,41 @@
                                  :farmer/cow   :one}})}
     eg-1))
 
+;; the same above, but using async version
+#_
+(let [eg-1
+      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
+                            {:farmer/cow [:cow/index :cow/color]}]}]]
+  (async/go
+    (println "final result"
+      (<! (async-parser
+            {::sqb/sql-db    (db)
+             ::sqb/run-query async-run-print-query
+
+             ::sqb/sql-schema
+             (sqb/compile-schema
+               {:quote-marks      quote-marks
+                :sqlite-union     sqlite-union
+                ;; columns already declared in :joins are not needed
+                ;; here
+                :columns          [:cow/color
+                                   :farmer/number
+                                   :farmer/name]
+                :idents           {:farmer/by-id :farmer/number
+                                   :farmers/all  "farmer"}
+                :extra-conditions {}
+                :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
+                :reversed-joins   {:cow/owner :farmer/cow}
+                :cardinality      {:farmer/by-id :one
+                                   :cow/owner    :one
+                                   :farmer/cow   :one}})}
+            eg-1)))))
+
 ;; Example: join column living in target table
 #_
 (let [eg-1
       '[{[:kid/by-id 1] [:kid/number :kid/name
-                         {:kid/toy [:toy/index :toy/color]}]}]
-
-      parser
-      example/pathom-parser]
+                         {:kid/toy [:toy/index :toy/color]}]}]]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
 
@@ -172,9 +221,7 @@
                         :pet/age
                         :pet/color
                         :person-pet/adoption-year
-                        {:pet/owner [:person/name]}]}]}]
-      parser
-      example/pathom-parser]
+                        {:pet/owner [:person/name]}]}]}]]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
@@ -210,9 +257,7 @@
 ;; lambda form in :extra-conditions
 #_
 (let [eg-1
-      '[{:me [:person/number :person/name :person/yob]}]
-      parser
-      example/pathom-parser]
+      '[{:me [:person/number :person/name :person/yob]}]]
   (parser { ;; extra env data, eg current user id provided by Ring session
            :current-user 1
 
@@ -236,15 +281,19 @@
 #_
 (let [eg-1
       '[{:people/all
-         [{:ph/info [:person/age :person/name]}
+         [{:ph/info [:person/yob :person/name]}
           {:person/pet [:pet/index
-                        :pet/age
+                        :pet/yob
                         :pet/color]}
           {:ph/deep [{:ph/nested [{:ph/play [{:person/pet [:pet/index
-                                                           :pet/age
+                                                           :pet/yob
                                                            :pet/color]}]}]}]}]}]
       parser
-      example/pathom-parser]
+      (p/parser
+        {::p/plugins
+         [(p/env-plugin
+            {::p/reader
+             [sqb/pull-entities p/env-placeholder-reader p/map-reader]})]})]
   (parser {::p/placeholder-prefixes #{"ph"}
            ::sqb/sql-db             (db)
            ::sqb/run-query          run-print-query
@@ -280,9 +329,7 @@
          [:human/number :human/name
           {:human/follow [:human/number
                           :human/name
-                          :human/yob]}]}]
-      parser
-      example/pathom-parser]
+                          :human/yob]}]}]]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
@@ -315,9 +362,7 @@
           {:human/follow-stats [:follow/count]}
           {:human/follow [:human/number
                           :human/name
-                          :human/yob]}]}]
-      parser
-      example/pathom-parser]
+                          :human/yob]}]}]]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
