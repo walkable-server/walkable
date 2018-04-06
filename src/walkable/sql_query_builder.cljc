@@ -813,17 +813,18 @@
         (go (let [entities                       (<! entities-ch)
                   join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
               (>! entities-with-join-children-data-ch
-                (for [e entities]
-                  (let [child-joins
-                        (into {}
-                          (for [join-child join-children]
-                            (let [j             (:dispatch-key join-child)
-                                  source-column (get source-columns j)
-                                  parent-id     (get e source-column)
-                                  children      (get-in join-children-data-by-join-key
-                                                  [join-child parent-id])]
-                              [join-child children])))]
-                    (merge e child-joins))))))
+                (into {}
+                  (for [e entities]
+                    (let [child-joins
+                          (into {}
+                            (for [join-child join-children]
+                              (let [j             (:dispatch-key join-child)
+                                    source-column (get source-columns j)
+                                    parent-id     (get e source-column)
+                                    children      (get-in join-children-data-by-join-key
+                                                    [join-child parent-id])]
+                                [join-child children])))]
+                      (merge e child-joins)))))))
 
         (let [result-chan (promise-chan)]
           (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
