@@ -43,7 +43,7 @@ to om.next. That is NOT the case! Walkable requires a query language
 that is expressive and based off data structure. Om.next query
 language happens to satisfy that.
 
-Walkable's goal is become the ultimate SQL library for Clojure.
+Walkable's goal is to become the ultimate SQL library for Clojure.
 
 ## Overview
 
