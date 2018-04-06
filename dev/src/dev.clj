@@ -77,6 +77,15 @@
     (println args))
   (apply jdbc/query xs))
 
+(defn async-run-print-query
+  [db q]
+  (let [c (promise-chan)]
+    (async/go
+      (let [r (run-print-query db q)]
+        ;; (println "back from sql: " r)
+        (>! c r)))
+    c))
+
 ;; use sqb/quotation-marks if you use postgresql
 (def quote-marks sqb/backticks)
 
@@ -141,13 +150,7 @@
     (println "final result"
       (<! (async-parser
             {::sqb/sql-db    (db)
-             ::sqb/run-query (fn [db q]
-                               (let [c (promise-chan)]
-                                 (async/go
-                                   (let [r (run-print-query db q)]
-                                     ;; (println "back from sql: " r)
-                                     (>! c r)))
-                                 c))
+             ::sqb/run-query async-run-print-query
 
              ::sqb/sql-schema
              (sqb/compile-schema
