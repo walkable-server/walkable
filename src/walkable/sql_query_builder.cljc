@@ -774,7 +774,7 @@
               ;; joins don't have to build a query themselves
               ;; just look up the key in their parents data
               (let [parent (p/entity env)]
-                (>! entities-ch (get parent (:ast env) {})))))
+                (>! entities-ch (or (get parent (:ast env)) [])))))
 
         ;; debugging
         #_
