@@ -672,7 +672,7 @@
 
             ;;join-child-queries
             join-children-data-by-join-key
-            (when (seq join-children)
+            (when (and (seq entities) (seq join-children))
               (into {}
                 (for [join-child join-children]
                   (let [j             (:dispatch-key join-child)
