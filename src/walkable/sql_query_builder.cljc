@@ -686,7 +686,7 @@
                           (process-query
                             (-> env
                               (assoc :ast join-child)
-                              (assoc-in [::p/entity source-column]
+                              (assoc-in [(get env ::p/entity-key) source-column]
                                 (get e source-column)))))
 
                         query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
