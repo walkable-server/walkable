@@ -14,13 +14,11 @@
             [duct.database.sql.hikaricp]
             [hikari-cp.core :as hikari-cp]
             [com.wsscode.pathom.core :as p]
-            [walkable-demo.handler.example :refer [pathom-parser]]
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
-            [clojure.core.async :as async :refer [go-loop >! <! chan to-chan promise-chan]]
+            [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
-            [walkable-demo.handler.example :as example]
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
@@ -78,6 +76,28 @@
     (println args))
   (apply jdbc/query xs))
 
+(defn async-run-print-query
+  [db q]
+  (let [c (promise-chan)]
+    (let [r (run-print-query db q)]
+      ;; (println "back from sql: " r)
+      (put! c r))
+    c))
+
+(def sync-parser
+  (p/parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/pull-entities p/map-reader]})]}))
+
+(def async-parser
+  (p/async-parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+         [sqb/async-pull-entities p/map-reader]})]}))
+
 ;; use sqb/quotation-marks if you use postgresql
 (def quote-marks sqb/backticks)
 
@@ -97,7 +117,7 @@
                             {:farmer/cow [:cow/index :cow/color]}]}]
 
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
 
@@ -127,21 +147,11 @@
                             {:farmer/cow [:cow/index :cow/color]}]}]
 
       parser
-      (p/async-parser
-        {::p/plugins
-         [(p/env-plugin
-            {::p/reader
-             [sqb/async-pull-entities p/map-reader]})]})]
+      async-parser]
   (async/go
     (println "final result"
       (<! (parser {::sqb/sql-db    (db)
-                   ::sqb/run-query (fn [db q]
-                                     (let [c (promise-chan)]
-                                       (async/go
-                                         (let [r (run-print-query db q)]
-                                           ;; (println "back from sql: " r)
-                                           (>! c r)))
-                                       c))
+                   ::sqb/run-query async-run-print-query
 
                    ::sqb/sql-schema
                    (sqb/compile-schema
@@ -169,7 +179,7 @@
                          {:kid/toy [:toy/index :toy/color]}]}]
 
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
 
@@ -201,7 +211,7 @@
                        :order-by [:person/name]})
          [:person/number :person/name
           {:person/pet [:pet/index
-                        :pet/age
+                        :pet/yob
                         ;; columns from join table work, too
                         :person-pet/adoption-year
                         :pet/color]}]}]
@@ -210,14 +220,14 @@
       '[{[:person/by-id 1]
          [:person/number
           :person/name
-          :person/age
+          :person/yob
           {:person/pet [:pet/index
-                        :pet/age
+                        :pet/yob
                         :pet/color
                         :person-pet/adoption-year
                         {:pet/owner [:person/name]}]}]}]
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
@@ -248,6 +258,64 @@
                                  :person/pet   :many}})}
     ;; try eg-2, too
     eg-1))
+#_
+(let [eg-1
+      '[{(:people/all {:filters  {:person/number [:< 10]}
+                       :limit    1
+                       :offset   1
+                       :order-by [:person/name]})
+         [:person/number :person/name
+          {:person/pet [:pet/index
+                        :pet/yob
+                        ;; columns from join table work, too
+                        :person-pet/adoption-year
+                        :pet/color]}]}]
+
+      eg-2
+      '[{[:person/by-id 1]
+         [:person/number
+          :person/name
+          :person/yob
+          {:person/pet [:pet/index
+                        :pet/yob
+                        :pet/color
+                        :person-pet/adoption-year
+                        {:pet/owner [:person/name]}]}]}]
+      parser
+      async-parser]
+  (async/go
+    (println "final result: "
+      (<!
+        (parser {::sqb/sql-db    (db)
+                 ::sqb/run-query async-run-print-query
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   ;; which columns are available in SQL table?
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:person/name
+                                       :person/yob
+                                       :person/hidden
+                                       :person-pet/adoption-year
+                                       :pet/name
+                                       :pet/yob
+                                       :pet/color]
+                    ;; extra columns required when an attribute is being asked for
+                    ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+                    :required-columns {:pet/age    #{:pet/yob}
+                                       :person/age #{:person/yob}}
+                    :idents           {:person/by-id :person/number
+                                       :people/all   "person"}
+                    :extra-conditions {[:person/by-id :people/all]
+                                       [:or {:person/hidden [:= true]}
+                                        {:person/hidden [:= false]}]}
+                    :joins            {:person/pet [:person/number :person-pet/person-number
+                                                    :person-pet/pet-index :pet/index]}
+                    :reversed-joins   {:pet/owner :person/pet}
+                    :cardinality      {:person/by-id :one
+                                       :person/pet   :many}})}
+          ;; try eg-2, too
+          eg-1)))))
 
 ;; advanced filters example
 ;; lambda form in :extra-conditions
@@ -255,7 +323,7 @@
 (let [eg-1
       '[{:me [:person/number :person/name :person/yob]}]
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser { ;; extra env data, eg current user id provided by Ring session
            :current-user 1
 
@@ -274,20 +342,50 @@
                                  (fn [{:keys [current-user] :as env}]
                                    {:person/number [:= current-user]})}})}
     eg-1))
+#_
+(let [eg-1
+      '[{:me [:person/number :person/name :person/yob]}]
+      parser
+      async-parser]
+  (async/go
+    (println "final result: "
+      (<!
+        (parser { ;; extra env data, eg current user id provided by Ring session
+                 :current-user 1
+
+                 ::sqb/sql-db    (db)
+                 ::sqb/run-query async-run-print-query
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   ;; which columns are available in SQL table?
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:person/number :person/name :person/yob]
+                    ;; extra columns required when an attribute is being asked for
+                    ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+                    :idents           {:me "person"}
+                    :extra-conditions {:me
+                                       (fn [{:keys [current-user] :as env}]
+                                         {:person/number [:= current-user]})}})}
+          eg-1)))))
 
 ;; Placeholder example
 #_
 (let [eg-1
       '[{:people/all
-         [{:ph/info [:person/age :person/name]}
+         [{:ph/info [:person/yob :person/name]}
           {:person/pet [:pet/index
-                        :pet/age
+                        :pet/yob
                         :pet/color]}
           {:ph/deep [{:ph/nested [{:ph/play [{:person/pet [:pet/index
-                                                           :pet/age
+                                                           :pet/yob
                                                            :pet/color]}]}]}]}]}]
       parser
-      example/pathom-parser]
+      (p/parser
+        {::p/plugins
+         [(p/env-plugin
+            {::p/reader
+             [sqb/pull-entities p/env-placeholder-reader p/map-reader]})]})]
   (parser {::p/placeholder-prefixes #{"ph"}
            ::sqb/sql-db             (db)
            ::sqb/run-query          run-print-query
@@ -316,16 +414,64 @@
                                  :person/pet   :many}})}
     eg-1))
 
+#_
+(let [eg-1
+      '[{:people/all
+         [{:ph/info [:person/yob :person/name]}
+          {:person/pet [:pet/index
+                        :pet/yob
+                        :pet/color]}
+          {:ph/deep [{:ph/nested [{:ph/play [{:person/pet [:pet/index
+                                                           :pet/yob
+                                                           :pet/color]}]}]}]}]}]
+      parser
+      (p/async-parser
+        {::p/plugins
+         [(p/env-plugin
+            {::p/reader
+             [sqb/async-pull-entities p/env-placeholder-reader p/map-reader]})]})]
+  (async/go
+    (println "final result: "
+      (<!
+        (parser {::p/placeholder-prefixes #{"ph"}
+                 ::sqb/sql-db             (db)
+                 ::sqb/run-query          async-run-print-query
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   ;; which columns are available in SQL table?
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:person/name
+                                       :person/yob
+                                       :person/hidden
+                                       :pet/name
+                                       :pet/yob
+                                       :pet/color]
+                    ;; extra columns required when an attribute is being asked for
+                    ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
+                    :required-columns {:pet/age    #{:pet/yob}
+                                       :person/age #{:person/yob}}
+                    :idents           {:person/by-id :person/number
+                                       :people/all   "person"}
+                    :extra-conditions {}
+                    :joins            {:person/pet [:person/number :person-pet/person-number
+                                                    :person-pet/pet-index :pet/index]}
+                    :reversed-joins   {:pet/owner :person/pet}
+                    :cardinality      {:person/by-id :one
+                                       :person/pet   :many}})}
+          eg-1)))))
+
 ;; Self-join example
 #_
 (let [eg-1
       '[{:world/all
          [:human/number :human/name
-          {:human/follow [:human/number
-                          :human/name
-                          :human/yob]}]}]
+          {(:human/follow {:limit 0})
+           [:human/number
+            :human/name
+            :human/yob]}]}]
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
@@ -345,6 +491,42 @@
                                  :human/follow       :many}})}
     eg-1))
 
+#_
+(let [eg-1
+      '[{:world/all
+         [:human/number :human/name
+          {:human/follow
+           [:human/number
+            :human/name
+            :human/yob]}]}]
+      parser
+      (p/async-parser
+        {::p/plugins
+         [(p/env-plugin
+            {::p/reader
+             [sqb/async-pull-entities p/map-reader p/error-handler-plugin]})]})]
+  (async/go
+    (println "final result:"
+      (<!
+        (parser {::sqb/sql-db    (db)
+                 ::sqb/run-query async-run-print-query
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:human/number :human/name :human/yob]
+                    :required-columns {}
+                    :idents           {:human/by-id :human/number
+                                       :world/all   "human"}
+                    :extra-conditions {}
+                    :joins            {:human/follow
+                                       [:human/number :follow/human-1 :follow/human-2 :human/number]}
+                    :reversed-joins   {}
+                    :cardinality      {:human/by-id        :one
+                                       :human/follow-stats :one
+                                       :human/follow       :many}})}
+          eg-1)))))
+
 ;; :pseudo-columns example
 ;; experimental - subject to change
 #_
@@ -360,7 +542,7 @@
                           :human/name
                           :human/yob]}]}]
       parser
-      example/pathom-parser]
+      sync-parser]
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
            ::sqb/sql-schema
@@ -387,3 +569,48 @@
                                  :human/follow-stats :one
                                  :human/follow       :many}})}
     eg-1))
+
+
+#_
+(let [eg-1
+      ;; use pseudo-columns in in filters!
+      '[{(:world/all {:filters {:human/age [:= 38]}})
+         [:human/number :human/name :human/two
+          ;; use pseudo-columns in in filters!
+          :human/age
+          ;; see :pseudo-columns below
+          {:human/follow-stats [:follow/count]}
+          {:human/follow [:human/number
+                          :human/name
+                          :human/yob]}]}]
+      parser
+      async-parser]
+  (async/go
+    (println "final result: "
+      (<!
+        (parser {::sqb/sql-db    (db)
+                 ::sqb/run-query async-run-print-query
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:human/number :human/name :human/yob]
+                    :required-columns {}
+                    :idents           {:human/by-id :human/number
+                                       :world/all   "human"}
+                    :extra-conditions {}
+                    :joins            { ;; technically :human/follow and :human/follow-stats are the same join
+                                       ;; but they have different cardinality
+                                       [:human/follow :human/follow-stats]
+                                       [:human/number :follow/human-1 :follow/human-2 :human/number]}
+                    :reversed-joins   {}
+                    :pseudo-columns   { ;; using sub query as a column
+                                       :human/age    ["(? - ?)" 2018 :human/yob]
+                                       :human/two    "(SELECT 2)"
+                                       ;; using aggregate as a column
+                                       :follow/count ["COUNT(?)" :follow/human-2]
+                                       }
+                    :cardinality      {:human/by-id        :one
+                                       :human/follow-stats :one
+                                       :human/follow       :many}})}
+          eg-1)))))
