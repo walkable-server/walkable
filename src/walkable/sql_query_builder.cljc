@@ -3,7 +3,7 @@
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]
-            [clojure.core.async :refer [go go-loop <! >! chan promise-chan to-chan]]
+            [clojure.core.async :refer [go go-loop <! >! put! promise-chan to-chan]]
             [com.wsscode.pathom.core :as p]))
 
 (def backticks
@@ -767,7 +767,9 @@
 
             entities-with-join-children-data-ch
             (promise-chan)]
-
+        ;; debugging
+        #_
+        (println "dispatch key" k)
         (go (if query-string
               ;; for idents
               (>! entities-ch (<! (run-query sql-db (cons query-string query-params))))
@@ -814,22 +816,23 @@
               (println "join-children-data-by-join-key:" join-children-data-by-join-key )))
         (go (let [entities                       (<! entities-ch)
                   join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
-              (if-not (seq join-children-data-by-join-key)
-                (>! entities-with-join-children-data-ch [])
-                (>! entities-with-join-children-data-ch
-                  (for [e entities]
-                    (let [child-joins
-                          (into {}
-                            (for [join-child join-children]
-                              (let [j             (:dispatch-key join-child)
-                                    source-column (get source-columns j)
-                                    parent-id     (get e source-column)
-                                    children      (get-in join-children-data-by-join-key
-                                                    [join-child parent-id]
-                                                    [])]
-                                [join-child children])))]
-                      (merge e child-joins)))))))
-
+              (put! entities-with-join-children-data-ch
+                (for [e entities]
+                  (let [child-joins
+                        (into {}
+                          (for [join-child join-children]
+                            (let [j             (:dispatch-key join-child)
+                                  source-column (get source-columns j)
+                                  parent-id     (get e source-column)
+                                  children      (get-in join-children-data-by-join-key
+                                                  [join-child parent-id]
+                                                  [])]
+                              [join-child children])))]
+                    (merge e child-joins))))))
+        ;; debugging
+        #_
+        (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
+              (println "entities-with-join-children-data: " entities-with-join-children-data)))
         (let [result-chan (promise-chan)]
           (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
                 (>! result-chan
@@ -840,4 +843,4 @@
                       [])))))
           result-chan))
 
-::p/continue)))
+      ::p/continue)))
