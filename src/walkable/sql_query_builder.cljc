@@ -782,55 +782,61 @@
               (println "entities:" entities)))
         (go (let [entities         (<! entities-ch)
                   join-children-ch (to-chan join-children)]
-              (loop [join-children-data-by-join-key {}]
-                (if-let [join-child (<! join-children-ch)]
-                  (let [j             (:dispatch-key join-child)
-                        ;; parent
-                        source-column (get source-columns j)
-                        ;; children
-                        target-column (get target-columns j)
+              (if-not (and (seq entities) (seq join-children))
+                (>! join-children-data-by-join-key-ch {})
+                (loop [join-children-data-by-join-key {}]
+                  (if-let [join-child (<! join-children-ch)]
+                    (let [j             (:dispatch-key join-child)
+                          ;; parent
+                          source-column (get source-columns j)
+                          ;; children
+                          target-column (get target-columns j)
 
-                        query-string-inputs
-                        (for [e entities]
-                          (process-query
-                            (-> env
-                              (assoc :ast join-child)
-                              (assoc-in [::p/entity source-column]
-                                (get e source-column)))))
+                          query-string-inputs
+                          (for [e entities]
+                            (process-query
+                              (-> env
+                                (assoc :ast join-child)
+                                (assoc-in [(get env ::p/entity-key) source-column]
+                                  (get e source-column)))))
 
-                        query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
-                        all-params    (map :query-params query-string-inputs)
+                          query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
+                          all-params    (map :query-params query-string-inputs)
 
-                        join-children-data
-                        (<! (run-query sql-db (batch-query query-strings all-params)))]
-                    (recur (assoc join-children-data-by-join-key
-                             join-child (group-by target-column join-children-data))))
-                  (>! join-children-data-by-join-key-ch join-children-data-by-join-key)))))
+                          join-children-data
+                          (<! (run-query sql-db (batch-query query-strings all-params)))]
+                      (recur (assoc join-children-data-by-join-key
+                               join-child (group-by target-column join-children-data))))
+                    (>! join-children-data-by-join-key-ch join-children-data-by-join-key))))))
         ;; debugging
         #_
         (go (let [join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
               (println "join-children-data-by-join-key:" join-children-data-by-join-key )))
         (go (let [entities                       (<! entities-ch)
                   join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
-              (>! entities-with-join-children-data-ch
-                (for [e entities]
-                  (let [child-joins
-                        (into {}
-                          (for [join-child join-children]
-                            (let [j             (:dispatch-key join-child)
-                                  source-column (get source-columns j)
-                                  parent-id     (get e source-column)
-                                  children      (get-in join-children-data-by-join-key
-                                                  [join-child parent-id])]
-                              [join-child children])))]
-                    (merge e child-joins))))))
+              (if-not (seq join-children-data-by-join-key)
+                (>! entities-with-join-children-data-ch [])
+                (>! entities-with-join-children-data-ch
+                  (for [e entities]
+                    (let [child-joins
+                          (into {}
+                            (for [join-child join-children]
+                              (let [j             (:dispatch-key join-child)
+                                    source-column (get source-columns j)
+                                    parent-id     (get e source-column)
+                                    children      (get-in join-children-data-by-join-key
+                                                    [join-child parent-id]
+                                                    [])]
+                                [join-child children])))]
+                      (merge e child-joins)))))))
 
         (let [result-chan (promise-chan)]
           (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
                 (>! result-chan
                   (if (seq entities-with-join-children-data)
                     (<! (do-join env entities-with-join-children-data))
-                    (when-not one?
+                    (if one?
+                      {}
                       [])))))
           result-chan))
 
