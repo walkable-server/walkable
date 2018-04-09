@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "shadow-cljs": "^2.2.25",
+    "sqlite3": "^4.0.0"
+  }
+}
