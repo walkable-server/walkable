@@ -198,6 +198,35 @@
                                  :toy/owner :one}})}
     eg-1))
 
+#_
+(let [eg-1
+      '[{[:kid/by-id 1] [:kid/number :kid/name
+                         {:kid/toy [:toy/index :toy/color]}]}]
+
+      parser
+      async-parser]
+  (async/go
+    (println "final result"
+      (<!
+        (parser {::sqb/sql-db    (db)
+                 ::sqb/run-query async-run-print-query
+
+                 ::sqb/sql-schema
+                 (sqb/compile-schema
+                   {:quote-marks      quote-marks
+                    :sqlite-union     sqlite-union
+                    :columns          [:kid/name :toy/index :toy/color]
+                    :idents           {:kid/by-id :kid/number
+                                       :kids/all  "kid"}
+                    :extra-conditions {}
+                    :joins            {:toy/owner [:toy/owner-number :kid/number]}
+                    :reversed-joins   {:kid/toy :toy/owner}
+                    :cardinality      {:kid/by-id :one
+                                       :kid/toy   :one
+                                       :toy/owner :one}})}
+          eg-1)))))
+
+
 ;; Example demonstrates:
 ;; - filters & pagination (offset, limit, order-by) in query
 ;; - join involving a join table
