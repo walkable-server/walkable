@@ -133,7 +133,7 @@ To be more specific, anyone at any level of enthusiasm:
  - Clojure extremists who use SQL and think Clojure must be used in
    both backend side and frontend side, and the two sides must talk to
    each other using EDN data full of namespaced keywords instead of
-   some string-based query language like GraphQL. Think not only 
+   some string-based query language like GraphQL. Think not only
    om.next/fulcro but also reframe/reagent, hoplon, rum/prum, keechma,
    qlkit, quiescent etc.
 
@@ -149,13 +149,21 @@ Walkable is a plugin for [Pathom](https://github.com/wilkerlucio/pathom/).
 > helper functions to support Clojure(script) graph parsers using
 > om.next graph syntax.
 
-First of all, you need to build pathom parser with walkable's `sqb/pull-entities`
+(Don't worry if you don't know how Pathom works yet: Understanding
+Pathom is not required unless you use advanced features)
+
+Walkable comes with two version: synchronous (for Clojure) and
+asynchronous (for both Clojure and Clojurescript).
+
+First of all, you need to build pathom "parser" with walkable's
+`sqb/pull-entities` (or `sqb/async-pull-entities`)
 
 ```clj
 (require '[com.wsscode.pathom.core :as p])
 (require '[walkable.sql-query-builder :as sqb])
 
-(def pathom-parser
+;; sync version
+(def sync-parser
   (p/parser
     {::p/plugins
      [(p/env-plugin
@@ -164,11 +172,23 @@ First of all, you need to build pathom parser with walkable's `sqb/pull-entities
          [sqb/pull-entities
          ;; pathom's entity reader
           p/map-reader]})]}))
+
+;; async version
+(def async-parser
+  (p/async-parser
+    {::p/plugins
+     [(p/env-plugin
+        {::p/reader
+        ;; walkable's main worker
+         [sqb/async-pull-entities
+         ;; pathom's entity reader
+          p/map-reader]})]}))
 ```
 
 Then you need to define your schema and compile it
 
 ```clj
+;; both sync and async versions
 (def compiled-schema
   (sqb/compile-schema
     {:quote-marks ...
@@ -180,7 +200,9 @@ Then you need to define your schema and compile it
 
 Details about the schema is [here](doc/schema.md).
 
-Ready! It's time to run your graph queries
+Ready! It's time to run your graph queries:
+
+Sync version:
 
 ```clj
 (require '[clojure.java.jdbc :as jdbc])
@@ -191,33 +213,72 @@ Ready! It's time to run your graph queries
                     :user     "test_user"
                     :password "test_password"}
       my-run-query jdbc/query]
-  (pathom-parser {::sqb/sql-db     my-db
-                  ::sqb/run-query  my-run-query
-                  ::sqb/sql-schema compiled-schema}
-                 my-query))
+  (sync-parser {::sqb/sql-db     my-db
+                ::sqb/run-query  my-run-query
+                ::sqb/sql-schema compiled-schema}
+               my-query))
 ```
 
 where `my-run-query` and `my-db` is any pair of a function plus a
-database spec (even a pair of mock ones!) that work together like
+database instance (even a pair of mock ones!) that work together like
 this:
 
 ```clj
 (my-run-query my-db ["select * from fruit where color = ?" "red"])
 ;; => [{:id 1, :color "red"} {:id 3, :color "red"} ...]
 
-(my-run-query my-db "select * from fruit")
+(my-run-query my-db ["select * from fruit"])
 ;; => [{:id 1, :color "red"} {:id 2, :color "blue"} ...]
 ```
+
+Async version, Clojure JVM:
+
+```clj
+(require '[clojure.java.jdbc :as jdbc])
+(require '[clojure.core.async :refer [go promise-chan put! >! <!]])
+
+(let [my-query     [{:people/all [:person/name]}]
+      my-db        {:dbtype   "mysql"
+                    :dbname   "clojure_test"
+                    :user     "test_user"
+                    :password "test_password"}
+      my-run-query (fn [db q]
+                     (let [ch (promise-chan)]
+                       (let [result (jdbc/query db q)]
+                         (put! ch rersult))
+                       ch))]
+  (go
+    (println
+      (<! (async-parser
+            {::sqb/sql-db     my-db
+             ::sqb/run-query  my-run-query
+             ::sqb/sql-schema compiled-schema}
+            my-query)))))
+
+```
+
+As you can see, `my-run-query` and `my-db` are similar to those in
+sync version, except that `my-run-query` doesn't return the result
+directly but in a channel.
+
+For Nodejs, you'll need to convert between Javascript and Clojure data
+structure. The file [dev.cljs](dev/src/dev.cljs) has examples using
+sqlite3 node module.
 
 ## Documentation
 
 - [About the query language](doc/query_language.md)
+
 - [Schema guide](doc/schema.md)
+
 - [Filters](doc/filters.md)
+
 - [Developing Walkable](doc/developing.md)
-- Please see the file [dev.clj](dev/src/dev.clj) for executable
-examples. Consult [config.edn](dev/resources/walkable_demo/config.edn)
-for SQL migrations for those examples.
+
+- Please see the file [dev.clj](dev/src/dev.clj) (or its nodejs
+version [dev.cljs](dev/src/dev.cljs)) for executable examples. Consult
+[config.edn](dev/resources/walkable_demo/config.edn) for SQL
+migrations for those examples.
 
 ## Special thanks to:
 
@@ -261,4 +322,4 @@ clojurians slack channel. I'm also on `#fulcro` and
 
 Copyright © 2018 Hoàng Minh Thắng
 
-Datomic® is a registered trademark of Cognitect, Inc. 
+Datomic® is a registered trademark of Cognitect, Inc.
