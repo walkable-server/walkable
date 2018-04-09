@@ -251,9 +251,6 @@ Walkable comes with some optimizations:
   applications. If you can think of any pattern of doing it, please
   open an issue.
 
-- Current version of Walkable does not support async sql query runners
-at the moment, so it's a no go for nodejs.
-
 ## Support
 
 I'm available for questions regarding walkable on `#walkable`
