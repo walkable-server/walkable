@@ -173,6 +173,17 @@
       (when offset
         (str " OFFSET " offset)))))
 
+(defn join-filter-subquery
+  [quote-marks joins]
+  (str
+    (column-name quote-marks (source-column joins))
+    " IN ("
+    (->query-string {:selection      (column-name quote-marks (target-column joins))
+                     :target-table   (target-table joins)
+                     :quote-marks    quote-marks
+                     :join-statement (->join-statements quote-marks joins)})
+    " WHERE "))
+
 (defn ast-root
   [ast]
   (assoc ast ::my-marker :root))
