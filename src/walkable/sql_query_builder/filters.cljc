@@ -353,7 +353,7 @@
        :params     (concat p1 column-params p2)})))
 
 (defn process-clauses
-  [{:keys [key keymap join-strings] :as env} x]
+  [{:keys [key keymap join-filter-subqueries] :as env} x]
   (cond
     (match? x)
     (let [coll (second x)]
@@ -366,9 +366,9 @@
 
     (combination-match? :join-key x)
     (let [{:keys [join-key plain-clauses]} x]
-      (when-let [join-string    (get join-strings join-key)]
+      (when-let [subquery (get join-filter-subqueries join-key)]
         (when-let [sub-conditions (process-clauses env [:clauses plain-clauses])]
-          [join-string sub-conditions "))"])))
+          [subquery sub-conditions ")"])))
 
     (combination-match? :conditions x)
     (let [{:keys [combinator conditions] k :key} x]
