@@ -13,3 +13,7 @@ pom.xml.asc
 /dev/resources/local.edn
 /dev/src/local.clj
 /walkable_demo.sqlite
+/run.js
+node_modules
+/.nrepl-history
+.shadow-cljs
