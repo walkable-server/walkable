@@ -554,11 +554,12 @@
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env} columns-to-query]
-  (let [{::keys [clojuric-names column-names]} sql-schema
+  (let [{::keys [clojuric-names column-names join-filter-subqueries]} sql-schema
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
                              :keymap column-names
+                             :join-filter-subqueries join-filter-subqueries
                              #_(merge column-names
                                (select-keys clojuric-names columns-to-query))}
         all-conditions))))
