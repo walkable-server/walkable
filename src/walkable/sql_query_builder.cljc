@@ -233,6 +233,7 @@
                 ::target-columns
                 ::extra-conditions
                 ::join-statements
+                ::join-filter-subqueries
                 ::required-columns
                 ::clojuric-names
                 ::column-names
@@ -371,6 +372,13 @@
               (->join-statements quote-marks join-seq)))
     {} joins))
 
+(defn compile-join-filter-subqueries
+  [quote-marks joins]
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (join-filter-subquery quote-marks join-seq)))
+    {} joins))
+
 (defn expand-reversed-joins [reversed-joins joins]
   (let [more (reduce (fn [result [backward forward]]
                        (assoc result backward
@@ -468,7 +476,8 @@
         :column-names     (merge (->column-names quote-marks true-columns)
                             pseudo-columns)
         :clojuric-names   (->clojuric-names quote-marks columns)
-        :join-statements  (compile-join-statements quote-marks joins)}))
+        :join-statements  (compile-join-statements quote-marks joins)
+        :join-filter-subqueries (compile-join-filter-subqueries quote-marks joins)}))
 
 (defn clean-up-all-conditions
   "Receives all-conditions produced by process-conditions. Only keeps
