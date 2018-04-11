@@ -85,7 +85,28 @@
           " AND "
           {:condition "p.b IN (7, 6, ?, ?)", :params ["a" "b"]}
           " AND "
-          {:condition "p.a > 5", :params []} ")"))))
+          {:condition "p.a > 5", :params []} ")")))
+  (is (= (sut/process-clauses
+           {:key    nil
+            :keymap {:p/a "p.a"
+                     :p/b "p.b"
+                     :t/x "t.x"
+                     :t/y "t.y"}
+            :join-filter-subqueries {:p/t "p.id IN (SELECT p_t.pid FROM p_t JOIN t ON p_t.tid = t.id WHERE "}}
+           (s/conform ::sut/clauses {:p/b [:in #{6 "a" 7 "b"}]
+                                     :p/a [:> 5]
+                                     :p/t {:t/x [:= 2]
+                                           :t/y [:like "yo"]}}))
+        '("(" {:params ["a" "b"],
+               :condition "p.b IN (7, 6, ?, ?)"}
+          " AND " {:params [], :condition "p.a > 5"}
+          " AND " ["p.id IN (SELECT p_t.pid FROM p_t JOIN t ON p_t.tid = t.id WHERE "
+                   (("(" {:params [], :condition "t.x = 2"}
+                     " AND " {:params ["yo"], :condition "t.y LIKE ?"}
+                     ")"))
+                   ")"]
+          ")")
+        )))
 
 (deftest parameterize-tests
   (testing "parameterize with unsafe params"

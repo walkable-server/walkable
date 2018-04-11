@@ -174,6 +174,17 @@
       (when offset
         (str " OFFSET " offset)))))
 
+(defn join-filter-subquery
+  [quote-marks joins]
+  (str
+    (column-name quote-marks (source-column joins))
+    " IN ("
+    (->query-string {:selection      (column-name quote-marks (target-column joins))
+                     :target-table   (target-table joins)
+                     :quote-marks    quote-marks
+                     :join-statement (->join-statements quote-marks joins)})
+    " WHERE "))
+
 (defn ast-root
   [ast]
   (assoc ast ::my-marker :root))
@@ -223,6 +234,7 @@
                 ::target-columns
                 ::extra-conditions
                 ::join-statements
+                ::join-filter-subqueries
                 ::required-columns
                 ::clojuric-names
                 ::column-names
@@ -361,6 +373,13 @@
               (->join-statements quote-marks join-seq)))
     {} joins))
 
+(defn compile-join-filter-subqueries
+  [quote-marks joins]
+  (reduce (fn [result [k join-seq]]
+            (assoc result k
+              (join-filter-subquery quote-marks join-seq)))
+    {} joins))
+
 (defn expand-reversed-joins [reversed-joins joins]
   (let [more (reduce (fn [result [backward forward]]
                        (assoc result backward
@@ -458,7 +477,8 @@
         :column-names     (merge (->column-names quote-marks true-columns)
                             pseudo-columns)
         :clojuric-names   (->clojuric-names quote-marks columns)
-        :join-statements  (compile-join-statements quote-marks joins)}))
+        :join-statements  (compile-join-statements quote-marks joins)
+        :join-filter-subqueries (compile-join-filter-subqueries quote-marks joins)}))
 
 (defn clean-up-all-conditions
   "Receives all-conditions produced by process-conditions. Only keeps
@@ -535,11 +555,12 @@
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env} columns-to-query]
-  (let [{::keys [clojuric-names column-names]} sql-schema
+  (let [{::keys [clojuric-names column-names join-filter-subqueries]} sql-schema
         all-conditions          (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (filters/parameterize {:key    nil
                              :keymap column-names
+                             :join-filter-subqueries join-filter-subqueries
                              #_(merge column-names
                                (select-keys clojuric-names columns-to-query))}
         all-conditions))))

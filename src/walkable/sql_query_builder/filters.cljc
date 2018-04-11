@@ -292,13 +292,34 @@
      (= 2 (count x))
      (= k (first x)))))
 
+(s/def ::plain-clauses
+  (s/or
+    :clauses (s/cat
+              :key #(or (and (keyword? %) (namespace %))
+                      (= % :_))
+              :conditions ::conditions)
+    :clauses (s/coll-of ::plain-clauses
+               :into [])
+    :clauses (s/cat
+               :combinator (s/? #{:and :or})
+               :clauses (s/+ ::plain-clauses))))
+
+(s/def ::join-clauses
+  (s/or
+    :clauses (s/cat
+               :join-key ::namespaced-keyword
+               :plain-clauses (s/+ ::plain-clauses))
+    :clauses (s/coll-of ::join-clauses
+               :into [])
+    :clauses (s/cat
+               :combinator (s/? #{:and :or})
+               :clauses (s/+ ::join-clauses))))
+
 (s/def ::clauses
   (s/or
-    :clauses (s/coll-of (s/cat
-                          :key #(or (and (keyword? %) (namespace %))
-                                  (= % :_))
-                          :conditions ::conditions)
-               :into [])
+    :clauses ::plain-clauses
+    :clauses  ::join-clauses
+    :clauses (s/coll-of ::clauses :into [])
     :clauses (s/cat
                :combinator (s/? #{:and :or})
                :clauses (s/+ ::clauses))))
@@ -332,7 +353,7 @@
        :params     (concat p1 column-params p2)})))
 
 (defn process-clauses
-  [{:keys [key keymap] :as env} x]
+  [{:keys [key keymap join-filter-subqueries] :as env} x]
   (cond
     (match? x)
     (let [coll (second x)]
@@ -342,6 +363,12 @@
     (let [{:keys [combinator clauses] k :key} x]
       (process-multi (assoc env :key (or k key))
         combinator clauses))
+
+    (combination-match? :join-key x)
+    (let [{:keys [join-key plain-clauses]} x]
+      (when-let [subquery (get join-filter-subqueries join-key)]
+        (when-let [sub-conditions (process-clauses env [:clauses plain-clauses])]
+          [subquery sub-conditions ")"])))
 
     (combination-match? :conditions x)
     (let [{:keys [combinator conditions] k :key} x]
