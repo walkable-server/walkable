@@ -69,7 +69,11 @@ Basically you define your schema like this:
                                  ;; even this style of condition
                                  {:person/name [:or
                                                 [:like "john"]
-                                                [:like "mary"]]}]]}
+                                                [:like "mary"]]}
+                                 ;; you can even filter by properties of a join, not just
+                                 ;; the item itself
+                                 {:person/pet {:pet/color [:or [:= "white"] [:= "green"]]}}
+                                 ]]}
  :joins            {;; will produce:
                     ;; "JOIN `person_pet` ON `person`.`id` = `person_pet`.`person_id` JOIN `pet` ON `person_pet`.`pet_id` = `pet`.`id`"
                     :person/pet [:person/id :person-pet/person-id :person-pet/pet-id :pet/id]
