@@ -35,6 +35,7 @@
 (s/def ::operators operator?)
 
 (defmethod operator? :and [_operator] true)
+(defmethod operator? :or [_operator] true)
 (defmethod operator? :not [_operator] true)
 (defmethod operator? := [_operator] true)
 (defmethod operator? :array [_operator] true)
@@ -118,6 +119,15 @@
      ")")
    :params params})
 
+(defmethod process-operator :or
+  [_env [_operator params]]
+  {:raw-string
+   (str "("
+     (clojure.string/join ") OR ("
+       (repeat (count params) \?))
+     ")")
+   :params params})
+
 (defmethod process-operator :=
   [_env [_operator params]]
   {:raw-string
@@ -180,6 +190,11 @@
   {:raw-string (str number)
    :params     []})
 
+(defmethod process-expression :boolean
+  [_env [_kw value]]
+  {:raw-string "?"
+   :params     [value]})
+
 (defmethod process-operator :case
   [_env [_kw expressions]]
   (let [n (count expressions)]
@@ -206,7 +221,7 @@
 (defn parameterize
   [env clauses]
   (let [form (s/conform ::expression clauses)]
-    (assert (not= ::s/invalid form) "Invalid expression")
+    (assert (not= ::s/invalid form) (str "Invalid expression" (pr-str clauses)))
     ;;(println "clauses:" clauses)
     ;;(println "form: " form)
     (process-expression env form)))
