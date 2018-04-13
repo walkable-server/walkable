@@ -1,6 +1,6 @@
 (ns walkable.sql-query-builder
-  (:require [walkable.sql-query-builder.filters :as filters]
-            [walkable.sql-query-builder.filterx :as filterx]
+  (:require [walkable.sql-query-builder.filters :as pagination]
+            [walkable.sql-query-builder.filterx :as filters]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]
@@ -353,7 +353,7 @@
   [env key]
   {:pre  [(s/valid? ::filters/namespaced-keyword key)
           (s/valid? (s/keys :req-un [::ast]) env)]
-   :post [#(s/valid? ::filters/clauses %)]}
+   :post [#(s/valid? ::filters/expression %)]}
   (let [params (-> env :ast :key rest)]
     (vec (concat [:= key] params))))
 
@@ -507,7 +507,7 @@
          limit))
      :order-by
      (when-let [order-by (get-in env [:ast :params :order-by])]
-       (filters/->order-by-string column-names order-by))}))
+       (pagination/->order-by-string column-names order-by))}))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
@@ -548,7 +548,7 @@
         (get-in env [:ast :params :filters])
 
         supplied-condition
-        (when (s/valid? ::filterx/expression supplied-condition)
+        (when (s/valid? ::filters/expression supplied-condition)
           supplied-condition)]
     [ident-condition join-condition extra-condition supplied-condition]))
 
@@ -559,7 +559,7 @@
         all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (->> all-conditions
-        (filterx/parameterize {:column-names           column-names
+        (filters/parameterize {:column-names           column-names
                                :join-filter-subqueries join-filter-subqueries})
         ((juxt :raw-string :params))))))
 
@@ -577,10 +577,10 @@
         columns-to-query)
       ;; todo: pseudo-columns go here
       (when target-column
-        (let [form (s/conform ::filterx/expression (env/source-column-value env))]
-          [(filterx/inline-params
+        (let [form (s/conform ::filters/expression (env/source-column-value env))]
+          [(filters/inline-params
              {:raw-string (str "? AS " (get clojuric-names target-column))
-              :params     [(filterx/process-expression {:column-names column-names} form)]})])))))
+              :params     [(filters/process-expression {:column-names column-names} form)]})])))))
 
 ;; FIXME
 (defn parameterize-all-selection
@@ -590,7 +590,7 @@
     (->> {:raw-string (->> (repeat (count xs) \?)
                         (clojure.string/join ", "))
           :params     xs}
-      (filterx/inline-params)
+      (filters/inline-params)
       ((juxt :raw-string :params)))))
 
 (defn process-all-params
