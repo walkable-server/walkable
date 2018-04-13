@@ -34,10 +34,13 @@
 
 (s/def ::operators operator?)
 
+(defmethod operator? :identity [_operator] true)
 (defmethod operator? :and [_operator] true)
 (defmethod operator? :or [_operator] true)
 (defmethod operator? :not [_operator] true)
 (defmethod operator? := [_operator] true)
+(defmethod operator? :- [_operator] true)
+(defmethod operator? :count [_operator] true)
 (defmethod operator? :array [_operator] true)
 (defmethod operator? :in [_operator] true)
 (defmethod operator? :case [_operator] true)
@@ -110,6 +113,12 @@
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
 
+;; dummy
+(defmethod process-operator :identity
+  [_env [_operator params]]
+  {:raw-string "(?)"
+   :params params})
+
 (defmethod process-operator :and
   [_env [_operator params]]
   {:raw-string
@@ -132,6 +141,18 @@
   [_env [_operator params]]
   {:raw-string
    "? = ?"
+   :params params})
+
+(defmethod process-operator :-
+  [_env [_operator params]]
+  {:raw-string
+   "? - ?"
+   :params params})
+
+(defmethod process-operator :count
+  [_env [_operator params]]
+  (assert (= 1 (count params)))
+  {:raw-string "COUNT (?)"
    :params params})
 
 (defmethod process-operator :in
@@ -214,9 +235,21 @@
    :params     string})
 
 (defmethod process-expression :column
-  [{:keys [column-names]} [_kw column]]
-  {:raw-string (get column-names column "_invalid_column_in_filters")
-   :params     []})
+  [{:keys [column-names] :as env} [_kw column-keyword]]
+  (let [column (get column-names column-keyword)]
+    (assert column (str "Invalid colum keyword " column-keyword))
+    (if (string? column)
+      {:raw-string column
+       :params     []}
+      (let [form (s/conform ::expression column)]
+        (assert (not= ::s/invalid form) (str "Invalid pseudo column for " column-keyword ": " column))
+        (inline-params
+          {:raw-string " ? "
+           :params     [(process-expression env form)]})))))
+
+(inline-params
+  {:raw-string "?"
+   :params [{:params [], :raw-string "2018 - `human`.`yob`"}]})
 
 (defn parameterize
   [env clauses]
@@ -242,9 +275,10 @@
                      :join-filter-subqueries
                      {:a/b "x IN (SELECT blabla WHERE ?)"
                       :c/d "x IN (SELECT blabla WHERE ?)"}}
-  (s/conform ::expression {:a/b ;;[:= :foo/bar "a"]
-                           {:c/d [:= :foo/bar "b"]}
-                           }
+  (s/conform ::expression [:identity 2]
+    #_{:a/b ;;[:= :foo/bar "a"]
+       {:c/d [:= :foo/bar "b"]}
+       }
                            ;; {:a/b [:cast [:json {:a 1 :b [2 3]}] :json]}
                            ;;{:c/d [:in 1 2 3 4 5]}
                            ))

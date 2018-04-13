@@ -313,12 +313,15 @@
 #_
 (let [eg-1
       ;; use pseudo-columns in in filters!
-      '[{(:world/all {:filters [:= :human/age 38]})
-         [:human/number :human/name :human/two
+      '[{(:world/all {:filters [:= :human/age 38]}
+                     )
+         [:human/number :human/name :human/two :human/yob
           ;; use pseudo-columns in in filters!
-          :human/age
+          ;; :human/age
           ;; see :pseudo-columns below
+
           {:human/follow-stats [:follow/count]}
+
           {:human/follow [:human/number
                           :human/name
                           :human/yob]}]}]
@@ -341,10 +344,10 @@
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
               :pseudo-columns   { ;; using sub query as a column
-                                 :human/age ["(? - ?)" 2018 :human/yob]
-                                 :human/two    "(SELECT 2)"
+                                 :human/age [:- 2018 :human/yob]
+                                 :human/two 2
                                  ;; using aggregate as a column
-                                 :follow/count ["COUNT(?)" :follow/human-2]
+                                 :follow/count [:count :follow/human-2]
                                  }
               :cardinality      {:human/by-id        :one
                                  :human/follow-stats :one

@@ -572,8 +572,13 @@
       (mapv (fn [k]
               (let [column-name   (get column-names k)
                     clojuric-name (get clojuric-names k)]
-                {:raw-string (str column-name " AS " clojuric-name)
-                 :params     []}))
+                (if (string? column-name)
+                  {:raw-string (str column-name " AS " clojuric-name)
+                   :params     []}
+                  (let [form (s/conform ::filters/expression column-name)]
+                    (filters/inline-params
+                      {:raw-string (str "(?) AS " clojuric-name)
+                       :params     [(filters/process-expression {:column-names column-names} form)]})))))
         columns-to-query)
       ;; todo: pseudo-columns go here
       (when target-column
