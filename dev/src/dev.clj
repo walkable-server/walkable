@@ -92,8 +92,10 @@
 ;; Example: join column living in source table
 #_
 (let [eg-1
-      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/cow [:cow/index :cow/color]}]}]
+      '[{(:farmers/all {:filters {:farmer/cow [{:cow/owner [:= :farmer/name "mary"]}
+                                               [:= :cow/color "brown"]]}})
+         [:farmer/number :farmer/name
+          {:farmer/cow [:cow/index :cow/color]}]}]
 
       parser
       example/pathom-parser]
@@ -152,9 +154,11 @@
 ;; - derive-attribute plugin
 #_
 (let [eg-1
-      '[{(:people/all {:filters  {:person/number [:< 10]}
-                       :limit    1
-                       :offset   1
+      '[{(:people/all {:filters  {:person/pet [:or {:pet/color [:= "white"]}
+                                               {:pet/color [:= "yellow"]}]
+                                  :person/number [:< 10]}
+                       ;; :limit    1
+                       ;; :offset   0
                        :order-by [:person/name]})
          [:person/number :person/name
           {:person/pet [:pet/index
@@ -307,7 +311,7 @@
 #_
 (let [eg-1
       ;; use pseudo-columns in in filters!
-      '[{(:world/all {:filters {:human/age [:= 38]}})
+      '[{(:world/all {:filters [:= :human/age 38]})
          [:human/number :human/name :human/two
           ;; use pseudo-columns in in filters!
           :human/age
@@ -344,3 +348,14 @@
                                  :human/follow-stats :one
                                  :human/follow       :many}})}
     eg-1))
+#_
+(q
+  "SELECT `person`.`name` AS `person/name`, `person`.`yob` AS `person/yob`
+FROM `person`
+WHERE
+(`person`.`number` IN (SELECT `person_pet`.`person_number`
+                      FROM `person_pet` JOIN `pet` ON `person_pet`.`pet_index` = `pet`.`index`
+                      WHERE `pet`.`yob` > 1999))
+AND
+(`person`.`number` > 0)")
+(q "SELECT CASE 2 WHEN 2 THEN 2 ELSE 3 END")
