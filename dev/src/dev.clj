@@ -154,9 +154,11 @@
 ;; - derive-attribute plugin
 #_
 (let [eg-1
-      '[{(:people/all {:filters  {:person/pet [:or {:pet/color [:= "white"]}
-                                               {:pet/color [:= "yellow"]}]
-                                  :person/number [:< 10]}
+      '[{(:people/all {:filters  [:and
+                                  {:person/pet
+                                   [:or [:= :pet/color "white"]
+                                    [:= :pet/color "yellow"]]}
+                                  [:< :person/number 10]]
                        ;; :limit    1
                        ;; :offset   0
                        :order-by [:person/name]})
@@ -200,8 +202,8 @@
               :idents           {:person/by-id :person/number
                                  :people/all   "person"}
               :extra-conditions {[:person/by-id :people/all]
-                                 [:or {:person/hidden [:= true]}
-                                  {:person/hidden [:= false]}]}
+                                 [:or [:= :person/hidden true]
+                                  [:= :person/hidden false]]}
               :joins            {:person/pet [:person/number :person-pet/person-number
                                               :person-pet/pet-index :pet/index]}
               :reversed-joins   {:pet/owner :person/pet}
@@ -233,7 +235,7 @@
               :idents           {:me "person"}
               :extra-conditions {:me
                                  (fn [{:keys [current-user] :as env}]
-                                   {:person/number [:= current-user]})}})}
+                                   [:= :person/number current-user])}})}
     eg-1))
 
 ;; Placeholder example
