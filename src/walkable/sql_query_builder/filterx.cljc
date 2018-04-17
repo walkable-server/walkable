@@ -148,9 +148,30 @@
 
 (defmethod process-operator :-
   [_env [_operator params]]
-  {:raw-string
-   "? - ?"
-   :params params})
+  (assert (not (zero? (count params)))
+    "There must be at least one parameter to `-`")
+  (if (= 1 (count params))
+    {:raw-string "0 - ?"
+     :params     params}
+    {:raw-string (str "("
+                   (clojure.string/join " - " (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
+(defmethod process-operator :+
+  [_env [_operator params]]
+  (case (count params)
+    0
+    {:raw-string "0"
+     :params     []}
+    1
+    {:raw-string " ? "
+     :params     params}
+    ;; default
+    {:raw-string (str "("
+                   (clojure.string/join " + " (repeat (count params) \?))
+                   ")")
+     :params     params}))
 
 (defmethod process-operator :count
   [_env [_operator params]]
