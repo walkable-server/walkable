@@ -26,24 +26,15 @@
 
 (s/def ::operators operator?)
 
-(defmethod operator? :and [_operator] true)
-(defmethod operator? :or [_operator] true)
-(defmethod operator? :not [_operator] true)
-(defmethod operator? := [_operator] true)
-(defmethod operator? :- [_operator] true)
-(defmethod operator? :count [_operator] true)
-(defmethod operator? :array [_operator] true)
-(defmethod operator? :in [_operator] true)
-(defmethod operator? :case [_operator] true)
-
 (defmulti unsafe-expression? identity)
 (defmethod unsafe-expression? :default [_operator] false)
 
 (s/def ::unsafe-expression unsafe-expression?)
 
-(defmethod unsafe-expression? :cast [_operator] true)
-(defmethod unsafe-expression? :json [_operator] true)
-(defmethod unsafe-expression? :time [_operator] true)
+(comment
+  (defmethod operator? :array [_operator] true)
+  (defmethod unsafe-expression? :json [_operator] true)
+  (defmethod unsafe-expression? :time [_operator] true))
 
 (s/def ::selection-params
   (s/or
@@ -97,6 +88,8 @@
 (defmethod cast-type :text [_type] "TEXT")
 (defmethod cast-type :default [_type] nil)
 
+(defmethod unsafe-expression? :cast [_operator] true)
+
 (defmethod process-unsafe-expression :cast
   [env [_operator [expression type]]]
   (let [expression (s/conform ::expression expression)
@@ -107,6 +100,8 @@
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
 
+(defmethod operator? :and [_operator] true)
+
 (defmethod process-operator :and
   [_env [_operator params]]
   {:raw-string
@@ -115,6 +110,8 @@
        (repeat (count params) \?))
      ")")
    :params params})
+
+(defmethod operator? :or [_operator] true)
 
 (defmethod process-operator :or
   [_env [_operator params]]
@@ -125,23 +122,15 @@
      ")")
    :params params})
 
+(defmethod operator? := [_operator] true)
+
 (defmethod process-operator :=
   [_env [_operator params]]
   {:raw-string
    "? = ?"
    :params params})
 
-(defmethod process-operator :-
-  [_env [_operator params]]
-  (assert (not (zero? (count params)))
-    "There must be at least one parameter to `-`")
-  (if (= 1 (count params))
-    {:raw-string "0 - ?"
-     :params     params}
-    {:raw-string (str "("
-                   (clojure.string/join " - " (repeat (count params) \?))
-                   ")")
-     :params     params}))
+(defmethod operator? :+ [_operator] true)
 
 (defmethod process-operator :+
   [_env [_operator params]]
@@ -158,11 +147,29 @@
                    ")")
      :params     params}))
 
+(defmethod operator? :- [_operator] true)
+
+(defmethod process-operator :-
+  [_env [_operator params]]
+  (assert (not (zero? (count params)))
+    "There must be at least one parameter to `-`")
+  (if (= 1 (count params))
+    {:raw-string "0 - ?"
+     :params     params}
+    {:raw-string (str "("
+                   (clojure.string/join " - " (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
+(defmethod operator? :count [_operator] true)
+
 (defmethod process-operator :count
   [_env [_operator params]]
   (assert (= 1 (count params)))
   {:raw-string "COUNT (?)"
    :params params})
+
+(defmethod operator? :in [_operator] true)
 
 (defmethod process-operator :in
   [_env [_operator params]]
@@ -176,6 +183,8 @@
 
 (process-operator {} [:and [1 2 3]])
 (process-operator {} [:in [1 2 3]])
+
+(defmethod operator? :not [_operator] true)
 
 (defmethod process-operator :not
   [_env [_operator params]]
@@ -221,6 +230,8 @@
   [_env [_kw value]]
   {:raw-string "?"
    :params     [value]})
+
+(defmethod operator? :case [_operator] true)
 
 (defmethod process-operator :case
   [_env [_kw expressions]]
