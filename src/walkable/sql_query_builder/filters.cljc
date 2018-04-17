@@ -56,6 +56,9 @@
           (s/cat :join-key ::namespaced-keyword
             :expression ::expression))))))
 
+;; the rule for parentheses in :raw-string
+;; outer raw string should provide it
+;; inner ones shouldn't
 
 (defmulti process-operator
   (fn dispatcher [_env [operator _params]] operator))
@@ -109,10 +112,10 @@
     {:raw-string "(?)" :params params}
     ;; default
     {:raw-string
-     (str "(("
+     (str "("
        (clojure.string/join ") AND ("
          (repeat (count params) \?))
-       "))")
+       ")")
      :params params}))
 
 (defmethod operator? :or [_operator] true)
@@ -120,10 +123,10 @@
 (defmethod process-operator :or
   [_env [_operator params]]
   {:raw-string
-   (str "(("
+   (str "("
      (clojure.string/join ") OR ("
        (repeat (count params) \?))
-     "))")
+     ")")
    :params params})
 
 (defn multiple-compararison
@@ -136,41 +139,47 @@
                :params [true]}]}
     (let [params (partition 2 1 params)]
       {:raw-string
-       (str "(("
+       (str "("
          (clojure.string/join ") AND ("
            (repeat (count params) single-comparison-string))
-         "))")
+         ")")
        :params (flatten params)})))
 
 (defmethod operator? := [_operator] true)
 
 (defmethod process-operator :=
   [_env [_operator params]]
-  (multiple-compararison "? = ?" params))
+  (multiple-compararison "(?) = (?)" params))
 
 (defmethod operator? :> [_operator] true)
 
 (defmethod process-operator :>
   [_env [_operator params]]
-  (multiple-compararison "? > ?" params))
+  (multiple-compararison "(?) > (?)" params))
 
 (defmethod operator? :>= [_operator] true)
 
 (defmethod process-operator :>=
   [_env [_operator params]]
-  (multiple-compararison "? >= ?" params))
+  (multiple-compararison "(?) >= (?)" params))
 
 (defmethod operator? :< [_operator] true)
 
 (defmethod process-operator :<
   [_env [_operator params]]
-  (multiple-compararison "? < ?" params))
+  (multiple-compararison "(?) < (?)" params))
 
 (defmethod operator? :<= [_operator] true)
 
 (defmethod process-operator :<=
   [_env [_operator params]]
-  (multiple-compararison "? <= ?" params))
+  (multiple-compararison "(?) <= (?)" params))
+
+(defn infix-notation [operator-string params]
+  {:raw-string (clojure.string/join operator-string
+                 (repeat (count params) "(?)"))
+
+   :params     params})
 
 (defmethod operator? :+ [_operator] true)
 
@@ -181,13 +190,10 @@
     {:raw-string "0"
      :params     []}
     1
-    {:raw-string " ? "
+    {:raw-string "(?)"
      :params     params}
     ;; default
-    {:raw-string (str "("
-                   (clojure.string/join " + " (repeat (count params) \?))
-                   ")")
-     :params     params}))
+    (infix-notation "+" params)))
 
 (defmethod operator? :* [_operator] true)
 
@@ -198,13 +204,10 @@
     {:raw-string "1"
      :params     []}
     1
-    {:raw-string " ? "
+    {:raw-string "(?)"
      :params     params}
     ;; default
-    {:raw-string (str "("
-                   (clojure.string/join ") * (" (repeat (count params) \?))
-                   ")")
-     :params     params}))
+    (infix-notation "*" params)))
 
 (defmethod operator? :- [_operator] true)
 
@@ -215,10 +218,7 @@
   (if (= 1 (count params))
     {:raw-string "0-(?)"
      :params     params}
-    {:raw-string (str "("
-                   (clojure.string/join " - " (repeat (count params) \?))
-                   ")")
-     :params     params}))
+    (infix-notation "-" params)))
 
 (defmethod operator? :/ [_operator] true)
 
@@ -229,10 +229,7 @@
   (if (= 1 (count params))
     {:raw-string "1/(?)"
      :params     params}
-    {:raw-string (str "("
-                   (clojure.string/join ") / (" (repeat (count params) \?))
-                   ")")
-     :params     params}))
+    (infix-notation "/" params)))
 
 (defmethod operator? :count [_operator] true)
 
@@ -311,10 +308,10 @@
     (let [when+else-count (dec n)
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
-      {:raw-string (str "(CASE ?"
+      {:raw-string (str "CASE ?"
                      (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
                      (when else? " ELSE ?")
-                     " END)")
+                     " END")
        :params     expressions})))
 
 (defmethod operator? :cond [_operator] true)
@@ -327,10 +324,10 @@
     (let [when+else-count n
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
-      {:raw-string (str "(CASE"
+      {:raw-string (str "CASE"
                      (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
                      (when else? " ELSE ?")
-                     " END)")
+                     " END")
        :params     expressions})))
 
 (defmethod process-expression :string
@@ -351,7 +348,7 @@
         (assert (not= ::s/invalid form)
           (str "Invalid pseudo column for " column-keyword ": " column))
         (inline-params
-          {:raw-string " ? "
+          {:raw-string "(?)"
            :params     [(process-expression env form)]})))))
 
 (defn parameterize
