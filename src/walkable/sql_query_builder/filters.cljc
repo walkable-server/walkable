@@ -298,6 +298,27 @@
   {:raw-string " ? "
    :params     [value]})
 
+(defmethod process-expression :string
+  [_env [_kw string]]
+  {:raw-string " ? "
+   :params     string})
+
+(defmethod process-expression :column
+  [{:keys [column-names] :as env} [_kw column-keyword]]
+  (let [column (get column-names column-keyword)]
+    (assert column
+      (str "Invalid column keyword " column-keyword
+        ". You may want to add it to schema."))
+    (if (string? column)
+      {:raw-string column
+       :params     []}
+      (let [form (s/conform ::expression column)]
+        (assert (not= ::s/invalid form)
+          (str "Invalid pseudo column for " column-keyword ": " column))
+        (inline-params
+          {:raw-string "(?)"
+           :params     [(process-expression env form)]})))))
+
 (defmethod operator? :case [_operator] true)
 
 (defmethod process-operator :case
@@ -353,27 +374,6 @@
     (let [else?           (= 3 n)]
       {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
-
-(defmethod process-expression :string
-  [_env [_kw string]]
-  {:raw-string " ? "
-   :params     string})
-
-(defmethod process-expression :column
-  [{:keys [column-names] :as env} [_kw column-keyword]]
-  (let [column (get column-names column-keyword)]
-    (assert column
-      (str "Invalid column keyword " column-keyword
-        ". You may want to add it to schema."))
-    (if (string? column)
-      {:raw-string column
-       :params     []}
-      (let [form (s/conform ::expression column)]
-        (assert (not= ::s/invalid form)
-          (str "Invalid pseudo column for " column-keyword ": " column))
-        (inline-params
-          {:raw-string "(?)"
-           :params     [(process-expression env form)]})))))
 
 (defn parameterize
   [env clauses]
