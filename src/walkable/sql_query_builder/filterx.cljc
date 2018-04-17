@@ -4,17 +4,14 @@
             [cheshire.core :refer [generate-string]]
             [clojure.set :as set]))
 
-;; don't use "?" as raw-string
-;; as applying `string/split` to it is not
-;; consistent in both Clojure and Clojurescript
-;; use " ? " or "(?)" instead
 (defn inline-params
   [{:keys [raw-string params]}]
-  (assert (not= "?" raw-string)
-    "\"?\" is not valid raw string. Use \" ? \" or \"(?)\" instead.")
   {:params     (flatten (map :params params))
    :raw-string (->> (conj (mapv :raw-string params) nil)
-                 (interleave (string/split raw-string #"\?"))
+                 (interleave (string/split (if (= "?" raw-string)
+                                             " ? "
+                                             raw-string)
+                               #"\?"))
                  (apply str))})
 
 (defn namespaced-keyword?
