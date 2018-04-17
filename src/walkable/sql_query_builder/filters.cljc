@@ -35,11 +35,6 @@
   (defmethod unsafe-expression? :json [_operator] true)
   (defmethod unsafe-expression? :time [_operator] true))
 
-(s/def ::selection-params
-  (s/or
-    :number number?
-    :column ::namespaced-keyword))
-
 (s/def ::expression
   (s/or
     :number number?
@@ -306,6 +301,22 @@
   {:raw-string " ? "
    :params     [value]})
 
+(defmethod operator? :case [_operator] true)
+
+(defmethod process-operator :case
+  [_env [_kw expressions]]
+  (let [n (count expressions)]
+    (assert (> n 2)
+      "`case` must have at least three arguments")
+    (let [when+else-count (dec n)
+          else?           (odd? when+else-count)
+          when-count      (if else? (dec when+else-count) when+else-count)]
+      {:raw-string (str "(CASE ?"
+                     (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
+                     (when else? " ELSE ?")
+                     " END)")
+       :params     expressions})))
+
 (defmethod operator? :cond [_operator] true)
 
 (defmethod process-operator :cond
@@ -313,13 +324,13 @@
   (let [n (count expressions)]
     (assert (> n 2)
       "`cond` must have at least three arguments")
-    (let [when+else-count (dec n)
+    (let [when+else-count n
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
-      {:raw-string (str " CASE (?) "
-                     (apply str (repeat (/ when-count 2) " WHEN (?) THEN (?) "))
-                     (when else? " ELSE (?)")
-                     " END")
+      {:raw-string (str "(CASE"
+                     (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
+                     (when else? " ELSE ?")
+                     " END)")
        :params     expressions})))
 
 (defmethod process-expression :string
