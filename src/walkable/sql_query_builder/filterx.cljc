@@ -49,11 +49,11 @@
     :expression
     (s/and vector?
       (s/cat :operator (s/? ::operators)
-        :params (s/+ ::expression)))
+        :params (s/* ::expression)))
     :unsafe-expression
     (s/and vector?
       (s/cat :operator ::unsafe-expression
-        :params (s/+ (constantly true))))
+        :params (s/* (constantly true))))
     :join-filters
     (s/and map?
       (s/+
