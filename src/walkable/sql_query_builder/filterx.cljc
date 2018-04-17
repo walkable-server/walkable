@@ -259,12 +259,12 @@
 
 (defmethod process-expression :boolean
   [_env [_kw value]]
-  {:raw-string "?"
+  {:raw-string " ? "
    :params     [value]})
 
-(defmethod operator? :case [_operator] true)
+(defmethod operator? :cond [_operator] true)
 
-(defmethod process-operator :case
+(defmethod process-operator :cond
   [_env [_kw expressions]]
   (let [n (count expressions)]
     (assert (> n 2))
@@ -279,7 +279,7 @@
 
 (defmethod process-expression :string
   [_env [_kw string]]
-  {:raw-string "?"
+  {:raw-string " ? "
    :params     string})
 
 (defmethod process-expression :column
@@ -296,7 +296,7 @@
            :params     [(process-expression env form)]})))))
 
 (inline-params
-  {:raw-string "?"
+  {:raw-string " ? "
    :params [{:params [], :raw-string "2018 - `human`.`yob`"}]})
 
 (defn parameterize
