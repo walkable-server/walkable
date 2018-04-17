@@ -10,6 +10,8 @@
 ;; use " ? " or "(?)" instead
 (defn inline-params
   [{:keys [raw-string params]}]
+  (assert (not= "?" raw-string)
+    "\"?\" is not valid raw string. Use \" ? \" or \"(?)\" instead.")
   {:params     (flatten (map :params params))
    :raw-string (->> (conj (mapv :raw-string params) nil)
                  (interleave (string/split raw-string #"\?"))
