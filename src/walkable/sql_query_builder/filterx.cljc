@@ -15,17 +15,6 @@
                  (interleave (string/split raw-string #"\?"))
                  (apply str))})
 
-(defmulti valid-params-count?
-  (fn dispatcher [operator n] operator))
-
-(defmethod valid-params-count? :default
-  [_operator _n]
-  true)
-
-(defmethod valid-params-count? :not
-  [_operator n]
-  (= n 1))
-
 (defn namespaced-keyword?
   [x]
   (and (keyword? x) (namespace x)))
@@ -201,8 +190,6 @@
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (assert (valid-params-count? operator (count params))
-    (str "Wrong number of arguments to " operator " operator"))
   (inline-params
     (process-operator env
       [operator (mapv #(process-expression env %) params)])))
@@ -210,8 +197,6 @@
 
 (defmethod process-expression :unsafe-expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (assert (valid-params-count? operator (count params))
-    (str "Wrong number of arguments to " operator " operator"))
   (process-unsafe-expression env [operator params]))
 
 (defmethod process-expression :join-filter
