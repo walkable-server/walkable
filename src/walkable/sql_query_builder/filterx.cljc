@@ -129,13 +129,51 @@
      "))")
    :params params})
 
+(defn multiple-compararison
+  "Common implementation of process-operator for comparison operators: =, <, >, <=, >="
+  [single-comparison-string params]
+  (case (count params)
+    (0 1)
+    {:raw-string "(?)"
+     :params [{:raw-string " ? "
+               :params [true]}]}
+    (let [params (partition 2 1 params)]
+      {:raw-string
+       (str "(("
+         (clojure.string/join ") AND ("
+           (repeat (count params) single-comparison-string))
+         "))")
+       :params (flatten params)})))
+
 (defmethod operator? := [_operator] true)
 
 (defmethod process-operator :=
   [_env [_operator params]]
-  {:raw-string
-   "? = ?"
-   :params params})
+  (multiple-compararison "? = ?" params))
+
+(defmethod operator? :> [_operator] true)
+
+(defmethod process-operator :>
+  [_env [_operator params]]
+  (multiple-compararison "? > ?" params))
+
+(defmethod operator? :>= [_operator] true)
+
+(defmethod process-operator :>=
+  [_env [_operator params]]
+  (multiple-compararison "? >= ?" params))
+
+(defmethod operator? :< [_operator] true)
+
+(defmethod process-operator :<
+  [_env [_operator params]]
+  (multiple-compararison "? < ?" params))
+
+(defmethod operator? :<= [_operator] true)
+
+(defmethod process-operator :<=
+  [_env [_operator params]]
+  (multiple-compararison "? <= ?" params))
 
 (defmethod operator? :+ [_operator] true)
 
