@@ -93,8 +93,10 @@
   [env [_operator [expression type]]]
   (let [expression (s/conform ::expression expression)
         type-str   (cast-type type)]
-    (assert (not= expression ::s/invalid) "Invalid expression")
-    (assert type-str "Invalid type")
+    (assert (not= expression ::s/invalid)
+      (str "First argument to `cast` is not an invalid expression."))
+    (assert type-str
+      (str "Invalid type to `cast`. You may want to implement `cast-type` for the given type."))
     (inline-params
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
@@ -241,9 +243,10 @@
 
 (defmethod process-operator :count
   [_env [_operator params]]
-  (assert (= 1 (count params)))
+  (assert (= 1 (count params))
+    "There must be exactly one argument to `count`.")
   {:raw-string "COUNT (?)"
-   :params params})
+   :params     params})
 
 (defmethod operator? :in [_operator] true)
 
@@ -257,17 +260,12 @@
                  ")")
    :params     params})
 
-(inline-params (process-operator {} [:and]))
-(process-operator {} [:in [1 2 3]])
-
 (defmethod operator? :not [_operator] true)
 
 (defmethod process-operator :not
   [_env [_operator params]]
   {:raw-string "NOT (?)"
    :params params})
-
-(process-operator {} [:not 1])
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
@@ -283,7 +281,8 @@
 (defmethod process-expression :join-filter
   [env [_kw {:keys [join-key expression]}]]
   (let [subquery (-> env :join-filter-subqueries join-key)]
-    (assert subquery (str "No join filter found for join key " join-key))
+    (assert subquery
+      (str "No join filter found for join key " join-key))
     (inline-params
       {:raw-string subquery
        :params     [(process-expression env expression)]})))
@@ -312,7 +311,8 @@
 (defmethod process-operator :cond
   [_env [_kw expressions]]
   (let [n (count expressions)]
-    (assert (> n 2))
+    (assert (> n 2)
+      "`cond` must have at least three arguments")
     (let [when+else-count (dec n)
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
@@ -330,50 +330,24 @@
 (defmethod process-expression :column
   [{:keys [column-names] :as env} [_kw column-keyword]]
   (let [column (get column-names column-keyword)]
-    (assert column (str "Invalid colum keyword " column-keyword))
+    (assert column
+      (str "Invalid column keyword " column-keyword
+        ". You may want to add it to schema."))
     (if (string? column)
       {:raw-string column
        :params     []}
       (let [form (s/conform ::expression column)]
-        (assert (not= ::s/invalid form) (str "Invalid pseudo column for " column-keyword ": " column))
+        (assert (not= ::s/invalid form)
+          (str "Invalid pseudo column for " column-keyword ": " column))
         (inline-params
           {:raw-string " ? "
            :params     [(process-expression env form)]})))))
 
-(inline-params
-  {:raw-string " ? "
-   :params [{:params [], :raw-string "2018 - `human`.`yob`"}]})
-
 (defn parameterize
   [env clauses]
   (let [form (s/conform ::expression clauses)]
-    (assert (not= ::s/invalid form) (str "Invalid expression" (pr-str clauses)))
+    (assert (not= ::s/invalid form)
+      (str "Invalid expression: " clauses))
     ;;(println "clauses:" clauses)
     ;;(println "form: " form)
     (process-expression env form)))
-#_
-(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
-    (s/conform ::expression [[:= :foo/bar "a"]
-                             [:case 1 2 3 4]
-                             [:cast "2" :integer]
-                             [:not [:= :foo/bar 2]]]))
-#_
-(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
-    (s/conform ::expression [[:= :foo/bar "a"]
-                             [:cast [:json {:a 1 :b [2 3]}] :json]
-                             [:in 1 2 3 4 5]]))
-#_
-(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
-  (s/conform ::expression [:> :foo/bar? true :foo/bar? 4]))
-#_
-(process-expression {:column-names {:foo/bar "`foo`.`bar`"}
-                     :join-filter-subqueries
-                     {:a/b "x IN (SELECT blabla WHERE ?)"
-                      :c/d "x IN (SELECT blabla WHERE ?)"}}
-  (s/conform ::expression [:identity 2]
-    #_{:a/b ;;[:= :foo/bar "a"]
-       {:c/d [:= :foo/bar "b"]}
-       }
-                           ;; {:a/b [:cast [:json {:a 1 :b [2 3]}] :json]}
-                           ;;{:c/d [:in 1 2 3 4 5]}
-                           ))
