@@ -105,7 +105,9 @@
   [_env [_operator params]]
   (case (count params)
     0
-    {:raw-string "(?)" :params [true]}
+    {:raw-string "(?)"
+     :params [{:raw-string " ? "
+               :params [true]}]}
     1
     {:raw-string "(?)" :params params}
     ;; default
