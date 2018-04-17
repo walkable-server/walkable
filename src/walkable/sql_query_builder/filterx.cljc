@@ -173,7 +173,7 @@
   (assert (not (zero? (count params)))
     "There must be at least one parameter to `-`")
   (if (= 1 (count params))
-    {:raw-string "0 - ?"
+    {:raw-string "0-(?)"
      :params     params}
     {:raw-string (str "("
                    (clojure.string/join " - " (repeat (count params) \?))
