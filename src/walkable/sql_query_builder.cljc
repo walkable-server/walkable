@@ -1,6 +1,6 @@
 (ns walkable.sql-query-builder
-  (:require [walkable.sql-query-builder.filters :as pagination]
-            [walkable.sql-query-builder.filterx :as filters]
+  (:require [walkable.sql-query-builder.pagination :as pagination]
+            [walkable.sql-query-builder.filters :as filters]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]

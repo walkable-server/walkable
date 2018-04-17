@@ -1,426 +1,379 @@
 (ns walkable.sql-query-builder.filters
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
+            [cheshire.core :refer [generate-string]]
             [clojure.set :as set]))
+
+(defn inline-params
+  [{:keys [raw-string params]}]
+  {:params     (flatten (map :params params))
+   :raw-string (->> (conj (mapv :raw-string params) nil)
+                 (interleave (string/split (if (= "?" raw-string)
+                                             " ? "
+                                             raw-string)
+                               #"\?"))
+                 (apply str))})
 
 (defn namespaced-keyword?
   [x]
   (and (keyword? x) (namespace x)))
 
+(s/def ::namespaced-keyword namespaced-keyword?)
+
 (defmulti operator? identity)
+(defmethod operator? :default [_operator] false)
 
-(defmethod operator? :default
-  [_k]
-  false)
-
-(defmulti disallow-no-column? identity)
-
-(defmethod disallow-no-column? :default
-  [_k]
-  true)
-
-(defmulti valid-params-count?
-  (fn [operator n] operator))
-
-(defmethod valid-params-count? :default
-  [_operator _n]
-  true)
-
-(defn parameterize-tuple [n]
-  (str
-    "("
-    (clojure.string/join ", "
-      (repeat n \?))
-    ")"))
-
-(defmulti parameterize-operator
-  (fn [operator column _params] operator))
-
-;; built-in operators
-
-;; nil?
-(defmethod operator? :nil?
-  [_k] true)
-
-(defmethod valid-params-count? :nil?
-  [_operator n] (= n 0))
-
-(defmethod parameterize-operator :nil?
-  [_operator column _params]
-  (str column " IS NULL"))
-
-;; not-nil?
-(defmethod operator? :not-nil?
-  [_k] true)
-
-(defmethod valid-params-count? :not-nil?
-  [_operator n] (= n 0))
-
-(defmethod parameterize-operator :not-nil?
-  [_operator column _params]
-  (str column " IS NOT NULL"))
-
-;; =
-(defmethod operator? :=
-  [_k] true)
-
-(defmethod valid-params-count? :=
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :=
-  [_operator column _params]
-  (str column " = ?"))
-
-;; <
-(defmethod operator? :<
-  [_k] true)
-
-(defmethod valid-params-count? :<
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :<
-  [_operator column _params]
-  (str column " < ?"))
-
-;; >
-(defmethod operator? :>
-  [_k] true)
-
-(defmethod valid-params-count? :>
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :>
-  [_operator column _params]
-  (str column " > ?"))
-
-;; <=
-(defmethod operator? :<=
-  [_k] true)
-
-(defmethod valid-params-count? :<=
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :<=
-  [_operator column _params]
-  (str column " <= ?"))
-
-;; >=
-(defmethod operator? :>=
-  [_k] true)
-
-(defmethod valid-params-count? :>=
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :>=
-  [_operator column _params]
-  (str column " >= ?"))
-
-;; <>
-(defmethod operator? :<>
-  [_k] true)
-
-(defmethod valid-params-count? :<>
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :<>
-  [_operator column _params]
-  (str column " <> ?"))
-
-;; like
-(defmethod operator? :like
-  [_k] true)
-
-(defmethod valid-params-count? :like
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :like
-  [_operator column _params]
-  (str column " LIKE ?"))
-
-;; not=
-(defmethod operator? :not=
-  [_k] true)
-
-(defmethod valid-params-count? :not=
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :not=
-  [_operator column _params]
-  (str column " != ?"))
-
-;; not-like
-(defmethod operator? :not-like
-  [_k] true)
-
-(defmethod valid-params-count? :not-like
-  [_operator n] (= n 1))
-
-(defmethod parameterize-operator :not-like
-  [_operator column _params]
-  (str column  " NOT LIKE ?"))
-
-;; between
-(defmethod operator? :between
-  [_k] true)
-
-(defmethod valid-params-count? :between
-  [_operator n] (= n 2))
-
-(defmethod parameterize-operator :between
-  [_operator column _params]
-  (str column " BETWEEN ? AND ?"))
-
-;; not-between
-(defmethod operator? :not-between
-  [_k] true)
-
-(defmethod valid-params-count? :not-between
-  [_operator n] (= n 2))
-
-(defmethod parameterize-operator :not-between
-  [_operator column _params]
-  (str column " NOT BETWEEN ? AND ?"))
-
-;; in
-(defmethod operator? :in
-  [_k] true)
-
-;; - in can have any number of params
-
-(defmethod parameterize-operator :in
-  [_operator column params]
-  (str column " IN " (parameterize-tuple (count params))))
-
-;; not-in
-(defmethod operator? :not-in
-  [_k] true)
-
-;; - not-in can have any number of params
-
-(defmethod parameterize-operator :not-in
-  [_operator column params]
-  (str column " NOT IN " (parameterize-tuple (count params))))
-
-(defn mask-unsafe-params
-  "Helper function for inline-safe-params. Receives two arguments:
-  - params: a vector of condition params
-  - column-names: a map of namespaced keywords to their column names
-
-  Returns two lists:
-  - masked: the original params list with unsafe one replaced with '?'
-  - unmasked: the new params list with only unsafe ones."
-  [params column-names]
-  (-> (fn [result x]
-            (if (or (number? x)
-                  (and (namespaced-keyword? x)
-                    (get column-names x)))
-              (-> result
-                (update  :masked conj
-                  (if (keyword? x)
-                    (get column-names x)
-                    x)))
-              (-> result
-                (update  :masked conj \?)
-                (update  :unmasked conj x))))
-    (reduce {:masked [] :unmasked []} params)))
-
-(defn inline-safe-params
-  "Replaces '?' placeholders in a raw string with inlined values if
-  the value is of type `number?` or is a valid column name."
-  [{:keys [raw-string params column-names]}]
-  (let [{:keys [masked unmasked]} (mask-unsafe-params params column-names)]
-    {:params     unmasked
-     :raw-string (apply str
-                   (interleave
-                     (string/split raw-string #"\?")
-                     (conj masked nil)))}))
-
-;; specs
 (s/def ::operators operator?)
 
-(s/def ::condition-value
-  #(or (number? %) (string? %) (boolean? %) (namespaced-keyword? %)))
+(defmulti unsafe-expression? identity)
+(defmethod unsafe-expression? :default [_operator] false)
 
-(s/def ::condition
-  (s/&
-    (s/cat
-      :operator ::operators
-      :params
-      (s/alt
-        :params (s/* ::condition-value)
-        :params (s/coll-of ::condition-value)))
-    (fn [{:keys [operator params]}]
-      (valid-params-count? operator
-        (count (second params))))))
+(s/def ::unsafe-expression unsafe-expression?)
 
-(s/def ::conditions
+(comment
+  (defmethod operator? :array [_operator] true)
+  (defmethod unsafe-expression? :json [_operator] true)
+  (defmethod unsafe-expression? :time [_operator] true))
+
+(s/def ::selection-params
   (s/or
-    :condition
-    ::condition
+    :number number?
+    :column ::namespaced-keyword))
 
-    :conditions
-    (s/cat
-      :combinator (s/? #{:and :or})
-      :conditions (s/+ ::conditions))))
-
-(defn combine
-  [operator conditions]
-  (let [conditions (remove nil? conditions)]
-    (if (= 1 (count conditions))
-      conditions
-      (concat
-        ["("]
-        (interpose (if (= :or operator)
-                     " OR "
-                     " AND ")
-          conditions)
-        [")"]))))
-
-(defn combination-match?
-  ([k x]
-   (and
-     (map? x)
-     (contains? x k))))
-
-(defn match?
-  ([x]
-   (and (vector? x)
-     (= 2 (count x))
-     (keyword? (first x))))
-  ([k x]
-   (and (vector? x)
-     (= 2 (count x))
-     (= k (first x)))))
-
-(s/def ::plain-clauses
+(s/def ::expression
   (s/or
-    :clauses (s/cat
-              :key #(or (and (keyword? %) (namespace %))
-                      (= % :_))
-              :conditions ::conditions)
-    :clauses (s/coll-of ::plain-clauses
-               :into [])
-    :clauses (s/cat
-               :combinator (s/? #{:and :or})
-               :clauses (s/+ ::plain-clauses))))
+    :number number?
+    :boolean boolean?
+    :string string?
+    :column ::namespaced-keyword
+    :expression
+    (s/and vector?
+      (s/cat :operator (s/? ::operators)
+        :params (s/* ::expression)))
+    :unsafe-expression
+    (s/and vector?
+      (s/cat :operator ::unsafe-expression
+        :params (s/* (constantly true))))
+    :join-filters
+    (s/and map?
+      (s/+
+        (s/or :join-filter
+          (s/cat :join-key ::namespaced-keyword
+            :expression ::expression))))))
 
-(s/def ::join-clauses
-  (s/or
-    :clauses (s/cat
-               :join-key ::namespaced-keyword
-               :plain-clauses (s/+ ::plain-clauses))
-    :clauses (s/coll-of ::join-clauses
-               :into [])
-    :clauses (s/cat
-               :combinator (s/? #{:and :or})
-               :clauses (s/+ ::join-clauses))))
 
-(s/def ::clauses
-  (s/or
-    :clauses ::plain-clauses
-    :clauses  ::join-clauses
-    :clauses (s/coll-of ::clauses :into [])
-    :clauses (s/cat
-               :combinator (s/? #{:and :or})
-               :clauses (s/+ ::clauses))))
+(defmulti process-operator
+  (fn dispatcher [_env [operator _params]] operator))
 
-(defn clauses? [x]
-  (and (vector? x)
-    (= 2 (count x))
-    (= :clauses (first x))))
+(defmulti process-unsafe-expression
+  (fn dispatcher [_env [operator _params]] operator))
 
-(declare process-multi)
-(declare process-clauses)
+(defmulti process-expression
+  (fn dispatcher [_env [kw _expression]] kw))
 
-(defn process-multi
-  [{:keys [key keymap] :as env} combinator x]
-  (if (and (vector? x)
-        (not (match? x)))
-    (combine combinator (map #(process-clauses env %) x))
-    (process-clauses env x)))
+(defmethod process-unsafe-expression :json
+  [_env [_operator [json]]]
+  (let [json-string (generate-string json)]
+    {:raw-string "?"
+     :params     [json-string]}))
 
-(defn raw-string+params
-  [operator column params]
-  (if (or (string? column) (= key :_))
-    {:raw-string (parameterize-operator operator column params)
+(defmulti cast-type
+  "Registers a valid type for for :cast-type."
+  identity)
+
+(defmethod cast-type :integer [_type] "INTEGER")
+(defmethod cast-type :json [_type] "json")
+(defmethod cast-type :date [_type] "DATE")
+(defmethod cast-type :text [_type] "TEXT")
+(defmethod cast-type :default [_type] nil)
+
+(defmethod unsafe-expression? :cast [_operator] true)
+
+(defmethod process-unsafe-expression :cast
+  [env [_operator [expression type]]]
+  (let [expression (s/conform ::expression expression)
+        type-str   (cast-type type)]
+    (assert (not= expression ::s/invalid) "Invalid expression")
+    (assert type-str "Invalid type")
+    (inline-params
+      {:raw-string (str "CAST (? AS " type-str ")")
+       :params     [(process-expression env expression)]})))
+
+(defmethod operator? :and [_operator] true)
+
+(defmethod process-operator :and
+  [_env [_operator params]]
+  (case (count params)
+    0
+    {:raw-string "(?)"
+     :params [{:raw-string " ? "
+               :params [true]}]}
+    1
+    {:raw-string "(?)" :params params}
+    ;; default
+    {:raw-string
+     (str "(("
+       (clojure.string/join ") AND ("
+         (repeat (count params) \?))
+       "))")
+     :params params}))
+
+(defmethod operator? :or [_operator] true)
+
+(defmethod process-operator :or
+  [_env [_operator params]]
+  {:raw-string
+   (str "(("
+     (clojure.string/join ") OR ("
+       (repeat (count params) \?))
+     "))")
+   :params params})
+
+(defn multiple-compararison
+  "Common implementation of process-operator for comparison operators: =, <, >, <=, >="
+  [single-comparison-string params]
+  (case (count params)
+    (0 1)
+    {:raw-string "(?)"
+     :params [{:raw-string " ? "
+               :params [true]}]}
+    (let [params (partition 2 1 params)]
+      {:raw-string
+       (str "(("
+         (clojure.string/join ") AND ("
+           (repeat (count params) single-comparison-string))
+         "))")
+       :params (flatten params)})))
+
+(defmethod operator? := [_operator] true)
+
+(defmethod process-operator :=
+  [_env [_operator params]]
+  (multiple-compararison "? = ?" params))
+
+(defmethod operator? :> [_operator] true)
+
+(defmethod process-operator :>
+  [_env [_operator params]]
+  (multiple-compararison "? > ?" params))
+
+(defmethod operator? :>= [_operator] true)
+
+(defmethod process-operator :>=
+  [_env [_operator params]]
+  (multiple-compararison "? >= ?" params))
+
+(defmethod operator? :< [_operator] true)
+
+(defmethod process-operator :<
+  [_env [_operator params]]
+  (multiple-compararison "? < ?" params))
+
+(defmethod operator? :<= [_operator] true)
+
+(defmethod process-operator :<=
+  [_env [_operator params]]
+  (multiple-compararison "? <= ?" params))
+
+(defmethod operator? :+ [_operator] true)
+
+(defmethod process-operator :+
+  [_env [_operator params]]
+  (case (count params)
+    0
+    {:raw-string "0"
+     :params     []}
+    1
+    {:raw-string " ? "
      :params     params}
-    (let [[raw-column & column-params] column
-          raw-string-placeholder       (parameterize-operator operator "%s" params)
-          [s1 s2]                      (string/split raw-string-placeholder #"%s")
-          n                            (->> s1 seq (filter #(= \? %)) count)
-          [p1 p2]                      (split-at n params)]
-      {:raw-string (str s1 raw-column s2)
-       :params     (concat p1 column-params p2)})))
+    ;; default
+    {:raw-string (str "("
+                   (clojure.string/join " + " (repeat (count params) \?))
+                   ")")
+     :params     params}))
 
-(defn process-clauses
-  [{:keys [key keymap join-filter-subqueries] :as env} x]
-  (cond
-    (match? x)
-    (let [coll (second x)]
-      (process-multi env :and coll))
+(defmethod operator? :* [_operator] true)
 
-    (combination-match? :clauses x)
-    (let [{:keys [combinator clauses] k :key} x]
-      (process-multi (assoc env :key (or k key))
-        combinator clauses))
+(defmethod process-operator :*
+  [_env [_operator params]]
+  (case (count params)
+    0
+    {:raw-string "1"
+     :params     []}
+    1
+    {:raw-string " ? "
+     :params     params}
+    ;; default
+    {:raw-string (str "("
+                   (clojure.string/join ") * (" (repeat (count params) \?))
+                   ")")
+     :params     params}))
 
-    (combination-match? :join-key x)
-    (let [{:keys [join-key plain-clauses]} x]
-      (when-let [subquery (get join-filter-subqueries join-key)]
-        (when-let [sub-conditions (process-clauses env [:clauses plain-clauses])]
-          [subquery sub-conditions ")"])))
+(defmethod operator? :- [_operator] true)
 
-    (combination-match? :conditions x)
-    (let [{:keys [combinator conditions] k :key} x]
-      (process-multi (assoc env :key (or k key))
-        combinator conditions))
+(defmethod process-operator :-
+  [_env [_operator params]]
+  (assert (not (zero? (count params)))
+    "There must be at least one parameter to `-`")
+  (if (= 1 (count params))
+    {:raw-string "0-(?)"
+     :params     params}
+    {:raw-string (str "("
+                   (clojure.string/join " - " (repeat (count params) \?))
+                   ")")
+     :params     params}))
 
-    (combination-match? :operator x)
-    (let [{:keys [operator params]} x
-          params                    (second params)
-          column                    (get keymap key)]
-      (when (and (or (= key :_) column)
-              (not (and (= key :_)
-                     (disallow-no-column? operator))))
-        (->> {:raw-string :condition}
-          (set/rename-keys
-            (inline-safe-params
-              (assoc (raw-string+params operator column params)
-                :column-names keymap))))))))
+(defmethod operator? :/ [_operator] true)
+
+(defmethod process-operator :/
+  [_env [_operator params]]
+  (assert (not (zero? (count params)))
+    "There must be at least one parameter to `/`")
+  (if (= 1 (count params))
+    {:raw-string "1/(?)"
+     :params     params}
+    {:raw-string (str "("
+                   (clojure.string/join ") / (" (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
+(defmethod operator? :count [_operator] true)
+
+(defmethod process-operator :count
+  [_env [_operator params]]
+  (assert (= 1 (count params)))
+  {:raw-string "COUNT (?)"
+   :params params})
+
+(defmethod operator? :in [_operator] true)
+
+(defmethod process-operator :in
+  [_env [_operator params]]
+  {:raw-string (str "(?) IN ("
+                 (clojure.string/join ", "
+                   ;; decrease by 1 to exclude the first param
+                   ;; which should go before `IN`
+                   (repeat (dec (count params)) \?))
+                 ")")
+   :params     params})
+
+(inline-params (process-operator {} [:and]))
+(process-operator {} [:in [1 2 3]])
+
+(defmethod operator? :not [_operator] true)
+
+(defmethod process-operator :not
+  [_env [_operator params]]
+  {:raw-string "NOT (?)"
+   :params params})
+
+(process-operator {} [:not 1])
+
+(defmethod process-expression :expression
+  [env [_kw {:keys [operator params] :or {operator :and}}]]
+  (inline-params
+    (process-operator env
+      [operator (mapv #(process-expression env %) params)])))
+
+
+(defmethod process-expression :unsafe-expression
+  [env [_kw {:keys [operator params] :or {operator :and}}]]
+  (process-unsafe-expression env [operator params]))
+
+(defmethod process-expression :join-filter
+  [env [_kw {:keys [join-key expression]}]]
+  (let [subquery (-> env :join-filter-subqueries join-key)]
+    (assert subquery (str "No join filter found for join key " join-key))
+    (inline-params
+      {:raw-string subquery
+       :params     [(process-expression env expression)]})))
+
+(defmethod process-expression :join-filters
+  [env [_kw join-filters]]
+  (inline-params
+    {:raw-string (str "("
+                   (clojure.string/join ") AND ("
+                     (repeat (count join-filters) \?))
+                   ")")
+     :params     (mapv #(process-expression env %) join-filters)}))
+
+(defmethod process-expression :number
+  [_env [_kw number]]
+  {:raw-string (str number)
+   :params     []})
+
+(defmethod process-expression :boolean
+  [_env [_kw value]]
+  {:raw-string " ? "
+   :params     [value]})
+
+(defmethod operator? :cond [_operator] true)
+
+(defmethod process-operator :cond
+  [_env [_kw expressions]]
+  (let [n (count expressions)]
+    (assert (> n 2))
+    (let [when+else-count (dec n)
+          else?           (odd? when+else-count)
+          when-count      (if else? (dec when+else-count) when+else-count)]
+      {:raw-string (str " CASE (?) "
+                     (apply str (repeat (/ when-count 2) " WHEN (?) THEN (?) "))
+                     (when else? " ELSE (?)")
+                     " END")
+       :params     expressions})))
+
+(defmethod process-expression :string
+  [_env [_kw string]]
+  {:raw-string " ? "
+   :params     string})
+
+(defmethod process-expression :column
+  [{:keys [column-names] :as env} [_kw column-keyword]]
+  (let [column (get column-names column-keyword)]
+    (assert column (str "Invalid colum keyword " column-keyword))
+    (if (string? column)
+      {:raw-string column
+       :params     []}
+      (let [form (s/conform ::expression column)]
+        (assert (not= ::s/invalid form) (str "Invalid pseudo column for " column-keyword ": " column))
+        (inline-params
+          {:raw-string " ? "
+           :params     [(process-expression env form)]})))))
+
+(inline-params
+  {:raw-string " ? "
+   :params [{:params [], :raw-string "2018 - `human`.`yob`"}]})
 
 (defn parameterize
   [env clauses]
-  (let [all              (flatten (process-clauses env
-                                    (s/conform ::clauses clauses)))
-        condition-string (apply str
-                           (map #(if (map? %) (:condition %) %) all))
-        parameters       (flatten (->> all (filter map?) (map :params)))]
-    [condition-string parameters]))
-
-(s/def ::namespaced-keyword
-  namespaced-keyword?)
-
-(s/def ::column+order-params
-  (s/cat
-    :column ::namespaced-keyword
-    :params (s/* #{:asc :desc :nils-first :nils-last})))
-
-(def order-params->string
-  {:asc        " ASC"
-   :desc       " DESC"
-   :nils-first " NULLS FIRST"
-   :nils-last  " NULLS LAST"})
-
-(defn ->order-by-string [column-names order-by]
-  (let [form (s/conform (s/+ ::column+order-params) order-by)]
-    (when-not (= ::s/invalid form)
-      (let [form (filter #(contains? column-names (:column %)) form)]
-        (when (seq form)
-          (->> form
-            (map (fn [{:keys [column params]}]
-                   (str
-                     (get column-names column)
-                     (->> params
-                       (map order-params->string)
-                       (apply str)))))
-            (clojure.string/join ", ")))))))
+  (let [form (s/conform ::expression clauses)]
+    (assert (not= ::s/invalid form) (str "Invalid expression" (pr-str clauses)))
+    ;;(println "clauses:" clauses)
+    ;;(println "form: " form)
+    (process-expression env form)))
+#_
+(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
+    (s/conform ::expression [[:= :foo/bar "a"]
+                             [:case 1 2 3 4]
+                             [:cast "2" :integer]
+                             [:not [:= :foo/bar 2]]]))
+#_
+(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
+    (s/conform ::expression [[:= :foo/bar "a"]
+                             [:cast [:json {:a 1 :b [2 3]}] :json]
+                             [:in 1 2 3 4 5]]))
+#_
+(process-expression {:column-names {:foo/bar? "`foo`.`bar`"}}
+  (s/conform ::expression [:> :foo/bar? true :foo/bar? 4]))
+#_
+(process-expression {:column-names {:foo/bar "`foo`.`bar`"}
+                     :join-filter-subqueries
+                     {:a/b "x IN (SELECT blabla WHERE ?)"
+                      :c/d "x IN (SELECT blabla WHERE ?)"}}
+  (s/conform ::expression [:identity 2]
+    #_{:a/b ;;[:= :foo/bar "a"]
+       {:c/d [:= :foo/bar "b"]}
+       }
+                           ;; {:a/b [:cast [:json {:a 1 :b [2 3]}] :json]}
+                           ;;{:c/d [:in 1 2 3 4 5]}
+                           ))
