@@ -575,19 +575,18 @@
                 (if (string? column-name)
                   {:raw-string (str column-name " AS " clojuric-name)
                    :params     []}
+                  ;; not string? it must be a pseudo-column
                   (let [form (s/conform ::filters/expression column-name)]
                     (filters/inline-params
                       {:raw-string (str "(?) AS " clojuric-name)
                        :params     [(filters/process-expression {:column-names column-names} form)]})))))
         columns-to-query)
-      ;; todo: pseudo-columns go here
       (when target-column
         (let [form (s/conform ::filters/expression (env/source-column-value env))]
           [(filters/inline-params
              {:raw-string (str "? AS " (get clojuric-names target-column))
               :params     [(filters/process-expression {:column-names column-names} form)]})])))))
 
-;; FIXME
 (defn parameterize-all-selection
   [env columns-to-query]
   (let [column-names (-> env ::sql-schema ::column-names)
