@@ -319,8 +319,8 @@
 (defmethod process-operator :cond
   [_env [_kw expressions]]
   (let [n (count expressions)]
-    (assert (> n 2)
-      "`cond` must have at least three arguments")
+    (assert (> n 1)
+      "`cond` must have at least two arguments")
     (let [when+else-count n
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
