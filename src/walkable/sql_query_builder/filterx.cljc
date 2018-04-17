@@ -4,13 +4,16 @@
             [cheshire.core :refer [generate-string]]
             [clojure.set :as set]))
 
+;; don't use "?" as raw-string
+;; as applying `string/split` to it is not
+;; consistent in both Clojure and Clojurescript
+;; use " ? " or "(?)" instead
 (defn inline-params
   [{:keys [raw-string params]}]
   {:params     (flatten (map :params params))
-   :raw-string (apply str
-                 (interleave
-                   (string/split raw-string #"\?")
-                   (conj (mapv :raw-string params) nil)))})
+   :raw-string (->> (conj (mapv :raw-string params) nil)
+                 (interleave (string/split raw-string #"\?"))
+                 (apply str))})
 
 (defmulti valid-params-count?
   (fn dispatcher [operator n] operator))
