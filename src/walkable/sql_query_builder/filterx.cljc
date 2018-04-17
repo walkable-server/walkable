@@ -103,22 +103,28 @@
 
 (defmethod process-operator :and
   [_env [_operator params]]
-  {:raw-string
-   (str "("
-     (clojure.string/join ") AND ("
-       (repeat (count params) \?))
-     ")")
-   :params params})
+  (case (count params)
+    0
+    {:raw-string "(?)" :params [true]}
+    1
+    {:raw-string "(?)" :params params}
+    ;; default
+    {:raw-string
+     (str "(("
+       (clojure.string/join ") AND ("
+         (repeat (count params) \?))
+       "))")
+     :params params}))
 
 (defmethod operator? :or [_operator] true)
 
 (defmethod process-operator :or
   [_env [_operator params]]
   {:raw-string
-   (str "("
+   (str "(("
      (clojure.string/join ") OR ("
        (repeat (count params) \?))
-     ")")
+     "))")
    :params params})
 
 (defmethod operator? := [_operator] true)
