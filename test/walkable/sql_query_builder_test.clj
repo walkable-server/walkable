@@ -119,7 +119,7 @@
   (is (= (sut/ident->condition
            {:ast {:key [:person/by-id 1]}}
            :person/id)
-        {:person/id [:= 1]})))
+        [:= :person/id 1])))
 
 (deftest separate-idents-test
   (is (= (sut/separate-idents {:person/by-id  :person/number
