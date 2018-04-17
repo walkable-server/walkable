@@ -26,7 +26,6 @@
 
 (s/def ::operators operator?)
 
-(defmethod operator? :identity [_operator] true)
 (defmethod operator? :and [_operator] true)
 (defmethod operator? :or [_operator] true)
 (defmethod operator? :not [_operator] true)
@@ -88,7 +87,10 @@
     {:raw-string "?"
      :params     [json-string]}))
 
-(defmulti cast-type identity)
+(defmulti cast-type
+  "Registers a valid type for for :cast-type."
+  identity)
+
 (defmethod cast-type :integer [_type] "INTEGER")
 (defmethod cast-type :json [_type] "json")
 (defmethod cast-type :date [_type] "DATE")
@@ -104,12 +106,6 @@
     (inline-params
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
-
-;; dummy
-(defmethod process-operator :identity
-  [_env [_operator params]]
-  {:raw-string "(?)"
-   :params params})
 
 (defmethod process-operator :and
   [_env [_operator params]]
