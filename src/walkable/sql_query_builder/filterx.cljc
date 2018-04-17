@@ -181,12 +181,13 @@
 
 (defmethod process-operator :in
   [_env [_operator params]]
-  {:raw-string
-   (str "? IN ("
-     (clojure.string/join ", "
-       (repeat (dec (count params)) \?))
-     ")")
-   :params params})
+  {:raw-string (str "(?) IN ("
+                 (clojure.string/join ", "
+                   ;; decrease by 1 to exclude the first param
+                   ;; which should go before `IN`
+                   (repeat (dec (count params)) \?))
+                 ")")
+   :params     params})
 
 (process-operator {} [:and [1 2 3]])
 (process-operator {} [:in [1 2 3]])
