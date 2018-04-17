@@ -4,6 +4,7 @@
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]
+            [clojure.core.async :refer [go go-loop <! >! put! promise-chan to-chan]]
             [com.wsscode.pathom.core :as p]))
 
 (def backticks
@@ -689,7 +690,7 @@
 
             ;;join-child-queries
             join-children-data-by-join-key
-            (when (seq join-children)
+            (when (and (seq entities) (seq join-children))
               (into {}
                 (for [join-child join-children]
                   (let [j             (:dispatch-key join-child)
@@ -703,7 +704,7 @@
                           (process-query
                             (-> env
                               (assoc :ast join-child)
-                              (assoc-in [::p/entity source-column]
+                              (assoc-in [(get env ::p/entity-key) source-column]
                                 (get e source-column)))))
 
                         query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
@@ -737,5 +738,127 @@
           (do-join env entities-with-join-children-data)
           (when-not one?
             [])))
+
+      ::p/continue)))
+
+(defn async-pull-entities
+  "An async Pathom plugin that pulls entities from SQL database and
+  puts relevent data to ::p/entity ready for p/map-reader plugin.
+
+  The env given to the Pathom parser must contains:
+  - sql-schema: output of compile-schema
+  - sql-db: a database instance
+  - run-query: a function that run an SQL query (optionally with
+  params) against the given sql-db. Shares the same input with
+  clojure.java.jdbc/query. Returns query result in a channel."
+  [{::keys [sql-schema sql-db run-query] :as env}]
+  (let [{::keys [ident-keywords
+                 batch-query
+                 target-tables
+                 target-columns
+                 source-columns
+                 join-statements
+                 cardinality]} sql-schema
+        k                      (env/dispatch-key env)]
+    (if (contains? target-tables k)
+      ;; this is an ident or a join, let's go for data
+      (let [{:keys [query-string-input query-params join-children]}
+            (process-query env)
+
+            query-string
+            (when (contains? ident-keywords k)
+              (->query-string query-string-input))
+
+            one?
+            (= :one (get cardinality k))
+
+            do-join
+            (if one?
+              #(p/join (first %2) %1)
+              #(p/join-seq %1 %2))
+
+            entities-ch
+            (promise-chan)
+
+            join-children-data-by-join-key-ch
+            (promise-chan)
+
+            entities-with-join-children-data-ch
+            (promise-chan)]
+        ;; debugging
+        #_
+        (println "dispatch key" k)
+        (go (if query-string
+              ;; for idents
+              (>! entities-ch (<! (run-query sql-db (cons query-string query-params))))
+              ;; joins don't have to build a query themselves
+              ;; just look up the key in their parents data
+              (let [parent (p/entity env)]
+                (>! entities-ch (or (get parent (:ast env)) [])))))
+
+        ;; debugging
+        #_
+        (go (let [entities (<! entities-ch)]
+              (println "entities:" entities)))
+        (go (let [entities         (<! entities-ch)
+                  join-children-ch (to-chan join-children)]
+              (if-not (and (seq entities) (seq join-children))
+                (>! join-children-data-by-join-key-ch {})
+                (loop [join-children-data-by-join-key {}]
+                  (if-let [join-child (<! join-children-ch)]
+                    (let [j             (:dispatch-key join-child)
+                          ;; parent
+                          source-column (get source-columns j)
+                          ;; children
+                          target-column (get target-columns j)
+
+                          query-string-inputs
+                          (for [e entities]
+                            (process-query
+                              (-> env
+                                (assoc :ast join-child)
+                                (assoc-in [(get env ::p/entity-key) source-column]
+                                  (get e source-column)))))
+
+                          query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
+                          all-params    (map :query-params query-string-inputs)
+
+                          join-children-data
+                          (<! (run-query sql-db (batch-query query-strings all-params)))]
+                      (recur (assoc join-children-data-by-join-key
+                               join-child (group-by target-column join-children-data))))
+                    (>! join-children-data-by-join-key-ch join-children-data-by-join-key))))))
+        ;; debugging
+        #_
+        (go (let [join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
+              (println "join-children-data-by-join-key:" join-children-data-by-join-key )))
+        (go (let [entities                       (<! entities-ch)
+                  join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
+              (put! entities-with-join-children-data-ch
+                (for [e entities]
+                  (let [child-joins
+                        (into {}
+                          (for [join-child join-children]
+                            (let [j             (:dispatch-key join-child)
+                                  source-column (get source-columns j)
+                                  parent-id     (get e source-column)
+                                  children      (get-in join-children-data-by-join-key
+                                                  [join-child parent-id]
+                                                  [])]
+                              [join-child children])))]
+                    (merge e child-joins))))))
+        ;; debugging
+        #_
+        (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
+              (println "entities-with-join-children-data: " entities-with-join-children-data)))
+        (let [result-chan (promise-chan)]
+          (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
+                (>! result-chan
+                  (if (seq entities-with-join-children-data)
+                    (<! (do-join env entities-with-join-children-data))
+                    (if one?
+                      {}
+                      [])))))
+          result-chan))
 
       ::p/continue)))

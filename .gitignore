@@ -14,6 +14,6 @@ pom.xml.asc
 /dev/src/local.clj
 /walkable_demo.sqlite
 /run.js
-node_modules
 /.nrepl-history
+node_modules
 .shadow-cljs
