@@ -308,9 +308,9 @@
     (let [when+else-count (dec n)
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
-      {:raw-string (str "CASE ?"
-                     (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
-                     (when else? " ELSE ?")
+      {:raw-string (str "CASE (?)"
+                     (apply str (repeat (/ when-count 2) " WHEN (?) THEN (?)"))
+                     (when else? " ELSE (?)")
                      " END")
        :params     expressions})))
 
@@ -325,9 +325,33 @@
           else?           (odd? when+else-count)
           when-count      (if else? (dec when+else-count) when+else-count)]
       {:raw-string (str "CASE"
-                     (apply str (repeat (/ when-count 2) " WHEN ? THEN ?"))
-                     (when else? " ELSE ?")
+                     (apply str (repeat (/ when-count 2) " WHEN (?) THEN (?)"))
+                     (when else? " ELSE (?)")
                      " END")
+       :params     expressions})))
+
+(defmethod operator? :if [_operator] true)
+
+(defmethod process-operator :if
+  [_env [_kw expressions]]
+  (let [n (count expressions)]
+    (assert (#{2 3} n)
+      "`if` must have either two or three arguments")
+    (let [else?           (= 3 n)]
+      {:raw-string (str "CASE WHEN (?) THEN (?)"
+                     (when else? " ELSE (?)")
+                     " END")
+       :params     expressions})))
+
+(defmethod operator? :when [_operator] true)
+
+(defmethod process-operator :when
+  [_env [_kw expressions]]
+  (let [n (count expressions)]
+    (assert (= 2 n)
+      "`when` must have exactly two arguments")
+    (let [else?           (= 3 n)]
+      {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
 
 (defmethod process-expression :string
