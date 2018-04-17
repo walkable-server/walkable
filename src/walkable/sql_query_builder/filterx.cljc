@@ -147,6 +147,23 @@
                    ")")
      :params     params}))
 
+(defmethod operator? :* [_operator] true)
+
+(defmethod process-operator :*
+  [_env [_operator params]]
+  (case (count params)
+    0
+    {:raw-string "1"
+     :params     []}
+    1
+    {:raw-string " ? "
+     :params     params}
+    ;; default
+    {:raw-string (str "("
+                   (clojure.string/join ") * (" (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
 (defmethod operator? :- [_operator] true)
 
 (defmethod process-operator :-
@@ -158,6 +175,20 @@
      :params     params}
     {:raw-string (str "("
                    (clojure.string/join " - " (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
+(defmethod operator? :/ [_operator] true)
+
+(defmethod process-operator :/
+  [_env [_operator params]]
+  (assert (not (zero? (count params)))
+    "There must be at least one parameter to `/`")
+  (if (= 1 (count params))
+    {:raw-string "1/(?)"
+     :params     params}
+    {:raw-string (str "("
+                   (clojure.string/join ") / (" (repeat (count params) \?))
                    ")")
      :params     params}))
 
