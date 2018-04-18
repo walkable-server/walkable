@@ -37,6 +37,7 @@
 
 (s/def ::expression
   (s/or
+    :nil nil?
     :number number?
     :boolean boolean?
     :string string?
@@ -283,6 +284,11 @@
                      (repeat (count join-filters) \?))
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
+
+(defmethod process-expression :nil
+  [_env [_kw number]]
+  {:raw-string "NULL"
+   :params     []})
 
 (defmethod process-expression :number
   [_env [_kw number]]
