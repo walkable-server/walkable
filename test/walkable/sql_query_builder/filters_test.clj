@@ -75,3 +75,33 @@
           {:raw-string "(?)+(?)", :params [{} {}]}))
     (is (= (sut/process-operator {} [:+ [{} {} {}]])
           {:raw-string "(?)+(?)+(?)", :params [{} {} {}]}))))
+
+(deftest when-test
+  (is (= (sut/process-operator {} [:when [{} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) END", :params [{} {}]})))
+
+(deftest if-test
+  (is (= (sut/process-operator {} [:if [{} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) END", :params [{} {}]}))
+  (is (= (sut/process-operator {} [:if [{} {} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {}]})))
+
+(deftest case-test
+  (is (= (sut/process-operator {} [:case [{} {} {}]])
+        {:raw-string "CASE (?) WHEN (?) THEN (?) END", :params [{} {} {}]}))
+  (is (= (sut/process-operator {} [:case [{} {} {} {}]])
+        {:raw-string "CASE (?) WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {} {}]}))
+  (is (= (sut/process-operator {} [:case [{} {} {} {} {}]])
+        {:raw-string "CASE (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {}]}))
+  (is (= (sut/process-operator {} [:case [{} {} {} {} {} {}]])
+        {:raw-string "CASE (?) WHEN (?) THEN (?) WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {} {} {} {}]})))
+
+(deftest cond-test
+  (is (= (sut/process-operator {} [:cond [{} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) END", :params [{} {}]}))
+  (is (= (sut/process-operator {} [:cond [{} {} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {}]}))
+  (is (= (sut/process-operator {} [:cond [{} {} {} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {}]}))
+  (is (= (sut/process-operator {} [:cond [{} {} {} {} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {} {} {}]})))
