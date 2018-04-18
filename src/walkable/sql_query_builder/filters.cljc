@@ -210,14 +210,30 @@
      :params     params}
     (infix-notation "/" params)))
 
+(defn one-argument-operator
+  [params operator-name raw-string]
+  (assert (= 1 (count params))
+    (str "There must be exactly one argument to `" operator-name "`."))
+  {:raw-string raw-string
+   :params     params})
+
 (defmethod operator? :count [_operator] true)
 
 (defmethod process-operator :count
   [_env [_operator params]]
-  (assert (= 1 (count params))
-    "There must be exactly one argument to `count`.")
-  {:raw-string "COUNT (?)"
-   :params     params})
+  (one-argument-operator params "count" "COUNT (?)"))
+
+(defmethod operator? :not [_operator] true)
+
+(defmethod process-operator :not
+  [_env [_operator params]]
+  (one-argument-operator params "not" "NOT (?)"))
+
+(defmethod operator? :distinct [_operator] true)
+
+(defmethod process-operator :distinct
+  [_env [_operator params]]
+  (one-argument-operator params "distinct" "DISTINCT ?"))
 
 (defmethod operator? :in [_operator] true)
 
@@ -230,13 +246,6 @@
                    (repeat (dec (count params)) \?))
                  ")")
    :params     params})
-
-(defmethod operator? :not [_operator] true)
-
-(defmethod process-operator :not
-  [_env [_operator params]]
-  {:raw-string "NOT (?)"
-   :params params})
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
