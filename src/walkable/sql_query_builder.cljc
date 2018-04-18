@@ -489,7 +489,7 @@
     (case (count all-conditions)
       0 nil
       1 (first all-conditions)
-      all-conditions)))
+      (vec all-conditions))))
 
 (defn process-pagination
   "Processes :offset :limit and :order-by if provided in current
