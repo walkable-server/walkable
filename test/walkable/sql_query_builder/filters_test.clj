@@ -49,7 +49,7 @@
 (deftest =-tests
   ;; the same to >, >=, <, <=
   (is (= (sut/process-operator {} [:= [{} {}]])
-        {:raw-string "(?)=(?)", :params ({} {})}))
+        {:raw-string "(?)=(?)", :params [{} {}]}))
   (is (= (sut/process-operator {} [:= [{} {} {}]])
         {:raw-string "(?)=(?) AND (?)=(?)", :params [{} {} {} {}]}))
   (is (= (sut/process-operator {} [:= [{} {} {} {}]])
