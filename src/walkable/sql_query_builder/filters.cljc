@@ -125,48 +125,43 @@
 
 (defn multiple-compararison
   "Common implementation of process-operator for comparison operators: =, <, >, <=, >="
-  [single-comparison-string params]
-  (case (count params)
-    (0 1)
-    {:raw-string "(?)"
-     :params [{:raw-string " ? "
-               :params [true]}]}
-    (let [params (partition 2 1 params)]
-      {:raw-string
-       (clojure.string/join " AND "
-         (repeat (count params) single-comparison-string))
-
-       :params (flatten params)})))
+  [comparator-string params]
+  (assert (< 1 (count params))
+    (str "There must be at least two arguments to " comparator-string))
+  (let [params (partition 2 1 params)]
+    {:raw-string (clojure.string/join " AND "
+                   (repeat (count params) (str "(?)" comparator-string "(?)")))
+     :params     (flatten params)}))
 
 (defmethod operator? := [_operator] true)
 
 (defmethod process-operator :=
   [_env [_operator params]]
-  (multiple-compararison "(?) = (?)" params))
+  (multiple-compararison "=" params))
 
 (defmethod operator? :> [_operator] true)
 
 (defmethod process-operator :>
   [_env [_operator params]]
-  (multiple-compararison "(?) > (?)" params))
+  (multiple-compararison ">" params))
 
 (defmethod operator? :>= [_operator] true)
 
 (defmethod process-operator :>=
   [_env [_operator params]]
-  (multiple-compararison "(?) >= (?)" params))
+  (multiple-compararison ">=" params))
 
 (defmethod operator? :< [_operator] true)
 
 (defmethod process-operator :<
   [_env [_operator params]]
-  (multiple-compararison "(?) < (?)" params))
+  (multiple-compararison "<" params))
 
 (defmethod operator? :<= [_operator] true)
 
 (defmethod process-operator :<=
   [_env [_operator params]]
-  (multiple-compararison "(?) <= (?)" params))
+  (multiple-compararison "<=" params))
 
 (defn infix-notation [operator-string params]
   {:raw-string (clojure.string/join operator-string
