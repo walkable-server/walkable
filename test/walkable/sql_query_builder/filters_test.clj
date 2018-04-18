@@ -51,9 +51,9 @@
   (is (= (sut/process-operator {} [:= [{} {}]])
         {:raw-string "(?)=(?)", :params ({} {})}))
   (is (= (sut/process-operator {} [:= [{} {} {}]])
-        {:raw-string "(?)=(?) AND (?)=(?)", :params ({} {} {} {})}))
+        {:raw-string "(?)=(?) AND (?)=(?)", :params [{} {} {} {}]}))
   (is (= (sut/process-operator {} [:= [{} {} {} {}]])
-        {:raw-string "(?)=(?) AND (?)=(?) AND (?)=(?)", :params ({} {} {} {} {} {})})))
+        {:raw-string "(?)=(?) AND (?)=(?) AND (?)=(?)", :params [{} {} {} {} {} {}]})))
 
 (deftest +-and-the-like-tests
   (testing "special case for * and +"
