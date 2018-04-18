@@ -104,28 +104,24 @@
 
 (defmethod process-operator :and
   [_env [_operator params]]
-  (case (count params)
-    0
+  (if (empty? params)
     {:raw-string "(?)"
-     :params [{:raw-string " ? "
-               :params [true]}]}
-    1
-    {:raw-string "(?)" :params params}
-    ;; default
-    {:raw-string
-     (clojure.string/join " AND "
-       (repeat (count params) "(?)"))
-     :params params}))
+     :params     [{:raw-string " ? "
+                   :params     [true]}]}
+    {:raw-string (clojure.string/join " AND "
+                   (repeat (count params) "(?)"))
+     :params     params}))
 
 (defmethod operator? :or [_operator] true)
 
 (defmethod process-operator :or
   [_env [_operator params]]
-  {:raw-string
-   (clojure.string/join " OR "
-     (repeat (count params) "(?)"))
-
-   :params params})
+  (if (empty? params)
+    {:raw-string "NULL"
+     :params     []}
+    {:raw-string (clojure.string/join " OR "
+                   (repeat (count params) "(?)"))
+     :params     params}))
 
 (defn multiple-compararison
   "Common implementation of process-operator for comparison operators: =, <, >, <=, >="
