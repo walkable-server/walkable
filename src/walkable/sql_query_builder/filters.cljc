@@ -57,7 +57,7 @@
             :expression ::expression))))))
 
 ;; the rule for parentheses in :raw-string
-;; outer raw string should provide it
+;; outer raw string should provide them
 ;; inner ones shouldn't
 
 (defmulti process-operator
