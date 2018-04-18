@@ -163,45 +163,36 @@
   [_env [_operator params]]
   (multiple-compararison "<=" params))
 
-(defn infix-notation [operator-string params]
+(defn infix-notation
+  "Common implementation for +, -, *, /"
+  [operator-string params]
   {:raw-string (clojure.string/join operator-string
                  (repeat (count params) "(?)"))
-
    :params     params})
 
 (defmethod operator? :+ [_operator] true)
 
 (defmethod process-operator :+
   [_env [_operator params]]
-  (case (count params)
-    0
+  (if (empty? params)
     {:raw-string "0"
      :params     []}
-    1
-    {:raw-string "(?)"
-     :params     params}
-    ;; default
     (infix-notation "+" params)))
 
 (defmethod operator? :* [_operator] true)
 
 (defmethod process-operator :*
   [_env [_operator params]]
-  (case (count params)
-    0
+  (if (empty? params)
     {:raw-string "1"
      :params     []}
-    1
-    {:raw-string "(?)"
-     :params     params}
-    ;; default
     (infix-notation "*" params)))
 
 (defmethod operator? :- [_operator] true)
 
 (defmethod process-operator :-
   [_env [_operator params]]
-  (assert (not (zero? (count params)))
+  (assert (not (empty? params))
     "There must be at least one parameter to `-`")
   (if (= 1 (count params))
     {:raw-string "0-(?)"
@@ -212,7 +203,7 @@
 
 (defmethod process-operator :/
   [_env [_operator params]]
-  (assert (not (zero? (count params)))
+  (assert (not (empty? params))
     "There must be at least one parameter to `/`")
   (if (= 1 (count params))
     {:raw-string "1/(?)"
