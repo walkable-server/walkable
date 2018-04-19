@@ -1,8 +1,14 @@
 (ns walkable.sql-query-builder.filters
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [cheshire.core :refer [generate-string]]
+            #?(:clj [cheshire.core :refer [generate-string]])
             [clojure.set :as set]))
+
+#?(:cljs
+   (defn generate-string
+     "Equivalent of cheshire.core/generate-string for Clojurescript"
+     [ds]
+     (.stringify js/JSON (clj->js ds))))
 
 (defn inline-params
   [{:keys [raw-string params]}]
