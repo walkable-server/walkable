@@ -184,7 +184,7 @@
                      :target-table   (target-table joins)
                      :quote-marks    quote-marks
                      :join-statement (->join-statements quote-marks joins)})
-    " WHERE ? )"))
+    " WHERE ?)"))
 
 (defn ast-root
   [ast]

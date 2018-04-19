@@ -105,3 +105,12 @@
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {}]}))
   (is (= (sut/process-operator {} [:cond [{} {} {} {} {}]])
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {} {} {}]})))
+
+(deftest parameterize-tests
+  (is (= (sut/parameterize {:column-names {:a/foo "a.foo"
+                                           :b/bar "b.bar"}
+                            :join-filter-subqueries
+                            {:x/a "b.id IN (SELECT b.id FROM b WHERE ?)"
+                             :x/b "d.id IN (SELECT d.id FROM c_d JOIN d ON WHERE ?)"}}
+           [:or {:x/a [:= :a/foo "meh"]}
+                {:x/b [:= :b/bar "mere"]}]))))
