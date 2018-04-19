@@ -275,6 +275,8 @@ sqlite3 node module.
 
 - [Schema guide](doc/schema.md)
 
+- [Schema, advanced](doc/schema_advanced.md)
+
 - [Filters](doc/filters.md)
 
 - [Developing Walkable](doc/developing.md)
