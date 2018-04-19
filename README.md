@@ -129,6 +129,9 @@ will result in
              "john"]
 ```
 
+You can express pretty much anything with those S-expressions. Learn
+more about them [here](doc/s-expressions.md).
+
 ## Who should use Walkable?
 
 TL;DR: Anyone who have both Clojure and SQL in their toolkit.
@@ -287,6 +290,8 @@ sqlite3 node module.
 - [Schema guide](doc/schema.md)
 
 - [Schema, advanced](doc/schema_advanced.md)
+
+- [S-expressions](doc/s-expressions.md)
 
 - [Filters](doc/filters.md)
 
