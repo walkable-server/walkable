@@ -62,31 +62,30 @@ Walkable's goal is to become the ultimate SQL library for Clojure.
 Basically you define your schema like this:
 
 ```clj
-{:idents           {;; query with `[:person/by-id 1]` will result in
+{:idents           { ;; query with `[:person/by-id 1]` will result in
                     ;; `FROM person WHERE person.id = 1`
                     :person/by-id :person/id
                     ;; just select from `person` table without any constraints
                     :people/all "person"}
  :columns          #{:person/name :person/yob}
- :extra-conditions {;; enforce some constraints whenever this join is asked for
+ :extra-conditions { ;; enforce some constraints whenever this join is asked for
                     :pet/owner [:and
-                                {:person/hidden [:= true]}
+                                [:= :person/hidden true]
                                 ;; yes, you can nest the conditions whatever you like
-                                [:or
-                                 {:person/id [:not= 5]}
-                                  ;; a hashmap implies an `AND` for the k/v pairs inside
-                                 {:person/yob [:in 1970 1971 1972]
-                                  :person/name [:like "john"]}
-
-                                 ;; even this style of condition
-                                 {:person/name [:or
-                                                [:like "john"]
-                                                [:like "mary"]]}
+                                [:or [:= :person/id 5]
+                                 ;; a vector implies an `AND` for the conditions inside
+                                     [[:in :person/yob
+                                       1970
+                                       1971
+                                       ;; yes, you can!
+                                       [:cast "1972" :integer]]
+                                      [:like :person/name "john"]]
                                  ;; you can even filter by properties of a join, not just
                                  ;; the item itself
-                                 {:person/pet {:pet/color [:or [:= "white"] [:= "green"]]}}
+                                 {:person/pet [:or [:= :pet/color "white"]
+                                                   [:= :pet/color "green"]]}
                                  ]]}
- :joins            {;; will produce:
+ :joins            { ;; will produce:
                     ;; "JOIN `person_pet` ON `person`.`id` = `person_pet`.`person_id` JOIN `pet` ON `person_pet`.`pet_id` = `pet`.`id`"
                     :person/pet [:person/id :person-pet/person-id :person-pet/pet-id :pet/id]
                     ;; will produce
