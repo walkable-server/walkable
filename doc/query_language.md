@@ -142,15 +142,17 @@ of course idents can have joins, too:
 
 Other idents look a bit weird. Instead of being a keyword, they are
 made of a vector of a keyword indicating the entity type followed by
-one or more arguments specifying how to identify those entities.
+exactly one argument specifying how to identify those entities.
 
 First, look at the ident vector:
 
 ```clj
 ;; queries
 [:person/by-id 1]
-;; and
-[:people-list/by-member-ids 1 2 3]
+;; or
+[:thing/by-uuid "03157713-28f8-4f2b-9aa2-3fc52451369a"]
+;; or
+[:people-list/by-member-ids #{1 2 3}]
 ```
 
 Okay, now see them in context:
@@ -164,10 +166,10 @@ Okay, now see them in context:
 `:person/age` are the child properties.
 
 ```clj
-[{[:people-list/by-member-ids 1 2 3] [:person/name :person/age]}]
+[{[:people-list/by-member-ids #{1 2 3}] [:person/name :person/age]}]
 ```
 
-`[:people-list/by-member-ids 1 2 3]` is the ident. Again,
+`[:people-list/by-member-ids #{1 2 3}]` is the ident. Again,
 `[:person/name` and `:person/age` are the child properties.
 
 Allow yourself some time to grasp the syntax. Once you're comfortable,
@@ -178,8 +180,8 @@ here is the above queries again with a child join added:
 [{[:person/by-id 1] [:person/name :person/age
                      {:person/pets [:pet/name :pet/id]}]}]
 
-[{[:people-list/by-member-ids 1 2 3] [:person/name :person/age
-                                      {:person/pets [:pet/name :pet/id]}]}]
+[{[:people-list/by-member-ids #{1 2 3}] [:person/name :person/age
+                                         {:person/pets [:pet/name :pet/id]}]}]
 ```
 
 You may notice idents also live inside a vector, which means you can
