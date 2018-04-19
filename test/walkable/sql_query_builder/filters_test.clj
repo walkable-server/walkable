@@ -99,12 +99,10 @@
 (deftest cond-test
   (is (= (sut/process-operator {} [:cond [{} {}]])
         {:raw-string "CASE WHEN (?) THEN (?) END", :params [{} {}]}))
-  (is (= (sut/process-operator {} [:cond [{} {} {}]])
-        {:raw-string "CASE WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {}]}))
   (is (= (sut/process-operator {} [:cond [{} {} {} {}]])
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {}]}))
-  (is (= (sut/process-operator {} [:cond [{} {} {} {} {}]])
-        {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) ELSE (?) END", :params [{} {} {} {} {}]})))
+  (is (= (sut/process-operator {} [:cond [{} {} {} {} {} {}]])
+        {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {} {}]})))
 
 (deftest parameterize-tests
   (is (= (sut/parameterize {:column-names {:a/foo "a.foo"

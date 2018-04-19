@@ -123,8 +123,7 @@
 (defmethod process-operator :or
   [_env [_operator params]]
   (if (empty? params)
-    {:raw-string "NULL"
-     :params     []}
+    conformed-nil
     {:raw-string (clojure.string/join " OR "
                    (repeat (count params) "(?)"))
      :params     params}))
@@ -282,10 +281,13 @@
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
 
-(defmethod process-expression :nil
-  [_env [_kw number]]
+(def conformed-nil
   {:raw-string "NULL"
    :params     []})
+
+(defmethod process-expression :nil
+  [_env [_kw number]]
+  conformed-nil)
 
 (defmethod process-expression :number
   [_env [_kw number]]
@@ -339,16 +341,15 @@
 (defmethod process-operator :cond
   [_env [_kw expressions]]
   (let [n (count expressions)]
-    (assert (> n 1)
+    (assert (even? n)
+      "`cond` requires an even number of arguments")
+    (assert (not= n 0)
       "`cond` must have at least two arguments")
-    (let [when+else-count n
-          else?           (odd? when+else-count)
-          when-count      (if else? (dec when+else-count) when+else-count)]
-      {:raw-string (str "CASE"
-                     (apply str (repeat (/ when-count 2) " WHEN (?) THEN (?)"))
-                     (when else? " ELSE (?)")
-                     " END")
-       :params     expressions})))
+    (process-expression {} [:boolean true])
+    {:raw-string (str "CASE"
+                   (apply str (repeat (/ n 2) " WHEN (?) THEN (?)"))
+                   " END")
+     :params     expressions}))
 
 (defmethod operator? :if [_operator] true)
 
