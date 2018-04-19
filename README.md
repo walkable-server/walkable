@@ -101,11 +101,10 @@ then you can make queries like this:
 '[{(:people/all {:limit    5
                  :offset   10
                  ;; remember the extra-conditions above? you can use the same syntax here:
-                 :filters [:or {:person/id [:= 1]}
-                           {:person/yob [:in 1999 2000]}]
+                 :filters [:or [:= :person/id 1]
+                               [:in :person/yob 1999 2000]]
                  ;; -> you've already limited what the user can access, so let them play freely
                  ;; with whatever left open to them.
-
                  :order-by [:person/id
                             :person/name :desc
                             ;; Note: sqlite doesn't support `:nils-first`, `:nils-last`
@@ -115,18 +114,19 @@ then you can make queries like this:
 ```
 
 As you can see the filter syntax is in pure Clojure. It's not just for
-aesthetic purpose. The generated SQL will always parameterized so it's
-safe from injection attacks. For instance:
+aesthetic purpose. The generated SQL will always get parameterized so
+it's safe from injection attacks. For instance:
 
 ```clj
-[:or {:person/name [:like "john"]} {:person/id [:in #{3 4 7}]}]
+[:or [:like :person/name "john"]
+     [:in :person/id 3 4 7]]
 ```
 
 will result in
 
 ```clj
-["SELECT <...> WHERE person.name LIKE ? OR person.id IN (?, ?, ?)"
-"john" 3 4 7]
+(jdbc/query ["SELECT <...> WHERE person.name LIKE ? OR person.id IN (3, 4, 7)"
+             "john"]
 ```
 
 ## Who should use Walkable?
