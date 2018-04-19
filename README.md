@@ -29,6 +29,18 @@ Ever imagined sending queries like this to your SQL database?
    {:person/pet [:pet/name :pet/favorite-foods]}]}]
 ```
 
+or a bit more sophisticated:
+
+```clj
+[{(:articles/all {:filters [:and [:= false :article/hidden]
+                                 {:article/author [:= :author/username "lucy"]
+                                  :article/tags   [:in :tag/name "clojure" "clojurescript"]}]})
+  [:article/title
+   {:article/author [:author/id
+                     :author/username]}
+   {:article/tags [:tag/name]}]}]
+```
+
 Yes, you can. Have your data fetched in your Clojure mission critical
 app with confidence. Even more, build the query part of a fulcro
 server or REST api in minutes today! Call it from your Clojurescript
