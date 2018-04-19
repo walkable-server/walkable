@@ -110,7 +110,12 @@
   (is (= (sut/parameterize {:column-names {:a/foo "a.foo"
                                            :b/bar "b.bar"}
                             :join-filter-subqueries
-                            {:x/a "b.id IN (SELECT b.id FROM b WHERE ?)"
-                             :x/b "d.id IN (SELECT d.id FROM c_d JOIN d ON WHERE ?)"}}
+                            {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
+                             :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
            [:or {:x/a [:= :a/foo "meh"]}
-                {:x/b [:= :b/bar "mere"]}]))))
+                {:x/b [:= :b/bar "mere"]}])
+        {:params ["meh" "mere"],
+         :raw-string (str "((x.a_id IN (SELECT a.id FROM a"
+                       " WHERE (a.foo)=( ? ))))"
+                       " OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id"
+                       " WHERE (b.bar)=( ? ))))")})))
