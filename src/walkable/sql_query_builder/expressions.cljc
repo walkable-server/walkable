@@ -85,6 +85,24 @@
   "Registers a valid type for for :cast-type."
   (fn [type-kw type-params] type-kw))
 
+(defmethod cast-type :default [_type _type-params] nil)
+
+#?(:clj
+   (defmacro def-simple-cast-types
+     [{:keys [upper-case?]} keywords]
+     (assert (every? keyword? keywords)
+       "All arguments must be a keyword.")
+     `(do
+        ~@(for [k keywords
+                :let [symbol-name (clojure.string/replace (name k) #"-" "_")]]
+            `(defmethod cast-type ~k [_type# _type-params#]
+               ~(if upper-case?
+                  (clojure.string/upper-case symbol-name)
+                  symbol-name))))))
+
+(def-simple-cast-types {:upper-case? true}
+  [:integer :text :date :datetime])
+
 (defmethod unsafe-expression? :cast [_operator] true)
 
 (defmethod process-unsafe-expression :cast
