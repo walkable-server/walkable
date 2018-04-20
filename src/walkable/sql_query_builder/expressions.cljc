@@ -1,4 +1,4 @@
-(ns walkable.sql-query-builder.filters
+(ns walkable.sql-query-builder.expressions
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
             #?(:clj [cheshire.core :refer [generate-string]])

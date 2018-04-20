@@ -1,5 +1,5 @@
-(ns walkable.sql-query-builder.filters-test
-  (:require [walkable.sql-query-builder.filters :as sut]
+(ns walkable.sql-query-builder.expressions-test
+  (:require [walkable.sql-query-builder.expressions :as sut]
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 

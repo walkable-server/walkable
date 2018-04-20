@@ -1,7 +1,6 @@
 (ns walkable.sql-query-builder-test
   (:require [walkable.sql-query-builder :as sut]
             [clojure.test :as t :refer [deftest is]]
-            [walkable.sql-query-builder.filters :as filters]
             [fulcro.client.primitives :as prim]
             [com.wsscode.pathom.core :as p]))
 

@@ -1,12 +1,12 @@
 (ns walkable.sql-query-builder.pagination
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [walkable.sql-query-builder.filters :as filters]
+            [walkable.sql-query-builder.expressions :as expressions]
             [clojure.set :as set]))
 
 (s/def ::column+order-params
   (s/cat
-    :column ::filters/namespaced-keyword
+    :column ::expressions/namespaced-keyword
     :params (s/* #{:asc :desc :nils-first :nils-last})))
 
 (def order-params->string
