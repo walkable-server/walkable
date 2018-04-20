@@ -15,4 +15,34 @@
                    (repeat (count params) "COALESCE(?, '')"))
      :params     params}))
 
-(defmethod expressions/operator? :format [_operator] false)
+(expressions/def-simple-cast-types {:upper-case? true}
+  [:none :real :numeric])
+
+;; http://www.sqlite.org/lang_corefunc.html
+
+(expression/import-functions {:arity 0}
+  [random])
+
+(expression/import-functions {:arity 1}
+  [abs hex length likely lower quote
+   randomblob soundex typeof unicode
+   unlikely upper zeroblob])
+
+(expression/import-functions {:aliases '{format "printf"}}
+  [char coalesce like likelihood max min glob
+   ifnull instr ltrim nullif format replace
+   round rtrim substr trim])
+
+;; http://www.sqlite.org/lang_datefunc.html
+
+(expressions/import-functions
+  [date time datetime julianday strftime])
+
+;; http://www.sqlite.org/lang_aggfunc.html
+(expressions/import-functions {:arity 1}
+  [avg count sum total])
+
+;; todo: count(*)
+
+(expressions/import-functions {}
+  [group-concat])
