@@ -36,11 +36,6 @@
 
 (s/def ::unsafe-expression unsafe-expression?)
 
-(comment
-  (defmethod operator? :array [_operator] true)
-  (defmethod unsafe-expression? :json [_operator] true)
-  (defmethod unsafe-expression? :time [_operator] true))
-
 (s/def ::expression
   (s/or
     :nil nil?
@@ -88,20 +83,14 @@
 
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
-  identity)
-
-(defmethod cast-type :integer [_type] "INTEGER")
-(defmethod cast-type :json [_type] "json")
-(defmethod cast-type :date [_type] "DATE")
-(defmethod cast-type :text [_type] "TEXT")
-(defmethod cast-type :default [_type] nil)
+  (fn [type-kw type-params] type-kw))
 
 (defmethod unsafe-expression? :cast [_operator] true)
 
 (defmethod process-unsafe-expression :cast
-  [env [_operator [expression type]]]
+  [env [_operator [expression type-kw type-params]]]
   (let [expression (s/conform ::expression expression)
-        type-str   (cast-type type)]
+        type-str   (cast-type type-kw type-params)]
     (assert (not= expression ::s/invalid)
       (str "First argument to `cast` is not an invalid expression."))
     (assert type-str
@@ -259,14 +248,6 @@
   [_env [_operator params]]
   (multiple-argument-operator params "CONCAT"))
 
-(defmethod operator? :format [_operator] true)
-
-(defmethod process-operator :format
-  [_env [_operator params]]
-  (assert (< 0 (count params))
-    "There must be at least one argument to `format`")
-  (multiple-argument-operator params "format"))
-
 (defmethod operator? :in [_operator] true)
 
 (defmethod process-operator :in
@@ -284,7 +265,6 @@
   (inline-params
     (process-operator env
       [operator (mapv #(process-expression env %) params)])))
-
 
 (defmethod process-expression :unsafe-expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
@@ -319,8 +299,8 @@
 
 (defmethod process-expression :boolean
   [_env [_kw value]]
-  {:raw-string " ? "
-   :params     [value]})
+  {:raw-string (if value "TRUE" "FALSE")
+   :params     []})
 
 (defmethod process-expression :string
   [_env [_kw string]]
