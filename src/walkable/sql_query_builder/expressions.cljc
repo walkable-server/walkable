@@ -259,14 +259,6 @@
   [_env [_operator params]]
   (multiple-argument-operator params "CONCAT"))
 
-(defmethod operator? :subs [_operator] true)
-
-(defmethod process-operator :subs
-  [_env [_operator params]]
-  (assert (#{2 3} (count params))
-    "There must be two or three arguments to `subs`")
-  (multiple-argument-operator params "substr"))
-
 (defmethod operator? :format [_operator] true)
 
 (defmethod process-operator :format
