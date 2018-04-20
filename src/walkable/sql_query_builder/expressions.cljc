@@ -76,6 +76,10 @@
 (defmulti process-expression
   (fn dispatcher [_env [kw _expression]] kw))
 
+(def conformed-nil
+  {:raw-string "NULL"
+   :params     []})
+
 (defmethod process-unsafe-expression :json
   [_env [_operator [json]]]
   (let [json-string (generate-string json)]
@@ -311,10 +315,6 @@
                      (repeat (count join-filters) \?))
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
-
-(def conformed-nil
-  {:raw-string "NULL"
-   :params     []})
 
 (defmethod process-expression :nil
   [_env [_kw number]]
