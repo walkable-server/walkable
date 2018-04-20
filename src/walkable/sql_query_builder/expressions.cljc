@@ -214,39 +214,71 @@
     (str "There must be exactly one argument to `" operator-name "`."))
   {:raw-string raw-string
    :params     params})
+#?(:clj
+   (defn operator-names
+     "Helper for import-functions macro."
+     [{:keys [upper-case? prefix aliases] :or {upper-case? false}} symbol]
+     (let [symbol-name (name symbol)]
+       {:fname    (get aliases
+                    symbol-name
+                    (let [symbol-name (clojure.string/replace symbol-name #"-" "_")]
+                      (if upper-case?
+                        (clojure.string/upper-case symbol-name)
+                        symbol-name)))
+        :operator (keyword (if prefix
+                             (str prefix "." symbol-name)
+                             symbol-name))})))
 
-(defn multiple-argument-operator
-  [params raw-operator]
-  (let [n (count params)]
-    {:raw-string (str raw-operator "("
-                   (clojure.string/join ", "
-                     (repeat n \?))
-                   ")")
-     :params     params}))
+#?(:clj
+   (defmacro import-functions
+     "Defines Walkable operators using SQL equivalent."
+     [{:keys [arity] :as options} function-names]
+     (assert (every? symbol? function-names))
+     `(do
+        ~@(for [f function-names]
+            (let [{:keys [fname operator]} (operator-names options f)]
+              `(do
+                 (defmethod operator? ~operator [_operator#] true)
 
-(defmethod operator? :count [_operator] true)
+                 ~(case arity
+                    0
+                    `(defmethod process-operator ~operator
+                       [_env# [_operator# params#]]
+                       (assert (zero? (count params#))
+                         ~(str "There must be no argument to " operator))
+                       {:raw-string ~(str fname "()")
+                        :params     []})
+                    1
+                    `(defmethod process-operator ~operator
+                       [_env# [_operator# params#]]
+                       (assert (= 1 (count params#))
+                         ~(str "There must exactly one argument to " operator))
+                       {:raw-string ~(str fname " (?)")
+                        :params     params#})
+                    ;; default
+                    `(defmethod process-operator ~operator
+                       [_env# [_operator# params#]]
+                       (let [n# (count params#)]
+                         {:raw-string (str ~(str fname " (")
+                                        (clojure.string/join ", "
+                                          (repeat n# \?))
+                                        ")")
+                          :params     params#})))))))))
 
-(defmethod process-operator :count
-  [_env [_operator params]]
-  (one-argument-operator params "count" "COUNT (?)"))
+(import-functions {:arity 1 :upper-case? true}
+  [count not])
 
-(defmethod operator? :not [_operator] true)
+(import-functions {:arity 0 :upper-case? true}
+  [now])
 
-(defmethod process-operator :not
-  [_env [_operator params]]
-  (one-argument-operator params "not" "NOT (?)"))
+(import-functions {:aliases '{str "CONCAT"}}
+  [str format])
 
 (defmethod operator? :distinct [_operator] true)
 
 (defmethod process-operator :distinct
   [_env [_operator params]]
   (one-argument-operator params "distinct" "DISTINCT ?"))
-
-(defmethod operator? :str [_operator] true)
-
-(defmethod process-operator :str
-  [_env [_operator params]]
-  (multiple-argument-operator params "CONCAT"))
 
 (defmethod operator? :in [_operator] true)
 
