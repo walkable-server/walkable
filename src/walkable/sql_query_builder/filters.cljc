@@ -222,6 +222,15 @@
   {:raw-string raw-string
    :params     params})
 
+(defn multiple-argument-operator
+  [params raw-operator]
+  (let [n (count params)]
+    {:raw-string (str raw-operator "("
+                   (clojure.string/join ", "
+                     (repeat n \?))
+                   ")")
+     :params     params}))
+
 (defmethod operator? :count [_operator] true)
 
 (defmethod process-operator :count
@@ -239,6 +248,28 @@
 (defmethod process-operator :distinct
   [_env [_operator params]]
   (one-argument-operator params "distinct" "DISTINCT ?"))
+
+(defmethod operator? :str [_operator] true)
+
+(defmethod process-operator :str
+  [_env [_operator params]]
+  (multiple-argument-operator params "CONCAT"))
+
+(defmethod operator? :subs [_operator] true)
+
+(defmethod process-operator :subs
+  [_env [_operator params]]
+  (assert (#{2 3} (count params))
+    "There must be two or three arguments to `subs`")
+  (multiple-argument-operator params "substr"))
+
+(defmethod operator? :format [_operator] true)
+
+(defmethod process-operator :format
+  [_env [_operator params]]
+  (assert (< 0 (count params))
+    "There must be at least one argument to `format`")
+  (multiple-argument-operator params "format"))
 
 (defmethod operator? :in [_operator] true)
 
