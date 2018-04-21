@@ -118,6 +118,6 @@
                        " OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id"
                        " WHERE (b.bar)=( ? ))))")})))
 
-(deftest operator-names-test
-  (is (= (sut/operator-names {:upper-case? true} 'abc-def-ghi)
-        {:fname "ABC_DEF_GHI", :operator :abc-def-ghi})))
+(deftest operator-sql-names-test
+  (is (= (sut/operator-sql-names {:upper-case? true} 'abc-def-ghi)
+        [:abc-def-ghi "ABC_DEF_GHI"])))
