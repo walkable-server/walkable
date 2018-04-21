@@ -29,10 +29,13 @@
    randomblob soundex typeof unicode
    unlikely upper zeroblob])
 
-(expressions/import-functions {:aliases '{format "printf"}}
+(expressions/import-functions {}
   [char coalesce like likelihood max min glob
-   ifnull instr ltrim nullif format replace
+   ifnull instr ltrim nullif printf replace
    round rtrim substr trim])
+
+(expressions/import-functions {}
+  {format "printf"})
 
 ;; http://www.sqlite.org/lang_datefunc.html
 
