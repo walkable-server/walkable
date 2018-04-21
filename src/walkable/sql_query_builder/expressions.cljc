@@ -1,14 +1,7 @@
 (ns walkable.sql-query-builder.expressions
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            #?(:clj [cheshire.core :refer [generate-string]])
             [clojure.set :as set]))
-
-#?(:cljs
-   (defn generate-string
-     "Equivalent of cheshire.core/generate-string for Clojurescript"
-     [ds]
-     (.stringify js/JSON (clj->js ds))))
 
 (defn inline-params
   [{:keys [raw-string params]}]
@@ -74,12 +67,6 @@
 (def conformed-nil
   {:raw-string "NULL"
    :params     []})
-
-(defmethod process-unsafe-expression :json
-  [_env [_operator [json]]]
-  (let [json-string (generate-string json)]
-    {:raw-string "?"
-     :params     [json-string]}))
 
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
@@ -337,8 +324,8 @@
    bit-or  "|"})
 
 (import-infix-operators {:arity 2}
-  {bit-shift-left "<<"
-   bit-shift-right  ">>"})
+  {bit-shift-left  "<<"
+   bit-shift-right ">>"})
 
 ;; todo implement COLLATE
 
