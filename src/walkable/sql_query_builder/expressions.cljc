@@ -232,106 +232,113 @@
     (str "There must be exactly one argument to `" operator-name "`."))
   {:raw-string raw-string
    :params     params})
+
 #?(:clj
-   (defn operator-names
+   (defn operator-name
+     [{:keys [prefix]} symbol-name]
+     (keyword (if prefix
+                (str prefix "." symbol-name)
+                symbol-name))))
+
+#?(:clj
+   (defn operator-sql-names
      "Helper for import-functions macro."
-     [{:keys [upper-case? prefix aliases] :or {upper-case? false}} sym]
+     [{:keys [upper-case?] :as opts} sym]
      (let [symbol-name (name sym)]
-       {:fname    (get aliases
-                    sym
-                    (let [symbol-name (clojure.string/replace symbol-name #"-" "_")]
-                      (if upper-case?
-                        (clojure.string/upper-case symbol-name)
-                        symbol-name)))
-        :operator (keyword (if prefix
-                             (str prefix "." symbol-name)
-                             symbol-name))})))
+       [;; operator
+        (operator-name opts symbol-name)
+        ;; fname
+        (let [symbol-name (clojure.string/replace symbol-name #"-" "_")]
+          (if upper-case?
+            (clojure.string/upper-case symbol-name)
+            symbol-name))])))
 
 #?(:clj
    (defmacro import-functions
      "Defines Walkable operators using SQL equivalent."
      [{:keys [arity] :as options} function-names]
-     (assert (every? symbol? function-names))
      `(do
-        ~@(for [f function-names]
-            (let [{:keys [fname operator]} (operator-names options f)]
-              `(do
-                 (defmethod operator? ~operator [_operator#] true)
+        ~@(for [[operator sql-name] (if (map? function-names)
+                                      (mapv (fn [[sym sql-name]] [(operator-name options (name sym)) sql-name]) function-names)
+                                      (mapv #(operator-sql-names options %) function-names))]
+            `(do
+               (defmethod operator? ~operator [_operator#] true)
 
-                 ~(case arity
-                    0
-                    `(defmethod process-operator ~operator
-                       [_env# [_operator# params#]]
-                       (assert (zero? (count params#))
-                         ~(str "There must be no argument to " operator))
-                       {:raw-string ~(str fname "()")
-                        :params     []})
-                    1
-                    `(defmethod process-operator ~operator
-                       [_env# [_operator# params#]]
-                       (assert (= 1 (count params#))
-                         ~(str "There must exactly one argument to " operator))
-                       {:raw-string ~(str fname " (?)")
-                        :params     params#})
-                    ;; default
-                    `(defmethod process-operator ~operator
-                       [_env# [_operator# params#]]
-                       (let [n# (count params#)]
-                         {:raw-string (str ~(str fname " (")
-                                        (clojure.string/join ", "
-                                          (repeat n# \?))
-                                        ")")
-                          :params     params#})))))))))
+               ~(case arity
+                  0
+                  `(defmethod process-operator ~operator
+                     [_env# [_operator# params#]]
+                     (assert (zero? (count params#))
+                       ~(str "There must be no argument to " operator))
+                     {:raw-string ~(str sql-name "()")
+                      :params     []})
+                  1
+                  `(defmethod process-operator ~operator
+                     [_env# [_operator# params#]]
+                     (assert (= 1 (count params#))
+                       ~(str "There must exactly one argument to " operator))
+                     {:raw-string ~(str sql-name " (?)")
+                      :params     params#})
+                  ;; default
+                  `(defmethod process-operator ~operator
+                     [_env# [_operator# params#]]
+                     (let [n# (count params#)]
+                       {:raw-string (str ~(str sql-name " (")
+                                      (clojure.string/join ", "
+                                        (repeat n# \?))
+                                      ")")
+                        :params     params#}))))))))
 
-(import-functions {:arity 1
-                   :upper-case? true
-                   :aliases {bit-not "~"}}
-  [count not bit-not])
+(import-functions {:arity       1
+                   :upper-case? true}
+  [count not])
+
+(import-functions {:arity 1 }
+  {bit-not "~"})
 
 (import-functions {:arity 0 :upper-case? true}
   [now])
 
-(import-functions {:aliases {str "CONCAT"}}
-  [str format])
+(import-functions {}
+  [format])
+
+(import-functions {}
+  {str "CONCAT"})
 
 #?(:clj
    (defmacro import-infix-operators
      "Defines Walkable operators using SQL equivalent."
-     [{:keys [arity prefix aliases]} operator-names]
-     (assert (every? symbol? operator-names))
+     [{:keys [arity] :as options} operator-names]
      `(do
-        ~@(for [f operator-names]
-            (let [operator (keyword (str (when prefix (str prefix "."))
-                                      f))
-                  fname    (get aliases f (name f))]
-              `(do
-                 (defmethod operator? ~operator [_operator#] true)
+        ~@(for [[operator sql-name] (if (map? operator-names)
+                                      (mapv (fn [[sym sql-name]] [(operator-name options (name sym)) sql-name]) operator-names)
+                                      (mapv #(operator-sql-names options %) operator-names))]
+            `(do
+               (defmethod operator? ~operator [_operator#] true)
 
-                 ~(case arity
-                    2
-                    `(defmethod process-operator ~operator
-                       [_env# [_operator# params#]]
-                       (assert (= 2 (count params#))
-                         ~(str "There must exactly two arguments to " operator))
-                       {:raw-string ~(str "(?)" fname "(?)")
-                        :params     params#})
-                    ;; default
-                    `(defmethod process-operator ~operator
-                       [_env# [_operator# params#]]
-                       (let [n# (count params#)]
-                         {:raw-string (clojure.string/join ~fname
-                                        (repeat n# "(?)"))
-                          :params     params#})))))))))
+               ~(case arity
+                  2
+                  `(defmethod process-operator ~operator
+                     [_env# [_operator# params#]]
+                     (assert (= 2 (count params#))
+                       ~(str "There must exactly two arguments to " operator))
+                     {:raw-string ~(str "(?)" sql-name "(?)")
+                      :params     params#})
+                  ;; default
+                  `(defmethod process-operator ~operator
+                     [_env# [_operator# params#]]
+                     (let [n# (count params#)]
+                       {:raw-string (clojure.string/join ~sql-name
+                                      (repeat n# "(?)"))
+                        :params     params#}))))))))
 
-(import-infix-operators {:aliases {bit-and "&"
-                                   bit-or  "|"}}
-  [bit-and bit-or])
+(import-infix-operators {}
+  {bit-and "&"
+   bit-or  "|"})
 
-(import-infix-operators {:arity   2
-                         :aliases {bit-shift-left "<<"
-                                   bit-shift-right  ">>"}}
-  [bit-shift-left bit-shift-right])
-
+(import-infix-operators {:arity 2}
+  {bit-shift-left "<<"
+   bit-shift-right  ">>"})
 
 ;; todo implement COLLATE
 
