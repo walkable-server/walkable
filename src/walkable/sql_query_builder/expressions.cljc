@@ -235,10 +235,10 @@
 #?(:clj
    (defn operator-names
      "Helper for import-functions macro."
-     [{:keys [upper-case? prefix aliases] :or {upper-case? false}} symbol]
-     (let [symbol-name (name symbol)]
+     [{:keys [upper-case? prefix aliases] :or {upper-case? false}} sym]
+     (let [symbol-name (name sym)]
        {:fname    (get aliases
-                    symbol-name
+                    sym
                     (let [symbol-name (clojure.string/replace symbol-name #"-" "_")]
                       (if upper-case?
                         (clojure.string/upper-case symbol-name)
@@ -283,14 +283,57 @@
                                         ")")
                           :params     params#})))))))))
 
-(import-functions {:arity 1 :upper-case? true}
-  [count not])
+(import-functions {:arity 1
+                   :upper-case? true
+                   :aliases {bit-not "~"}}
+  [count not bit-not])
 
 (import-functions {:arity 0 :upper-case? true}
   [now])
 
-(import-functions {:aliases '{str "CONCAT"}}
+(import-functions {:aliases {str "CONCAT"}}
   [str format])
+
+#?(:clj
+   (defmacro import-infix-operators
+     "Defines Walkable operators using SQL equivalent."
+     [{:keys [arity prefix aliases]} operator-names]
+     (assert (every? symbol? operator-names))
+     `(do
+        ~@(for [f operator-names]
+            (let [operator (keyword (str (when prefix (str prefix "."))
+                                      f))
+                  fname    (get aliases f (name f))]
+              `(do
+                 (defmethod operator? ~operator [_operator#] true)
+
+                 ~(case arity
+                    2
+                    `(defmethod process-operator ~operator
+                       [_env# [_operator# params#]]
+                       (assert (= 2 (count params#))
+                         ~(str "There must exactly two arguments to " operator))
+                       {:raw-string ~(str "(?)" fname "(?)")
+                        :params     params#})
+                    ;; default
+                    `(defmethod process-operator ~operator
+                       [_env# [_operator# params#]]
+                       (let [n# (count params#)]
+                         {:raw-string (clojure.string/join ~fname
+                                        (repeat n# "(?)"))
+                          :params     params#})))))))))
+
+(import-infix-operators {:aliases {bit-and "&"
+                                   bit-or  "|"}}
+  [bit-and bit-or])
+
+(import-infix-operators {:arity   2
+                         :aliases {bit-shift-left "<<"
+                                   bit-shift-right  ">>"}}
+  [bit-shift-left bit-shift-right])
+
+
+;; todo implement COLLATE
 
 (defmethod operator? :distinct [_operator] true)
 
