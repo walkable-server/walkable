@@ -17,6 +17,8 @@
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
+            ;; or walkable.sql-query-builder.impl.postgres
+            [walkable.sql-query-builder.impl.sqlite]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder :as sqb]))
@@ -572,7 +574,7 @@
           ;; :human/age
           ;; see :pseudo-columns below
 
-          {:human/follow-stats [:follow/count]}
+          ;;{:human/follow-stats [:follow/count]}
 
           {:human/follow [:human/number
                           :human/name
@@ -598,7 +600,16 @@
               :pseudo-columns   { ;; using sub query as a column
                                  :human/age [:- 2018 :human/yob]
                                  :human/age-str [:cast :human/age :text]
-                                 :human/two 2
+
+                                 :human/two [:+ [:*] [:*]]
+                                 ;; try the following with postgres
+                                 #_#_
+                                 :human/two [:or [:= 2 [:array-length [:array 1 2 3 4] 1]]
+                                             [:contains [:jsonb {:a 1 :b 2}]
+                                              [:jsonb {:a 1}]]
+                                             [:jsonb-exists [:jsonb {:a 1 :b 2}]
+                                              "a"]]
+
                                  ;; using aggregate as a column
                                  :follow/count [:count :follow/human-2]
                                  }
