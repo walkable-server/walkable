@@ -427,8 +427,12 @@
     (cons union-query (apply concat params))))
 
 (defn wrap-select
-  "Wrap a SQL string in SELECT * FROM (...). Useful for sqlite's
-  batch-query."
+  "Wrap a SQL string in (...)"
+  [s]
+  (str "(" s ")"))
+
+(defn wrap-select-sqlite
+  "Wrap a SQL string in SELECT * FROM (...)"
   [s]
   (str "SELECT * FROM (" s ")"))
 
@@ -468,10 +472,12 @@
         :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
 
-        :batch-query      (if sqlite-union
-                            (fn sqlite-batch-query [query-strings params]
-                              (batch-query (map wrap-select query-strings) params))
-                            batch-query)
+        :batch-query      (fn [query-strings params]
+                            (batch-query (map (if sqlite-union
+                                                wrap-select-sqlite
+                                                wrap-select)
+                                           query-strings) params))
+
         :cardinality      cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
