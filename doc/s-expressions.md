@@ -190,15 +190,125 @@ Use the `:cast` operator:
 ;; => [{:q "3"}]
 ```
 
-Todo: List of available cast types.
-
 ### Logic constructs
 
-:and, :or, not
+`:and` and `:or` accept many arguments like in Clojure:
+
+```clj
+;; expression
+[:and true true false]
+;; sql output
+(jdbc/query your-db ["SELECT (true AND true AND false) AS q"])
+;; => [{:q false}]
+
+;; expression
+[:and]
+;; sql output
+(jdbc/query your-db ["SELECT (true) AS q"])
+;; => [{:q true}]
+
+;; expression
+[:or]
+;; sql output
+(jdbc/query your-db ["SELECT (NULL) AS q"])
+;; => [{:q nil}]
+```
+
+`:not` accepts exactly one argument:
+
+```
+;; expression
+[:not true]
+;; sql output
+(jdbc/query your-db ["SELECT (NOT true) AS q"])
+;; => [{:q false}]
+```
+
+Party time! Mix them as you wish:
+
+```clj
+;; expression
+[:and [:= 4 [:* 2 2]] [:not [:> 1 2]] [:or [:= 2 3] [:= 4 4]]]
+;; sql output
+(jdbc/query your-db ["SELECT (((4)=((2)*(2))) AND (NOT ((1)>(2))) AND (((2)=(3)) OR ((4)=(4)))) AS q"])
+;; => [{:q true}]
+```
+
+Please note that Walkable S-expressions are translated directly to SQL
+equivalent. Your DBMS may throw an exception if you ask for this:
+
+```clj
+;; expression
+[:or 2 true]
+;; sql output
+(jdbc/query your-db ["SELECT (2 OR true) AS q"])
+;; =>ERROR:  argument of OR must be type boolean, not type integer
+```
+
+Don't be surprised if you see `[:not nil]` is ... `nil`!
+
+```
+;; expression
+[:not nil]
+;; sql output
+(jdbc/query your-db ["SELECT (NOT NULL) AS q"])
+;; => [{:q nil}]
+```
 
 ### Other constructs
 
-:when, :if, :case, :cond
+`:when`, `:if`, `:case` and `:cond` look like in Clojure...
+
+```clj
+;; expression
+[:when true "yay"] ;; or [:if true "yay"]
+;; sql output
+(jdbc/query your-db ["SELECT (CASE WHEN ( true ) THEN ( ? ) END) AS q" "yay"])
+;; => [{:q "yay"}]
+
+;; expression
+[:if [:= 1 2] "yep" "nope"]
+;; sql output
+(jdbc/query your-db ["SELECT (CASE WHEN ((1)=(2)) THEN ( ? ) ELSE ( ? ) END) AS q" "yay" "nope"])
+;; => [{:q "nope"}]
+
+;; expression
+[:case [:+ 0 1] 2 3]
+;; sql output
+(jdbc/query your-db ["SELECT (CASE (0+1) WHEN (2) THEN (3) END) AS q"])
+;; => [{:q nil}]
+
+;; expression
+[:case [:+ 0 1] 2 3 4]
+;; sql output
+(jdbc/query your-db ["SELECT (CASE (0+1) WHEN (2) THEN (3) ELSE (4) END) AS q"])
+;; => [{:q 4}]
+
+;; expression
+[:cond [:= 0 1] "wrong" [:< 2 3] "right"]
+;; sql output
+(jdbc/query your-db ["SELECT  (CASE WHEN ((0)=(1)) THEN ( ? ) WHEN ((2)<(3)) THEN ( ? ) END) AS q" "wrong" "right"])
+;; => [{:q "right"}]
+```
+
+...except the fact that you must supply real booleans to them, not
+just some truthy values.
+
+```clj
+;; expression
+[:cond
+ [:= 0 1]
+ "wrong"
+
+ [:> 2 3]
+ "wrong again"
+
+ true ;; <= must be literally `true`, not `:default` or something else
+ "default"]
+;; sql output
+(jdbc/query your-db ["SELECT  (CASE WHEN ((0)=(1)) THEN ( ? ) WHEN ((2)>(3)) THEN ( ? ) WHEN ( true ) THEN ( ? ) END) AS q" "wrong" "wrong again" "default"])
+;; => [{:q "default"}]
+```
 
 ### Pseudo columns
 
