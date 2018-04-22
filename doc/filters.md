@@ -11,9 +11,9 @@ some truthy values) can be used in filter.
 ### Using filters directly in queries
 
 ```clj
-[(:people/all {:filters [:or [:like :person/name "jon%"]
+[{(:people/all {:filters [:or [:like :person/name "jon%"]
                              [:< :person/yob 1970]]})
- [:person/name :person/yob]]
+  [:person/name :person/yob]]}
 ```
 
 > This is called `supplied-conditions` in Walkable query builder
@@ -48,9 +48,9 @@ the joined tables, too.
 ```clj
 ;; find all people whose name starts with "jon" or whose friend's name
 ;; starts with "jon".
-[(:people/all {:filters [:or [:like :person/name "jon%"]
-                             {:person/friend [:like :person/name "jon%"]}]})
- [:person/name :person/yob]]
+[{(:people/all {:filters [:or [:like :person/name "jon%"]
+                          {:person/friend [:like :person/name "jon%"]}]})
+  [:person/name :person/yob]}]
 ```
 
 You can have many such joins in filters and combine them with other
