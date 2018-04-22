@@ -41,4 +41,17 @@ You may want to enforce filters for specific idents/joins:
 
 ## Joins in filters
 
-TBD
+You've seen filters used against columns of the current table. If you
+have defined some joins, you can also put constraints on columns of
+the joined tables, too.
+
+```clj
+;; find all people whose name starts with "jon" or whose friend's name
+;; starts with "jon".
+[(:people/all {:filters [:or [:like :person/name "jon%"]
+                             {:person/friend [:like :person/name "jon%"]}]})
+ [:person/name :person/yob]]
+```
+
+You can have many such joins in filters and combine them with other
+expressions using `:and`/`:or`/`:not` however you like.
