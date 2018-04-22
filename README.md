@@ -157,7 +157,10 @@ To be more specific, anyone at any level of enthusiasm:
 
 ## Installation
 
-![Latest version](https://clojars.org/walkable/latest-version.svg)
+```clj
+;; no stable version yet
+[walkable "1.0.0-SNAPSHOT"]
+```
 
 ## Usage
 
