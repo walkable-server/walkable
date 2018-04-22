@@ -312,4 +312,59 @@ just some truthy values.
 
 ### Pseudo columns
 
-TBD
+In your schema you can define so-called pseudo columns that look just
+like normal columns from client-side view:
+
+```clj
+;; schema
+;; :person/yob is a real column
+{:pseudo-columns {:person/age [:- 2018 :person/yob]}}
+```
+
+You can't tell the difference from client-side:
+
+```clj
+;; query for a real column
+[{[:person/by-id 9]
+  [:person/yob]}]
+;; query for a pseudo column
+[{[:person/by-id 9]
+  [:person/age]}]
+
+;; filter with a real column
+[{(:people/all {:filters [:= 1988 :person/yob]})
+  [:person/name]}]
+;; filter with a pseudo column
+[{(:people/all {:filters [:= 30 :person/age]})
+  [:person/name]}]
+```
+
+Behind the scenes, Walkable will expand the pseudo columns to whatever
+they are defined. You can also use pseudo columns in other pseudo
+columns' definition, but be careful as Walkable **won't check circular
+dependencies** for you.
+
+Please note you can only use true columns from the same table in the
+definition of pseudo columns. For instance, the following doesn't make
+sense:
+
+```clj
+;; schema
+{:pseudo-columns {:person/age [:- 2018 :pet/yob]}}
+```
+
+Your RDMS will throw an exception in that case anyway.
+
+## Define your own operators
+
+There are some convenient marcros to help you "import" SQL
+functions/operators:
+`walkable.sql-query-builder.expressions/import-functions` and
+`walkable.sql-query-builder.expressions/import-infix-operators`.
+
+More complex operators may require implementing multimethod
+`walkable.sql-query-builder.expressions/process-operator` or even a
+harder one
+`walkable.sql-query-builder.expressions/process-unsafe-expression`.
+
+Todo: more docs.
