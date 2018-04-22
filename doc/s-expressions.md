@@ -7,10 +7,16 @@ expressions in your
 
 ## A tour of Walkable S-expressions
 
-> Note about SQL examples: S-expressions can be used in both SQL
-  `SELECT` statements and `WHERE` conditions. For demonstrating
-  purpose, the `SELECT` parts are added so the SQL output is
+> Note about SQL examples:
+
+  - S-expressions can end up as SQL strings in either `SELECT`
+  statements or `WHERE` conditions. For demonstrating purpose, the
+  strings are wrapped in `SELECT ... as q` so the SQL output is
   executable.
+
+  - SQL output may differ when you `require` different implementations
+    (ie `(require 'walkable.sql-query-builder.impl.postgres)` vs
+    `(require 'walkable.sql-query-builder.impl.sqlite)`).
 
 ### Primitive types
 
