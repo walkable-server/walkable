@@ -29,6 +29,18 @@ Ever imagined sending queries like this to your SQL database?
    {:person/pet [:pet/name :pet/favorite-foods]}]}]
 ```
 
+or a bit more sophisticated:
+
+```clj
+[{(:articles/all {:filters [:and [:= false :article/hidden]
+                                 {:article/author [:= :author/username "lucy"]
+                                  :article/tags   [:in :tag/name "clojure" "clojurescript"]}]})
+  [:article/title
+   {:article/author [:author/id
+                     :author/username]}
+   {:article/tags [:tag/name]}]}]
+```
+
 Yes, you can. Have your data fetched in your Clojure mission critical
 app with confidence. Even more, build the query part of a fulcro
 server or REST api in minutes today! Call it from your Clojurescript
@@ -50,31 +62,30 @@ Walkable's goal is to become the ultimate SQL library for Clojure.
 Basically you define your schema like this:
 
 ```clj
-{:idents           {;; query with `[:person/by-id 1]` will result in
+{:idents           { ;; query with `[:person/by-id 1]` will result in
                     ;; `FROM person WHERE person.id = 1`
                     :person/by-id :person/id
                     ;; just select from `person` table without any constraints
                     :people/all "person"}
  :columns          #{:person/name :person/yob}
- :extra-conditions {;; enforce some constraints whenever this join is asked for
+ :extra-conditions { ;; enforce some constraints whenever this join is asked for
                     :pet/owner [:and
-                                {:person/hidden [:= true]}
+                                [:= :person/hidden true]
                                 ;; yes, you can nest the conditions whatever you like
-                                [:or
-                                 {:person/id [:not= 5]}
-                                  ;; a hashmap implies an `AND` for the k/v pairs inside
-                                 {:person/yob [:in 1970 1971 1972]
-                                  :person/name [:like "john"]}
-
-                                 ;; even this style of condition
-                                 {:person/name [:or
-                                                [:like "john"]
-                                                [:like "mary"]]}
+                                [:or [:= :person/id 5]
+                                 ;; a vector implies an `AND` for the conditions inside
+                                     [[:in :person/yob
+                                       1970
+                                       1971
+                                       ;; yes, you can!
+                                       [:cast "1972" :integer]]
+                                      [:like :person/name "john"]]
                                  ;; you can even filter by properties of a join, not just
                                  ;; the item itself
-                                 {:person/pet {:pet/color [:or [:= "white"] [:= "green"]]}}
+                                 {:person/pet [:or [:= :pet/color "white"]
+                                                   [:= :pet/color "green"]]}
                                  ]]}
- :joins            {;; will produce:
+ :joins            { ;; will produce:
                     ;; "JOIN `person_pet` ON `person`.`id` = `person_pet`.`person_id` JOIN `pet` ON `person_pet`.`pet_id` = `pet`.`id`"
                     :person/pet [:person/id :person-pet/person-id :person-pet/pet-id :pet/id]
                     ;; will produce
@@ -90,11 +101,10 @@ then you can make queries like this:
 '[{(:people/all {:limit    5
                  :offset   10
                  ;; remember the extra-conditions above? you can use the same syntax here:
-                 :filters [:or {:person/id [:= 1]}
-                           {:person/yob [:in 1999 2000]}]
+                 :filters [:or [:= :person/id 1]
+                               [:in :person/yob 1999 2000]]
                  ;; -> you've already limited what the user can access, so let them play freely
                  ;; with whatever left open to them.
-
                  :order-by [:person/id
                             :person/name :desc
                             ;; Note: sqlite doesn't support `:nils-first`, `:nils-last`
@@ -104,19 +114,23 @@ then you can make queries like this:
 ```
 
 As you can see the filter syntax is in pure Clojure. It's not just for
-aesthetic purpose. The generated SQL will always parameterized so it's
-safe from injection attacks. For instance:
+aesthetic purpose. The generated SQL will always get parameterized so
+it's safe from injection attacks. For instance:
 
 ```clj
-[:or {:person/name [:like "john"]} {:person/id [:in #{3 4 7}]}]
+[:or [:like :person/name "john"]
+     [:in :person/id 3 4 7]]
 ```
 
 will result in
 
 ```clj
-["SELECT <...> WHERE person.name LIKE ? OR person.id IN (?, ?, ?)"
-"john" 3 4 7]
+(jdbc/query ["SELECT <...> WHERE person.name LIKE ? OR person.id IN (3, 4, 7)"
+             "john"]
 ```
+
+You can express pretty much anything with those S-expressions. Learn
+more about them [here](doc/s-expressions.md).
 
 ## Who should use Walkable?
 
@@ -274,6 +288,10 @@ sqlite3 node module.
 - [About the query language](doc/query_language.md)
 
 - [Schema guide](doc/schema.md)
+
+- [Schema, advanced](doc/schema_advanced.md)
+
+- [S-expressions](doc/s-expressions.md)
 
 - [Filters](doc/filters.md)
 

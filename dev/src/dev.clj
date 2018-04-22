@@ -17,6 +17,8 @@
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
+            ;; or walkable.sql-query-builder.impl.postgres
+            [walkable.sql-query-builder.impl.sqlite]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder :as sqb]))
@@ -113,8 +115,10 @@
 ;; Example: join column living in source table
 #_
 (let [eg-1
-      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/cow [:cow/index :cow/color]}]}]
+      '[{(:farmers/all {:filters {:farmer/cow [{:cow/owner [:= :farmer/name "mary"]}
+                                               [:= :cow/color "brown"]]}})
+         [:farmer/number :farmer/name
+          {:farmer/cow [:cow/index :cow/color]}]}]
 
       parser
       sync-parser]
@@ -231,12 +235,13 @@
 ;; - filters & pagination (offset, limit, order-by) in query
 ;; - join involving a join table
 ;; - extra-conditions
-;; - derive-attribute plugin
 #_
 (let [eg-1
-      '[{(:people/all {:filters  {:person/number [:< 10]}
-                       :limit    1
-                       :offset   1
+      '[{(:people/all {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
+                                                         [:= :pet/color "yellow"]]}
+                                  [:< :person/number 10]]
+                       ;; :limit    1
+                       ;; :offset   0
                        :order-by [:person/name]})
          [:person/number :person/name
           {:person/pet [:pet/index
@@ -278,8 +283,8 @@
               :idents           {:person/by-id :person/number
                                  :people/all   "person"}
               :extra-conditions {[:person/by-id :people/all]
-                                 [:or {:person/hidden [:= true]}
-                                  {:person/hidden [:= false]}]}
+                                 [:or [:= :person/hidden true]
+                                  [:= :person/hidden false]]}
               :joins            {:person/pet [:person/number :person-pet/person-number
                                               :person-pet/pet-index :pet/index]}
               :reversed-joins   {:pet/owner :person/pet}
@@ -289,9 +294,11 @@
     eg-1))
 #_
 (let [eg-1
-      '[{(:people/all {:filters  {:person/number [:< 10]}
-                       :limit    1
-                       :offset   1
+      '[{(:people/all {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
+                                                     [:= :pet/color "yellow"]]}
+                                  [:< :person/number 10]]
+                       ;; :limit    1
+                       ;; :offset   1
                        :order-by [:person/name]})
          [:person/number :person/name
           {:person/pet [:pet/index
@@ -336,8 +343,8 @@
                     :idents           {:person/by-id :person/number
                                        :people/all   "person"}
                     :extra-conditions {[:person/by-id :people/all]
-                                       [:or {:person/hidden [:= true]}
-                                        {:person/hidden [:= false]}]}
+                                       [:or [:= :person/hidden true]
+                                        [:= :person/hidden false]]}
                     :joins            {:person/pet [:person/number :person-pet/person-number
                                                     :person-pet/pet-index :pet/index]}
                     :reversed-joins   {:pet/owner :person/pet}
@@ -369,7 +376,7 @@
               :idents           {:me "person"}
               :extra-conditions {:me
                                  (fn [{:keys [current-user] :as env}]
-                                   {:person/number [:= current-user]})}})}
+                                   [:= :person/number current-user])}})}
     eg-1))
 #_
 (let [eg-1
@@ -395,7 +402,7 @@
                     :idents           {:me "person"}
                     :extra-conditions {:me
                                        (fn [{:keys [current-user] :as env}]
-                                         {:person/number [:= current-user]})}})}
+                                         [:= :person/number current-user])}})}
           eg-1)))))
 
 ;; Placeholder example
@@ -557,16 +564,18 @@
           eg-1)))))
 
 ;; :pseudo-columns example
-;; experimental - subject to change
 #_
 (let [eg-1
       ;; use pseudo-columns in in filters!
-      '[{(:world/all {:filters {:human/age [:= 38]}})
-         [:human/number :human/name :human/two
+      '[{(:world/all {:filters [:= :human/age 38]}
+                     )
+         [:human/number :human/name :human/two :human/yob :human/age :human/age-str
           ;; use pseudo-columns in in filters!
-          :human/age
+          ;; :human/age
           ;; see :pseudo-columns below
-          {:human/follow-stats [:follow/count]}
+
+          ;;{:human/follow-stats [:follow/count]}
+
           {:human/follow [:human/number
                           :human/name
                           :human/yob]}]}]
@@ -589,57 +598,22 @@
                                  [:human/number :follow/human-1 :follow/human-2 :human/number]}
               :reversed-joins   {}
               :pseudo-columns   { ;; using sub query as a column
-                                 :human/age ["(? - ?)" 2018 :human/yob]
-                                 :human/two    "(SELECT 2)"
+                                 :human/age [:- 2018 :human/yob]
+                                 :human/age-str [:cast :human/age :text]
+
+                                 :human/two [:+ [:*] [:*]]
+                                 ;; try the following with postgres
+                                 #_#_
+                                 :human/two [:or [:= 2 [:array-length [:array 1 2 3 4] 1]]
+                                             [:contains [:jsonb {:a 1 :b 2}]
+                                              [:jsonb {:a 1}]]
+                                             [:jsonb-exists [:jsonb {:a 1 :b 2}]
+                                              "a"]]
+
                                  ;; using aggregate as a column
-                                 :follow/count ["COUNT(?)" :follow/human-2]
+                                 :follow/count [:count :follow/human-2]
                                  }
               :cardinality      {:human/by-id        :one
                                  :human/follow-stats :one
                                  :human/follow       :many}})}
     eg-1))
-
-
-#_
-(let [eg-1
-      ;; use pseudo-columns in in filters!
-      '[{(:world/all {:filters {:human/age [:= 38]}})
-         [:human/number :human/name :human/two
-          ;; use pseudo-columns in in filters!
-          :human/age
-          ;; see :pseudo-columns below
-          {:human/follow-stats [:follow/count]}
-          {:human/follow [:human/number
-                          :human/name
-                          :human/yob]}]}]
-      parser
-      async-parser]
-  (async/go
-    (println "final result: "
-      (<!
-        (parser {::sqb/sql-db    (db)
-                 ::sqb/run-query async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
-                    :columns          [:human/number :human/name :human/yob]
-                    :required-columns {}
-                    :idents           {:human/by-id :human/number
-                                       :world/all   "human"}
-                    :extra-conditions {}
-                    :joins            { ;; technically :human/follow and :human/follow-stats are the same join
-                                       ;; but they have different cardinality
-                                       [:human/follow :human/follow-stats]
-                                       [:human/number :follow/human-1 :follow/human-2 :human/number]}
-                    :reversed-joins   {}
-                    :pseudo-columns   { ;; using sub query as a column
-                                       :human/age    ["(? - ?)" 2018 :human/yob]
-                                       :human/two    "(SELECT 2)"
-                                       ;; using aggregate as a column
-                                       :follow/count ["COUNT(?)" :follow/human-2]
-                                       }
-                    :cardinality      {:human/by-id        :one
-                                       :human/follow-stats :one
-                                       :human/follow       :many}})}
-          eg-1)))))

@@ -94,7 +94,7 @@
           eg-1)))))
 #_
 (let [eg-1
-      '[{(:people/all {:filters  {:person/number [:< 10]}
+      '[{(:people/all {:filters  [:< :person/number 10]
                        :limit    1
                        :offset   1
                        :order-by [:person/name]})
@@ -141,8 +141,8 @@
                     :idents           {:person/by-id :person/number
                                        :people/all   "person"}
                     :extra-conditions {[:person/by-id :people/all]
-                                       [:or {:person/hidden [:= true]}
-                                        {:person/hidden [:= false]}]}
+                                       [:or [:= :person/hidden true]
+                                        [:= :person/hidden false]]}
                     :joins            {:person/pet [:person/number :person-pet/person-number
                                                     :person-pet/pet-index :pet/index]}
                     :reversed-joins   {:pet/owner :person/pet}
@@ -174,7 +174,7 @@
                     :idents           {:me "person"}
                     :extra-conditions {:me
                                        (fn [{:keys [current-user] :as env}]
-                                         {:person/number [:= current-user]})}})}
+                                         [:= :person/number current-user])}})}
           eg-1)))))
 #_
 (let [eg-1
@@ -260,7 +260,7 @@
 #_
 (let [eg-1
       ;; use pseudo-columns in in filters!
-      '[{(:world/all {:filters {:human/age [:= 38]}})
+      '[{(:world/all {:filters [:= :human/age 38]})
          [:human/number :human/name :human/two
           ;; use pseudo-columns in in filters!
           :human/age
@@ -291,10 +291,10 @@
                                        [:human/number :follow/human-1 :follow/human-2 :human/number]}
                     :reversed-joins   {}
                     :pseudo-columns   { ;; using sub query as a column
-                                       :human/age    ["(? - ?)" 2018 :human/yob]
-                                       :human/two    "(SELECT 2)"
+                                       :human/age    [:- 2018 :human/yob]
+                                       :human/two    2
                                        ;; using aggregate as a column
-                                       :follow/count ["COUNT(?)" :follow/human-2]
+                                       :follow/count [:count :follow/human-2]
                                        }
                     :cardinality      {:human/by-id        :one
                                        :human/follow-stats :one
@@ -302,4 +302,4 @@
           eg-1)))))
 
 (defn main []
-  (println "hi"))
+  (println "<-- Walkable for nodejs demo -->"))

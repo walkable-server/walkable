@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder
-  (:require [walkable.sql-query-builder.filters :as filters]
+  (:require [walkable.sql-query-builder.pagination :as pagination]
+            [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.zip :as z]
@@ -18,7 +19,7 @@
 (defn split-keyword
   "Splits a keyword into a tuple of table and column."
   [k]
-  {:pre [(s/valid? ::filters/namespaced-keyword k)]
+  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
    :post [vector? #(= 2 (count %)) #(every? string? %)]}
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
@@ -27,7 +28,7 @@
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
   [[quote-open quote-close] k]
-  {:pre [(s/valid? ::filters/namespaced-keyword k)]
+  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
    :post [string?]}
   (->> (split-keyword k)
     (map #(str quote-open % quote-close))
@@ -36,20 +37,20 @@
 (defn clojuric-name
   "Converts a keyword to an SQL alias"
   [[quote-open quote-close] k]
-  {:pre [(s/valid? ::filters/namespaced-keyword k)]
+  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
    :post [string?]}
   (str quote-open (subs (str k) 1) quote-close))
 
 (s/def ::keyword-string-map
-  (s/coll-of (s/tuple ::filters/namespaced-keyword string?)))
+  (s/coll-of (s/tuple ::expressions/namespaced-keyword string?)))
 
 (s/def ::keyword-keyword-map
-  (s/coll-of (s/tuple ::filters/namespaced-keyword ::filters/namespaced-keyword)))
+  (s/coll-of (s/tuple ::expressions/namespaced-keyword ::expressions/namespaced-keyword)))
 
 (defn ->column-names
   "Makes a hash-map of keywords and their equivalent column names"
   [quote-marks ks]
-  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
+  {:pre [(s/valid? (s/coll-of ::expressions/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map #(column-name quote-marks %) ks)))
@@ -58,7 +59,7 @@
   "Makes a hash-map of keywords and their Clojuric name (to be use as
   sql's SELECT aliases"
   [quote-marks ks]
-  {:pre [(s/valid? (s/coll-of ::filters/namespaced-keyword) ks)]
+  {:pre [(s/valid? (s/coll-of ::expressions/namespaced-keyword) ks)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (zipmap ks
     (map #(clojuric-name quote-marks %) ks)))
@@ -77,11 +78,11 @@
       " = "    quote-open table-2 quote-close "." quote-open column-2 quote-close)))
 
 (s/def ::no-join
-  (s/coll-of ::filters/namespaced-keyword
+  (s/coll-of ::expressions/namespaced-keyword
     :count 2))
 
 (s/def ::one-join
-  (s/coll-of ::filters/namespaced-keyword
+  (s/coll-of ::expressions/namespaced-keyword
     :count 4))
 
 (s/def ::join-seq
@@ -101,7 +102,7 @@
                          :joins       (map split-keyword (drop 2 join-seq))}))))
 
 (s/def ::join-specs
-  (s/coll-of (s/tuple ::filters/namespaced-keyword ::join-seq)))
+  (s/coll-of (s/tuple ::expressions/namespaced-keyword ::join-seq)))
 
 (defn source-column
   [join-seq]
@@ -183,7 +184,7 @@
                      :target-table   (target-table joins)
                      :quote-marks    quote-marks
                      :join-statement (->join-statements quote-marks joins)})
-    " WHERE "))
+    " WHERE ?)"))
 
 (defn ast-root
   [ast]
@@ -300,7 +301,7 @@
                          child-source-columns)}))
 
 (s/def ::conditional-ident
-  (s/tuple keyword? ::filters/namespaced-keyword))
+  (s/tuple keyword? ::expressions/namespaced-keyword))
 
 (defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
@@ -351,11 +352,11 @@
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
   [env key]
-  {:pre  [(s/valid? ::filters/namespaced-keyword key)
+  {:pre  [(s/valid? ::expressions/namespaced-keyword key)
           (s/valid? (s/keys :req-un [::ast]) env)]
-   :post [#(s/valid? ::filters/clauses %)]}
+   :post [#(s/valid? ::expressions/expression %)]}
   (let [params (-> env :ast :key rest)]
-    {key (cons := params)}))
+    (vec (concat [:= key] params))))
 
 (defn compile-extra-conditions
   [extra-conditions]
@@ -426,8 +427,12 @@
     (cons union-query (apply concat params))))
 
 (defn wrap-select
-  "Wrap a SQL string in SELECT * FROM (...). Useful for sqlite's
-  batch-query."
+  "Wrap a SQL string in (...)"
+  [s]
+  (str "(" s ")"))
+
+(defn wrap-select-sqlite
+  "Wrap a SQL string in SELECT * FROM (...)"
   [s]
   (str "SELECT * FROM (" s ")"))
 
@@ -467,10 +472,12 @@
         :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
 
-        :batch-query      (if sqlite-union
-                            (fn sqlite-batch-query [query-strings params]
-                              (batch-query (map wrap-select query-strings) params))
-                            batch-query)
+        :batch-query      (fn [query-strings params]
+                            (batch-query (map (if sqlite-union
+                                                wrap-select-sqlite
+                                                wrap-select)
+                                           query-strings) params))
+
         :cardinality      cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
@@ -488,7 +495,7 @@
     (case (count all-conditions)
       0 nil
       1 (first all-conditions)
-      all-conditions)))
+      (vec all-conditions))))
 
 (defn process-pagination
   "Processes :offset :limit and :order-by if provided in current
@@ -507,7 +514,7 @@
          limit))
      :order-by
      (when-let [order-by (get-in env [:ast :params :order-by])]
-       (filters/->order-by-string column-names order-by))}))
+       (pagination/->order-by-string column-names order-by))}))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
@@ -540,8 +547,7 @@
 
         join-condition
         (when target-column ;; if it's a join
-          {target-column
-           [:= (get e source-column)]})
+          [:= target-column (get e source-column)])
 
         extra-condition (env/extra-condition env)
 
@@ -549,56 +555,53 @@
         (get-in env [:ast :params :filters])
 
         supplied-condition
-        (when (s/valid? ::filters/clauses supplied-condition)
+        (when (s/valid? ::expressions/expression supplied-condition)
           supplied-condition)]
     [ident-condition join-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
   [{::keys [sql-schema] :as env} columns-to-query]
-  (let [{::keys [clojuric-names column-names join-filter-subqueries]} sql-schema
-        all-conditions          (clean-up-all-conditions (process-conditions env))]
+  (let [{::keys [column-names join-filter-subqueries]} sql-schema
+
+        all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
-      (filters/parameterize {:key    nil
-                             :keymap column-names
-                             :join-filter-subqueries join-filter-subqueries
-                             #_(merge column-names
-                               (select-keys clojuric-names columns-to-query))}
-        all-conditions))))
+      (->> all-conditions
+        (expressions/parameterize {:column-names           column-names
+                               :join-filter-subqueries join-filter-subqueries})
+        ((juxt :raw-string :params))))))
 
 (defn process-selection
   [{::keys [sql-schema] :as env} columns-to-query]
   (let [{::keys [column-names clojuric-names]} sql-schema
 
-        target-column (env/target-column env)
-        column-names  (merge column-names
-                        (when target-column
-                          {target-column ["?" (env/source-column-value env)]}))]
-    (map (fn [k]
-           (let [column-name (get column-names k)
-                 alias       (get clojuric-names k)]
-             (if (coll? column-name)
-               (let [[selection & params] column-name]
-                 {:selection        selection
-                  :alias            alias
-                  :selection-params params})
-               {:selection        column-name
-                :alias            alias
-                :selection-params nil})))
-      columns-to-query)))
+        target-column (env/target-column env)]
+    (concat
+      (mapv (fn [k]
+              (let [column-name   (get column-names k)
+                    clojuric-name (get clojuric-names k)]
+                (if (string? column-name)
+                  {:raw-string (str column-name " AS " clojuric-name)
+                   :params     []}
+                  ;; not string? it must be a pseudo-column
+                  (let [form (s/conform ::expressions/expression column-name)]
+                    (expressions/inline-params
+                      {:raw-string (str "(?) AS " clojuric-name)
+                       :params     [(expressions/process-expression {:column-names column-names} form)]})))))
+        columns-to-query)
+      (when target-column
+        (let [form (s/conform ::expressions/expression (env/source-column-value env))]
+          [(expressions/inline-params
+             {:raw-string (str "? AS " (get clojuric-names target-column))
+              :params     [(expressions/process-expression {:column-names column-names} form)]})])))))
 
 (defn parameterize-all-selection
   [env columns-to-query]
-  (let [xs           (process-selection env columns-to-query)
-        s            (->> xs
-                       (map (fn with-as [{:keys [selection alias]}]
-                              (str selection " AS " alias)))
-                       (clojure.string/join ", "))
-        params       (apply concat (map :selection-params xs))
-        column-names (-> env ::sql-schema ::column-names)]
-    (->> (filters/inline-safe-params
-           {:raw-string   s
-            :params       params
-            :column-names column-names})
+  (let [column-names (-> env ::sql-schema ::column-names)
+        xs (process-selection env columns-to-query)]
+    (->> {:raw-string (->> (repeat (count xs) \?)
+                        (clojure.string/join ", "))
+          :params     xs}
+      (expressions/inline-params)
       ((juxt :raw-string :params)))))
 
 (defn process-all-params
@@ -607,7 +610,7 @@
   [env all-params]
   (let [column-names (-> env ::sql-schema ::column-names)]
     (mapv (fn stringify-keywords [param]
-            (if (filters/namespaced-keyword? param)
+            (if (expressions/namespaced-keyword? param)
               (get column-names param)
               param))
       all-params)))
