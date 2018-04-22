@@ -11,8 +11,8 @@ expressions in your
 
   - S-expressions can end up as SQL strings in either `SELECT`
   statements or `WHERE` conditions. For demonstrating purpose, the
-  strings are wrapped in `SELECT ... as q` so the SQL output is
-  executable.
+  strings are wrapped in `SELECT ... as q` so the SQL outputs are
+  executable, except ones with tables and columns.
 
   - SQL output may differ when you `require` different implementations
     (ie `(require 'walkable.sql-query-builder.impl.postgres)` vs
@@ -98,6 +98,32 @@ but also handle multiple arity mimicking their Clojure equivalents.
 ;; => [{:q true}]
 ```
 
+String comparison operators: `=`, `like`, `match`, `glob`:
+
+```clj
+;; expression
+[:= "hello" "hi"]
+;; sql output
+(jdbc/query your-db ["SELECT (? = ?) AS q" "hello" "hi"])
+;; => [{:q false}]
+
+;; expression
+[:like "abcd" "abc%"]
+;; sql output
+(jdbc/query your-db ["SELECT (? LIKE ?) AS q" "abcd" "abc%"])
+;; => [{:q true}]
+```
+
+Use them on some columns, too:
+
+```clj
+;; expression
+[:= :my-table/its-column "hi"]
+;; sql output
+(jdbc/query your-db ["SELECT (`my_table`.`its_column` = ?) AS q FROM `my_table`" "hi"])
+;; => [{:q true}]
+```
+
 ### Math
 
 Basic math operators work just like their Clojure equivalents: `:+`,
@@ -147,7 +173,24 @@ Feel free to mix them
 ```
 
 ### Conversion between types
-:cast
+
+Use the `:cast` operator:
+
+```clj
+;; expression
+[:cast "2" :integer]
+;; sql output
+(jdbc/query your-db ["SELECT CAST(? as INTEGER) AS q" "2"])
+;; => [{:q 2}]
+
+;; expression
+[:cast 3 :text]
+;; sql output
+(jdbc/query your-db ["SELECT CAST(3 as TEXT) AS q"])
+;; => [{:q "3"}]
+```
+
+Todo: List of available cast types.
 
 ### Logic constructs
 
