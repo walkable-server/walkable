@@ -2,7 +2,7 @@
 
 ## 1. Syntactic sugars
 
-### Multiple dispatch keys for `:idents`, `:extra-conditions`, `:joins` and `:cardinality`.
+### Composite key for `:idents`, `:extra-conditions`, `:joins` and `:cardinality`.
 
 If two or more dispatch key share the same configuration, it's handy
 to have them in the same entry. For example:
@@ -23,7 +23,7 @@ this is shorter:
           "person"}}
 ```
 
-This also applies to `:extra-conditions`, `:joins` and `:cardinality`.
+This also applies keys under `:extra-conditions`, `:joins` and `:cardinality`.
 
 ## 2. Lambda form for `:extra-conditions`
 
