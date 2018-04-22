@@ -368,3 +368,30 @@ harder one
 `walkable.sql-query-builder.expressions/process-unsafe-expression`.
 
 Todo: more docs.
+
+## Bonus: JSON in Postgresql
+
+The following expressions work in Postgresql:
+
+```clj
+;; expression
+[:= 1
+ [:cast [:get-as-text [:jsonb {:a 1}] "a"] :integer]]
+;; sql output
+(jdbc/query your-db ["SELECT ((1)=(CAST ((?::jsonb)->>( ? ) AS INTEGER))) AS q" "{\"a\" :1}" "a"])
+;; => [{:q true}]
+
+;; expression
+[:or [:= 2 [:array-length [:array 1 2 3 4] 1]]
+ [:contains [:jsonb {:a 1 :b 2}]
+  [:jsonb {:a 1}]]
+ [:jsonb-exists [:jsonb {:a 1 :b 2}]
+  "a"]]
+;; sql output
+(jdbc/query your-db ["SELECT (((2)=(array_length (ARRAY[1, 2, 3, 4], 1)))
+OR ((?::jsonb)@>(?::jsonb))
+OR (jsonb_exists (?::jsonb,  ? )))
+AS q"
+    "{\"a\":1,\"b\":2}" "{\"a\":1}" "{\"a\":1,\"b\":2}" "a"])
+;; => [{:q true}]
+```
