@@ -335,6 +335,14 @@
   [_env [_operator params]]
   (one-argument-operator params "distinct" "DISTINCT ?"))
 
+(defmethod operator? :count-* [_operator] true)
+
+(defmethod process-operator :count-*
+  [_env [_operator params]]
+  (assert (empty? params) "count-* doesn't accept arguments")
+  {:raw-string "COUNT(*)"
+   :params     []})
+
 (defmethod operator? :in [_operator] true)
 
 (defmethod process-operator :in
