@@ -590,7 +590,9 @@
                     (expressions/inline-params
                       {:raw-string (str "(?) AS " clojuric-name)
                        :params     [(expressions/process-expression {:column-names column-names} form)]})))))
-        columns-to-query)
+        (if target-column
+          (remove #(= % target-column) columns-to-query)
+          columns-to-query))
       (when target-column
         (let [form (s/conform ::expressions/expression (env/source-column-value env))]
           [(expressions/inline-params
@@ -637,9 +639,6 @@
   (let [{::keys [quote-marks]}                   sql-schema
         k                                        (env/dispatch-key env)
         {:keys [join-children columns-to-query]} (process-children env)
-        columns-to-query                         (if-let [target-column (env/target-column env)]
-                                                   (conj columns-to-query target-column)
-                                                   columns-to-query)
         [selection select-params]                (parameterize-all-selection env columns-to-query)
         [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
