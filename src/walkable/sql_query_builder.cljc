@@ -566,8 +566,9 @@
         all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (->> all-conditions
-        (expressions/parameterize {:column-names           column-names
-                               :join-filter-subqueries join-filter-subqueries})
+        (expressions/parameterize {:pathom-env             env
+                                   :column-names           column-names
+                                   :join-filter-subqueries join-filter-subqueries})
         ((juxt :raw-string :params))))))
 
 (defn process-selection
@@ -583,7 +584,9 @@
                   {:raw-string (str column-name " AS " clojuric-name)
                    :params     []}
                   ;; not string? it must be a pseudo-column
-                  (let [form (s/conform ::expressions/expression column-name)]
+                  (let [form (s/conform ::expressions/expression (if (fn? column-name)
+                                                                   (column-name env)
+                                                                   column-name))]
                     (expressions/inline-params
                       {:raw-string (str "(?) AS " clojuric-name)
                        :params     [(expressions/process-expression {:column-names column-names} form)]})))))

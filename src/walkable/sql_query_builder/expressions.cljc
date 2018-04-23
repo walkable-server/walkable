@@ -395,7 +395,7 @@
    :params     string})
 
 (defmethod process-expression :column
-  [{:keys [column-names] :as env} [_kw column-keyword]]
+  [{:keys [column-names pathom-env] :as env} [_kw column-keyword]]
   (let [column (get column-names column-keyword)]
     (assert column
       (str "Invalid column keyword " column-keyword
@@ -403,7 +403,9 @@
     (if (string? column)
       {:raw-string column
        :params     []}
-      (let [form (s/conform ::expression column)]
+      (let [form (s/conform ::expression (if (fn? column)
+                                           (column pathom-env)
+                                           column))]
         (assert (not= ::s/invalid form)
           (str "Invalid pseudo column for " column-keyword ": " column))
         (inline-params
