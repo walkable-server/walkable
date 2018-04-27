@@ -3,7 +3,7 @@
 Walkable uses a graph query language to describe what data you want
 from your SQL DBMS. The query language was inspired by Datomic's [Pull
 API](https://docs.datomic.com/on-prem/pull.html) and
-[Graphql](https://http://graphql.org/) and first introduced in
+[Graphql](https://graphql.org/) and first introduced in
 [om.next](https://github.com/omcljs/om/wiki/Documentation-(om.next)). However,
 you don't have to use om.next (or its fork,
 [Fulcro](https://github.com/fulcrologic/fulcro)) to make use of the
