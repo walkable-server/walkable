@@ -329,12 +329,6 @@
 
 ;; todo implement COLLATE
 
-(defmethod operator? :distinct [_operator] true)
-
-(defmethod process-operator :distinct
-  [_env [_operator params]]
-  (one-argument-operator params "distinct" "DISTINCT ?"))
-
 (defmethod operator? :count-* [_operator] true)
 
 (defmethod process-operator :count-*
