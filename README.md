@@ -57,6 +57,13 @@ language happens to satisfy that.
 
 Walkable's goal is to become the ultimate SQL library for Clojure.
 
+## For plain-SQL enthusiasts or ORM fans
+
+I urge you to challenge your assumptions by implementing your own
+version of the Realworld API Spec with your favorite ORM (Django,
+Rails, Korma, Toucan, whatever) and compare it with the implementation
+using Walkable [here](https://github.com/walkable-server/realworld/).
+
 ## Overview
 
 Basically you define your schema like this:
