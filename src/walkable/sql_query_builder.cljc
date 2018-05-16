@@ -643,9 +643,12 @@
                            ::target-tables
                            ::target-columns])
            sql-schema)]}
-  (let [{::keys [quote-marks]}                   sql-schema
+  (let [{::keys [quote-marks aggregate-joins]}   sql-schema
         k                                        (env/dispatch-key env)
-        {:keys [join-children columns-to-query]} (process-children env)
+        {:keys [join-children columns-to-query]} (if (contains? aggregate-joins k)
+                                                   {:columns-to-query #{k}
+                                                    :join-children    #{}}
+                                                   (process-children env))
         [selection select-params]                (parameterize-all-selection env columns-to-query)
         [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
