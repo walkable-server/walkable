@@ -245,6 +245,7 @@
                 ::cardinality
                 ::quote-marks
                 ::target-tables
+                ::aggregate-joins
                 ::batch-query]))
 
 (defn process-children
@@ -440,8 +441,10 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins cardinality quote-marks sqlite-union]
+           reversed-joins joins cardinality quote-marks sqlite-union
+           aggregate-joins]
     :or   {quote-marks      backticks
+           aggregate-joins  {}
            extra-conditions {}
            joins            {}
            cardinality      {}}
@@ -449,7 +452,7 @@
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns ::extra-conditions
-                               ::sqlite-union ::quote-marks
+                               ::sqlite-union ::quote-marks ::aggregate-joins
                                ::reversed-joins ::joins ::cardinality])
             input-schema)]
    :post [#(s/valid? ::sql-schema %)]}
