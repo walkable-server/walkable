@@ -461,7 +461,10 @@
         extra-conditions                                  (flatten-multi-keys extra-conditions)
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
-        cardinality                                       (flatten-multi-keys cardinality)
+        aggregate-joins                                   (flatten-multi-keys aggregate-joins)
+        cardinality                                       (merge (flatten-multi-keys cardinality)
+                                                            (zipmap (keys aggregate-joins) (repeat :one)))
+
         true-columns                                      (set (apply concat columns (vals joins)))
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
@@ -485,9 +488,10 @@
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names quote-marks true-columns)
-                            pseudo-columns)
-        :clojuric-names   (->clojuric-names quote-marks columns)
+                            pseudo-columns aggregate-joins)
+        :clojuric-names   (->clojuric-names quote-marks (concat columns (keys aggregate-joins)))
         :join-statements  (compile-join-statements quote-marks joins)
+        :aggregate-joins  (set (keys aggregate-joins))
         :join-filter-subqueries (compile-join-filter-subqueries quote-marks joins)}))
 
 (defn clean-up-all-conditions
