@@ -683,8 +683,9 @@
                  target-columns
                  source-columns
                  join-statements
+                 aggregate-joins
                  cardinality]} sql-schema
-        k                           (env/dispatch-key env)]
+        k                      (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
@@ -749,9 +750,11 @@
             (= :one (get cardinality k))
 
             do-join
-            (if one?
-              #(p/join (first %2) %1)
-              #(p/join-seq %1 %2))]
+            (if (contains? aggregate-joins k)
+              #(get (first %2) k)
+              (if one?
+                #(p/join (first %2) %1)
+                #(p/join-seq %1 %2)))]
         (if (seq entities-with-join-children-data)
           (do-join env entities-with-join-children-data)
           (when-not one?
