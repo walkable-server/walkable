@@ -245,6 +245,7 @@
                 ::cardinality
                 ::quote-marks
                 ::target-tables
+                ::aggregate-joins
                 ::batch-query]))
 
 (defn process-children
@@ -440,8 +441,10 @@
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents extra-conditions
-           reversed-joins joins cardinality quote-marks sqlite-union]
+           reversed-joins joins cardinality quote-marks sqlite-union
+           aggregate-joins]
     :or   {quote-marks      backticks
+           aggregate-joins  {}
            extra-conditions {}
            joins            {}
            cardinality      {}}
@@ -449,7 +452,7 @@
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns ::extra-conditions
-                               ::sqlite-union ::quote-marks
+                               ::sqlite-union ::quote-marks ::aggregate-joins
                                ::reversed-joins ::joins ::cardinality])
             input-schema)]
    :post [#(s/valid? ::sql-schema %)]}
@@ -458,7 +461,10 @@
         extra-conditions                                  (flatten-multi-keys extra-conditions)
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
-        cardinality                                       (flatten-multi-keys cardinality)
+        aggregate-joins                                   (flatten-multi-keys aggregate-joins)
+        cardinality                                       (merge (flatten-multi-keys cardinality)
+                                                            (zipmap (keys aggregate-joins) (repeat :one)))
+
         true-columns                                      (set (apply concat columns (vals joins)))
         columns                                           (set (concat true-columns
                                                                  (keys pseudo-columns)))]
@@ -482,9 +488,10 @@
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
         :column-names     (merge (->column-names quote-marks true-columns)
-                            pseudo-columns)
-        :clojuric-names   (->clojuric-names quote-marks columns)
+                            pseudo-columns aggregate-joins)
+        :clojuric-names   (->clojuric-names quote-marks (concat columns (keys aggregate-joins)))
         :join-statements  (compile-join-statements quote-marks joins)
+        :aggregate-joins  (set (keys aggregate-joins))
         :join-filter-subqueries (compile-join-filter-subqueries quote-marks joins)}))
 
 (defn clean-up-all-conditions
@@ -636,9 +643,12 @@
                            ::target-tables
                            ::target-columns])
            sql-schema)]}
-  (let [{::keys [quote-marks]}                   sql-schema
+  (let [{::keys [quote-marks aggregate-joins]}   sql-schema
         k                                        (env/dispatch-key env)
-        {:keys [join-children columns-to-query]} (process-children env)
+        {:keys [join-children columns-to-query]} (if (contains? aggregate-joins k)
+                                                   {:columns-to-query #{k}
+                                                    :join-children    #{}}
+                                                   (process-children env))
         [selection select-params]                (parameterize-all-selection env columns-to-query)
         [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
         {:keys [offset limit order-by]}          (process-pagination env)]
@@ -673,8 +683,9 @@
                  target-columns
                  source-columns
                  join-statements
+                 aggregate-joins
                  cardinality]} sql-schema
-        k                           (env/dispatch-key env)]
+        k                      (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
@@ -739,9 +750,11 @@
             (= :one (get cardinality k))
 
             do-join
-            (if one?
-              #(p/join (first %2) %1)
-              #(p/join-seq %1 %2))]
+            (if (contains? aggregate-joins k)
+              #(get (first %2) k)
+              (if one?
+                #(p/join (first %2) %1)
+                #(p/join-seq %1 %2)))]
         (if (seq entities-with-join-children-data)
           (do-join env entities-with-join-children-data)
           (when-not one?
@@ -766,6 +779,7 @@
                  target-columns
                  source-columns
                  join-statements
+                 aggregate-joins
                  cardinality]} sql-schema
         k                      (env/dispatch-key env)]
     (if (contains? target-tables k)
@@ -781,9 +795,11 @@
             (= :one (get cardinality k))
 
             do-join
-            (if one?
-              #(p/join (first %2) %1)
-              #(p/join-seq %1 %2))
+            (if (contains? aggregate-joins k)
+              #(get (first %2) k)
+              (if one?
+                #(p/join (first %2) %1)
+                #(p/join-seq %1 %2)))
 
             entities-ch
             (promise-chan)
