@@ -779,6 +779,7 @@
                  target-columns
                  source-columns
                  join-statements
+                 aggregate-joins
                  cardinality]} sql-schema
         k                      (env/dispatch-key env)]
     (if (contains? target-tables k)
@@ -794,9 +795,11 @@
             (= :one (get cardinality k))
 
             do-join
-            (if one?
-              #(p/join (first %2) %1)
-              #(p/join-seq %1 %2))
+            (if (contains? aggregate-joins k)
+              #(get (first %2) k)
+              (if one?
+                #(p/join (first %2) %1)
+                #(p/join-seq %1 %2)))
 
             entities-ch
             (promise-chan)
