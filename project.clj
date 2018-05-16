@@ -5,7 +5,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.10.238"]
                  [clojure-future-spec "1.9.0-beta4"]
-                 [com.wsscode/pathom "2.0.0-beta3" :exclusions [org.clojure/clojurescript]]]
+                 [com.wsscode/pathom "2.0.0" :exclusions [org.clojure/clojurescript]]]
   :resource-paths ["resources"]
   :profiles
   {:dev          [:project/dev :profiles/dev]
