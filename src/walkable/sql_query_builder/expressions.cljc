@@ -278,7 +278,7 @@
 
 (import-functions {:arity       1
                    :upper-case? true}
-  [sum count not])
+  [sum count not min max avg])
 
 (import-functions {:arity 1 }
   {bit-not "~"})
