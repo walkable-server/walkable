@@ -594,17 +594,19 @@
                   (let [form (s/conform ::expressions/expression (if (fn? column-name)
                                                                    (column-name env)
                                                                    column-name))]
-                    (expressions/inline-params
-                      {:raw-string (str "(?) AS " clojuric-name)
-                       :params     [(expressions/process-expression {:column-names column-names} form)]})))))
+                    (when-not (= ::s/invalid form)
+                      (expressions/inline-params
+                        {:raw-string (str "(?) AS " clojuric-name)
+                         :params     [(expressions/process-expression {:column-names column-names} form)]}))))))
         (if target-column
           (remove #(= % target-column) columns-to-query)
           columns-to-query))
       (when target-column
         (let [form (s/conform ::expressions/expression (env/source-column-value env))]
-          [(expressions/inline-params
-             {:raw-string (str "? AS " (get clojuric-names target-column))
-              :params     [(expressions/process-expression {:column-names column-names} form)]})])))))
+          (when-not (= ::s/invalid form)
+            [(expressions/inline-params
+               {:raw-string (str "? AS " (get clojuric-names target-column))
+                :params     [(expressions/process-expression {:column-names column-names} form)]})]))))))
 
 (defn parameterize-all-selection
   [env columns-to-query]
