@@ -510,7 +510,7 @@
   [{::keys [sql-schema] :as env}]
   {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (let [{::keys [column-names]} sql-schema]
+  (let [{::keys [column-names aggregators]} sql-schema]
     {:offset
      (when-let [offset (get-in env [:ast :params :offset])]
        (when (integer? offset)
@@ -520,8 +520,9 @@
        (when (integer? limit)
          limit))
      :order-by
-     (when-let [order-by (get-in env [:ast :params :order-by])]
-       (pagination/->order-by-string column-names order-by))}))
+     (when-not (contains? aggregators (env/dispatch-key env))
+       (when-let [order-by (get-in env [:ast :params :order-by])]
+         (pagination/->order-by-string column-names order-by)))}))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
