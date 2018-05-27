@@ -68,7 +68,7 @@
 ;; instead of "?", "?|"
 ;; source: https://stackoverflow.com/questions/30629076/how-to-escape-the-question-mark-operator-to-query-postgresql-jsonb-type-in-r
 (expressions/import-functions {}
-  [to-char to-date to-number to-timestamp iso-timestamp
+  [to-char to-date to-number to-timestamp iso-timestamp json-agg
    jsonb-contains jsonb-exists jsonb-exists-any jsonb-exists-all jsonb-delete-path])
 
 (expressions/import-infix-operators {:arity 2}
