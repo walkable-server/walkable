@@ -506,25 +506,30 @@
       1 (first all-conditions)
       (vec all-conditions))))
 
-(defn process-pagination
+(defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
   om.next query params."
   [{::keys [sql-schema] :as env}]
-  {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
   (let [{::keys [column-names aggregators]} sql-schema]
-    {:offset
-     (when-let [offset (get-in env [:ast :params :offset])]
-       (when (integer? offset)
-         offset))
-     :limit
-     (when-let [limit (get-in env [:ast :params :limit])]
-       (when (integer? limit)
-         limit))
+    {:offset (env/offset env)
+     :limit  (env/limit env)
+
      :order-by
      (when-not (contains? aggregators (env/dispatch-key env))
-       (when-let [order-by (get-in env [:ast :params :order-by])]
+       (when-let [order-by (env/order-by env)]
          (pagination/->order-by-string column-names order-by)))}))
+
+(defn merge-pagination [extra supplied]
+  {:offset   (get extra :offset   (or (get supplied :offset)   (get extra 'offset)))
+   :limit    (get extra :limit    (or (get supplied :limit)    (get extra 'limit)))
+   :order-by (get extra :order-by (or (get supplied :order-by) (get extra 'order-by)))})
+
+(defn process-pagination [{::keys [sql-schema] :as env}]
+  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
+  (merge-pagination (env/extra-pagination env) (supplied-pagination env)))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
