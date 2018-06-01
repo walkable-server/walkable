@@ -5,6 +5,16 @@
   [env]
   (-> env :ast :dispatch-key))
 
+(defn key
+  [env]
+  (-> env :ast :key))
+
+(defn ident-value
+  [env]
+  (let [k (key env)]
+    (when (vector? k)
+      (second k))))
+
 (defn target-column
   [env]
   (let [target-columns (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/target-columns)]
