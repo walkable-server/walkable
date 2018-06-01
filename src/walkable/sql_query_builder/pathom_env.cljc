@@ -1,4 +1,5 @@
 (ns walkable.sql-query-builder.pathom-env
+  (:refer-clojure :exclude [key])
   (:require [com.wsscode.pathom.core :as p]))
 
 (defn dispatch-key
