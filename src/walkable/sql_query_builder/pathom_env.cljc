@@ -40,3 +40,22 @@
   (let [extra-conditions (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/extra-conditions)]
     (when-let [->condition (get extra-conditions (dispatch-key env))]
       (->condition env))))
+
+(defn extra-pagination
+  [env]
+  (let [extra-pagination (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/extra-pagination)]
+    (when-let [->pagination (get extra-pagination (dispatch-key env))]
+      (->pagination env))))
+
+(defn offset [env]
+  (when-let [offset (get-in env [:ast :params :offset])]
+    (when (integer? offset)
+      offset)))
+
+(defn limit [env]
+  (when-let [limit (get-in env [:ast :params :limit])]
+    (when (integer? limit)
+      limit)))
+
+(defn order-by [env]
+  (get-in env [:ast :params :order-by]))
