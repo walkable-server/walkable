@@ -357,8 +357,7 @@
   {:pre  [(s/valid? ::expressions/namespaced-keyword key)
           (s/valid? (s/keys :req-un [::ast]) env)]
    :post [#(s/valid? ::expressions/expression %)]}
-  (let [params (-> env :ast :key rest)]
-    (vec (concat [:= key] params))))
+  (conj [:= key] (env/ident-value env)))
 
 (defn compile-extra-conditions
   [extra-conditions]
