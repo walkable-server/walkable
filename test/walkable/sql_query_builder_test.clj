@@ -168,3 +168,9 @@
         {:person/pet :person-pet/person-number,
          :pet/owner :person-pet/pet-index,
          :farmer/cow :cow/index})))
+
+(deftest merge-pagination-test
+  (is (= (sut/merge-pagination {:offset 5 'limit 5 :order-by :e} {:offset 10 :limit 10 :order-by :s})
+        {:offset 5, :limit 10, :order-by :e}))
+  (is (= (sut/merge-pagination {:offset nil 'limit 5 :order-by :e} {:offset 10 :limit 10 :order-by :s})
+        {:offset nil, :limit 10, :order-by :e})))
