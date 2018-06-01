@@ -368,6 +368,8 @@
                 (fn [env] v))))
     {} extra-conditions))
 
+(def compile-extra-pagination compile-extra-conditions)
+
 (defn compile-join-statements
   [quote-marks joins]
   (reduce (fn [result [k join-seq]]
