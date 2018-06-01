@@ -666,6 +666,8 @@
      :query-params       (process-all-params env (concat select-params where-params))
      :join-children      join-children}))
 
+(s/def ::run-query fn?)
+
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
@@ -680,6 +682,7 @@
   params) against the given sql-db. Shares the same signature with
   clojure.java.jdbc/query."
   [{::keys [sql-schema sql-db run-query] :as env}]
+  {:pre [(s/valid? (s/keys :req [::run-query]) env)]}
   (let [{::keys [ident-keywords
                  batch-query
                  target-tables
@@ -776,6 +779,7 @@
   params) against the given sql-db. Shares the same input with
   clojure.java.jdbc/query. Returns query result in a channel."
   [{::keys [sql-schema sql-db run-query] :as env}]
+  {:pre [(s/valid? (s/keys :req [::run-query]) env)]}
   (let [{::keys [ident-keywords
                  batch-query
                  target-tables
@@ -858,7 +862,7 @@
         ;; debugging
         #_
         (go (let [join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
-              (println "join-children-data-by-join-key:" join-children-data-by-join-key )))
+              (println "join-children-data-by-join-key:" join-children-data-by-join-key)))
         (go (let [entities                       (<! entities-ch)
                   join-children-data-by-join-key (<! join-children-data-by-join-key-ch)]
               (put! entities-with-join-children-data-ch
