@@ -234,6 +234,7 @@
   (s/keys :req [::column-keywords
                 ::target-columns
                 ::extra-conditions
+                ::extra-pagination
                 ::join-statements
                 ::join-filter-subqueries
                 ::required-columns
@@ -442,18 +443,19 @@
 (defn compile-schema
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
-  [{:keys [columns pseudo-columns required-columns idents extra-conditions
+  [{:keys [columns pseudo-columns required-columns idents extra-conditions extra-pagination
            reversed-joins joins cardinality quote-marks sqlite-union
            aggregators]
     :or   {quote-marks      backticks
            aggregators  {}
            extra-conditions {}
+           extra-pagination {}
            joins            {}
            cardinality      {}}
     :as   input-schema}]
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
-                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions
+                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions ::extra-pagination
                                ::sqlite-union ::quote-marks ::aggregators
                                ::reversed-joins ::joins ::cardinality])
             input-schema)]
@@ -461,6 +463,7 @@
   (let [idents                                            (flatten-multi-keys idents)
         {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
         extra-conditions                                  (flatten-multi-keys extra-conditions)
+        extra-pagination                                  (flatten-multi-keys extra-pagination)
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
         aggregators                                       (flatten-multi-keys aggregators)
@@ -489,6 +492,7 @@
         :cardinality      cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
+        :extra-pagination (compile-extra-pagination extra-pagination)
         :column-names     (merge (->column-names quote-marks true-columns)
                             pseudo-columns aggregators)
         :clojuric-names   (->clojuric-names quote-marks (concat columns (keys aggregators)))
