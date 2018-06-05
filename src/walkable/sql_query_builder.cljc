@@ -515,14 +515,16 @@
   [{::keys [sql-schema] :as env}]
   {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (let [{::keys [column-names aggregators]} sql-schema]
+  (let [{::keys [aggregators]} sql-schema]
     {:offset (env/offset env)
      :limit  (env/limit env)
 
      :order-by
      (when-not (contains? aggregators (env/dispatch-key env))
-       (when-let [order-by (env/order-by env)]
-         (pagination/->order-by-string column-names order-by)))}))
+       (env/order-by env))}))
+
+(defn stringify-order-by [column-names m]
+  (update m :order-by #(pagination/->order-by-string column-names %)))
 
 (defn merge-pagination [extra supplied]
   {:offset   (get extra :offset   (or (get supplied :offset)   (get extra 'offset)))
@@ -532,7 +534,8 @@
 (defn process-pagination [{::keys [sql-schema] :as env}]
   {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (merge-pagination (env/extra-pagination env) (supplied-pagination env)))
+  (->> (merge-pagination (env/extra-pagination env) (supplied-pagination env))
+    (stringify-order-by (::column-names sql-schema))))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
