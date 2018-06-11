@@ -520,8 +520,7 @@
      :limit  (env/limit env)
 
      :order-by
-     (when-not (contains? aggregators (env/dispatch-key env))
-       (env/order-by env))}))
+     (env/order-by env)}))
 
 (defn stringify-order-by [column-names m]
   (update m :order-by #(pagination/->order-by-string column-names %)))
