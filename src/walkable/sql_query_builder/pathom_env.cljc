@@ -58,6 +58,9 @@
     (when-let [->pagination (get extra-pagination (dispatch-key env))]
       (->pagination env))))
 
+(defn params [env]
+  (get-in env [:ast :params]))
+
 (defn offset [env]
   (when-let [offset (get-in env [:ast :params :offset])]
     (when (integer? offset)
