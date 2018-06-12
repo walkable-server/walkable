@@ -234,6 +234,7 @@
   (s/keys :req [::column-keywords
                 ::target-columns
                 ::extra-conditions
+                ::extra-pagination
                 ::join-statements
                 ::join-filter-subqueries
                 ::required-columns
@@ -356,8 +357,7 @@
   {:pre  [(s/valid? ::expressions/namespaced-keyword key)
           (s/valid? (s/keys :req-un [::ast]) env)]
    :post [#(s/valid? ::expressions/expression %)]}
-  (let [params (-> env :ast :key rest)]
-    (vec (concat [:= key] params))))
+  (conj [:= key] (env/ident-value env)))
 
 (defn compile-extra-conditions
   [extra-conditions]
@@ -367,6 +367,8 @@
                 v
                 (fn [env] v))))
     {} extra-conditions))
+
+(def compile-extra-pagination compile-extra-conditions)
 
 (defn compile-join-statements
   [quote-marks joins]
@@ -440,18 +442,19 @@
 (defn compile-schema
   "Given a brief user-supplied schema, derives an efficient schema
   ready for pull-entities to use."
-  [{:keys [columns pseudo-columns required-columns idents extra-conditions
+  [{:keys [columns pseudo-columns required-columns idents extra-conditions extra-pagination
            reversed-joins joins cardinality quote-marks sqlite-union
            aggregators]
     :or   {quote-marks      backticks
            aggregators  {}
            extra-conditions {}
+           extra-pagination {}
            joins            {}
            cardinality      {}}
     :as   input-schema}]
 
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
-                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions
+                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions ::extra-pagination
                                ::sqlite-union ::quote-marks ::aggregators
                                ::reversed-joins ::joins ::cardinality])
             input-schema)]
@@ -459,6 +462,7 @@
   (let [idents                                            (flatten-multi-keys idents)
         {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
         extra-conditions                                  (flatten-multi-keys extra-conditions)
+        extra-pagination                                  (flatten-multi-keys extra-pagination)
         joins                                             (->> (flatten-multi-keys joins)
                                                             (expand-reversed-joins reversed-joins))
         aggregators                                       (flatten-multi-keys aggregators)
@@ -487,6 +491,7 @@
         :cardinality      cardinality
         :ident-conditions conditional-idents
         :extra-conditions (compile-extra-conditions extra-conditions)
+        :extra-pagination (compile-extra-pagination extra-pagination)
         :column-names     (merge (->column-names quote-marks true-columns)
                             pseudo-columns aggregators)
         :clojuric-names   (->clojuric-names quote-marks (concat columns (keys aggregators)))
@@ -504,25 +509,32 @@
       1 (first all-conditions)
       (vec all-conditions))))
 
-(defn process-pagination
+(defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
   om.next query params."
   [{::keys [sql-schema] :as env}]
-  {:pre [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (let [{::keys [column-names aggregators]} sql-schema]
-    {:offset
-     (when-let [offset (get-in env [:ast :params :offset])]
-       (when (integer? offset)
-         offset))
-     :limit
-     (when-let [limit (get-in env [:ast :params :limit])]
-       (when (integer? limit)
-         limit))
+  (let [{::keys [aggregators]} sql-schema]
+    {:offset (env/offset env)
+     :limit  (env/limit env)
+
      :order-by
-     (when-not (contains? aggregators (env/dispatch-key env))
-       (when-let [order-by (get-in env [:ast :params :order-by])]
-         (pagination/->order-by-string column-names order-by)))}))
+     (env/order-by env)}))
+
+(defn stringify-order-by [column-names m]
+  (update m :order-by #(pagination/->order-by-string column-names %)))
+
+(defn merge-pagination [extra supplied]
+  {:offset   (get extra :offset   (or (get supplied :offset)   (get extra 'offset)))
+   :limit    (get extra :limit    (or (get supplied :limit)    (get extra 'limit)))
+   :order-by (get extra :order-by (or (get supplied :order-by) (get extra 'order-by)))})
+
+(defn process-pagination [{::keys [sql-schema] :as env}]
+  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
+  (->> (merge-pagination (env/extra-pagination env) (supplied-pagination env))
+    (stringify-order-by (::column-names sql-schema))))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
