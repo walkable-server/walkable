@@ -48,11 +48,12 @@
         :person-pet/pet-index)))
 
 (deftest target-table-tests
-  (is (= (sut/target-table [:pet/owner :person/number])
-        "person"))
-  (is (= (sut/target-table [:pet/index :person-pet/pet-index
+  (is (= (sut/target-table sut/backticks [:pet/owner :person/number])
+         "`person`"))
+  (is (= (sut/target-table sut/backticks
+                           [:pet/index :person-pet/pet-index
                             :person-pet/person-number :person/number])
-        "person_pet")))
+         "`person_pet`")))
 
 (deftest ->join-statements-tests
   (is (nil? (sut/->join-statements sut/backticks [:pet/owner-id :person/id])))
