@@ -2,12 +2,13 @@
   :description "A serious way to fetch data from SQL using Clojure: Datomic pull syntax, Clojure flavored filtering and more."
   :url "https://github.com/walkable-server/walkable"
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.10.339"]
+  :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]
+                 [org.clojure/clojurescript "1.10.339" :scope "provided"]
                  [clojure-future-spec "1.9.0-beta4"]
                  ;; not work with latest spec version yet
                  ;;[org.clojure/spec.alpha "0.2.168"]
-                 [com.wsscode/pathom "2.0.19"]]
+                 [com.wsscode/pathom "2.0.19"]
+                 [org.clojure/core.async "0.4.474" :scope "provided"]]
   :resource-paths ["resources"]
   :profiles
   {:dev          [:project/dev :profiles/dev]
