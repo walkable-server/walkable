@@ -49,9 +49,10 @@
   [[quote-open quote-close] k]
   {:pre [(s/valid? ::expressions/namespaced-keyword k)]
    :post [string?]}
-  (->> (split-keyword k)
-    (map #(str quote-open % quote-close))
-    (clojure.string/join ".")))
+  (let [[raw-table-name raw-column-name] (split-keyword k)]
+    (->> [(table-name* [quote-open quote-close] raw-table-name)
+          (str quote-open raw-column-name quote-close)]
+         (clojure.string/join "."))))
 
 (defn clojuric-name
   "Converts a keyword to an SQL alias"
