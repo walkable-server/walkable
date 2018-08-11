@@ -24,6 +24,16 @@
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
 
+(defn table-name*
+  "Given a raw table name, outputs its quoted form ready to use in an
+  SQL query."
+  [[quote-open quote-close] raw-table-name]
+  {:pre [(string? raw-table-name)]
+   :post [string?]}
+  (->> (clojure.string/split raw-table-name #"\.")
+       (map #(str quote-open % quote-close))
+       (clojure.string/join ".")))
+
 (defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
