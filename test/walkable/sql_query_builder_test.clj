@@ -144,10 +144,10 @@
                                          :by-yob :person/yob}})))
 
 (deftest conditional-idents->target-tables-test
-  (is (= (sut/conditional-idents->target-tables
+  (is (= (sut/conditional-idents->target-tables sut/backticks
            {:person/by-id :person/number
             :pets/by-ids  :pet/index})
-        {:person/by-id "person", :pets/by-ids "pet"})))
+         {:person/by-id "`person`", :pets/by-ids "`pet`"})))
 
 (deftest joins->target-tables-test
   (is (= (sut/joins->target-tables sut/backticks
