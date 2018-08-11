@@ -128,12 +128,12 @@
 
 (defn joins->target-tables
   "Produces map of join keys to their corresponding source table name."
-  [joins]
+  [quote-marks joins]
   {:pre  [(s/valid? ::join-specs joins)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
             (assoc result k
-              (target-table join-seq)))
+              (target-table quote-marks join-seq)))
     {} joins))
 
 (defn joins->target-columns
