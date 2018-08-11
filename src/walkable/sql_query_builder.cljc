@@ -84,18 +84,18 @@
   (zipmap ks
     (map #(clojuric-name quote-marks %) ks)))
 
-(s/def ::no-join
+(s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 2))
 
-(s/def ::one-join
+(s/def ::with-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 4))
 
 (s/def ::join-seq
   (s/or
-    :no-join  ::no-join
-    :one-join ::one-join))
+   :without-join-table ::without-join-table
+   :with-join-table    ::with-join-table))
 
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
