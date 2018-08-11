@@ -55,6 +55,7 @@
         "person_pet")))
 
 (deftest ->join-statements-tests
+  (is (nil? (sut/->join-statements sut/backticks [:pet/owner-id :person/id])))
   (is (= (sut/->join-statements sut/backticks
            [:pet/index :person-pet/pet-index
             :person-pet/person-number :person/number])
