@@ -1,7 +1,6 @@
 (ns walkable.sql-query-builder-test
   (:require [walkable.sql-query-builder :as sut]
             [clojure.test :as t :refer [deftest is]]
-            [fulcro.client.primitives :as prim]
             [com.wsscode.pathom.core :as p]))
 
 (deftest split-keyword-test
@@ -92,7 +91,7 @@
 (deftest find-all-children-test
   (is (= (->>
            (sut/find-all-children
-             (first (:children (prim/query->ast
+             (first (:children (p/query->ast
                                  '[{:some/root [:x.a/child-col :x.b/child-col
                                                 {:ph/ph1 [(:y.a/child-col {:params [1 2]})
                                                           {:y.a/child-join [:y.c/child-col
