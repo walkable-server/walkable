@@ -165,25 +165,24 @@
   "Builds the final query string ready for SQL server."
   [{:keys [selection target-table
            join-statement where-conditions
-           offset limit order-by quote-marks] :as input}]
+           offset limit order-by] :as input}]
 
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
-  (let [[quote-open quote-close] quote-marks]
-    (str "SELECT " selection
-      " FROM " quote-open target-table quote-close
+  (str "SELECT " selection
+       " FROM " target-table
 
-      join-statement
+       join-statement
 
-      (when where-conditions
-        (str " WHERE "
-          where-conditions))
-      (when order-by
-        (str " ORDER BY " order-by))
-      (when limit
-        (str " LIMIT " limit))
-      (when offset
-        (str " OFFSET " offset)))))
+       (when where-conditions
+         (str " WHERE "
+              where-conditions))
+       (when order-by
+         (str " ORDER BY " order-by))
+       (when limit
+         (str " LIMIT " limit))
+       (when offset
+         (str " OFFSET " offset))))
 
 (defn join-filter-subquery
   [quote-marks joins]
