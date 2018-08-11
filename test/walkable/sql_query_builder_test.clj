@@ -150,15 +150,15 @@
         {:person/by-id "person", :pets/by-ids "pet"})))
 
 (deftest joins->target-tables-test
-  (is (= (sut/joins->target-tables
+  (is (= (sut/joins->target-tables sut/backticks
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
             :farmer/cow [:farmer/cow-index :cow/index]})
-        {:person/pet "person_pet",
-         :pet/owner  "person_pet",
-         :farmer/cow "cow"})))
+         {:person/pet "`person_pet`",
+          :pet/owner  "`person_pet`",
+          :farmer/cow "`cow`"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns
