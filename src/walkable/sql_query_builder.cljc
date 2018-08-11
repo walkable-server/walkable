@@ -314,6 +314,9 @@
 (s/def ::conditional-ident
   (s/tuple keyword? ::expressions/namespaced-keyword))
 
+(s/def ::unconditional-ident
+  (s/tuple keyword? string?))
+
 (defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
   [quote-marks idents]
@@ -323,6 +326,15 @@
             (assoc result ident-key
               (table-name quote-marks column-keyword)))
           {} idents))
+
+(defn unconditional-idents->target-tables
+  "Produces map of ident keys to their corresponding source table name."
+  [quote-marks idents]
+  {:pre  [(s/valid? (s/coll-of ::unconditional-ident) idents)]
+   :post [#(s/valid? ::keyword-string-map %)]}
+  (reduce (fn [result [ident-key raw-table-name]]
+            (assoc result ident-key
+                   (table-name* quote-marks raw-table-name)))
     {} idents))
 
 (s/def ::multi-keys
