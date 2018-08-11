@@ -316,7 +316,7 @@
 
 (defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
-  [idents]
+  [quote-marks idents]
   {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [ident-key column-keyword]]
