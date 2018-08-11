@@ -2,26 +2,7 @@
 
  :duct.core/environment :production
 
- ;;:duct.server.http/jetty {:port 3002}
-
  :duct.module/logging {}
-
- :duct.module.web/site {}
-
- ;; Clojurescript
- :duct.module/cljs {:main walkable-demo.client}
- :dev/devcards     {}
-
- :duct.middleware.web/defaults {:security {:anti-forgery false}}
-
- :duct.module/ataraxy
- {"/api" ^:wrap-defaults ^:wrap-format [:example/fulcro]}
-
- :duct.router/ataraxy
- {:middleware {:wrap-format   #ig/ref :duct.middleware.web/format
-               :wrap-defaults #ig/ref :duct.middleware.web/defaults}}
-
- :duct.middleware.web/format {:default-format "application/transit+json"}
 
  :duct.migrator/ragtime
  {:migrations [#ig/ref :walkable-demo.migration.case-1/create-cow-table
@@ -86,40 +67,4 @@
  {:up   ["CREATE TABLE `follow` (`human_1` INTEGER REFERENCES `human`(`number`), `human_2` INTEGER REFERENCES `human`(`number`), `year` INTEGER)"
          "INSERT INTO `follow` (`human_1`, `human_2`, `year`) VALUES (1, 2, 2015), (1, 3, 2017), (2, 1, 2014), (2, 3, 2015), (1, 4, 2012)"]
   :down ["DROP TABLE `follow`"]}
-
- :walkable-demo.handler.example/sql-schema
- { ;; which columns are available in SQL table?
-  :quote-marks      ["`" "`"]
-  :columns          [:person/number
-                     :person/name
-                     :person/yob
-                     :person/hidden
-                     :person-pet/person-number
-                     :person-pet/pet-index
-                     :pet/index
-                     :pet/yob
-                     :pet/color]
-  ;; extra columns required when an attribute is being asked for
-  ;; can be input to derive attributes, or parameters to other attribute resolvers that will run SQL queries themselves
-  :required-columns {:pet/age    #{:pet/yob}
-                     :person/age #{:person/yob}}
-  :idents           {:person/by-id :person/number
-                     :people/all   "person"}
-  :extra-conditions {[:people/all :person/by-id]
-                     [:or {:person/hidden [:= true]}
-                      {:person/hidden [:= false]}]}
-  :joins            {:person/pet [:person/number :person-pet/person-number
-                                  :person-pet/pet-index :pet/index]}
-  :reversed-joins   {:pet/owner :person/pet}
-  :cardinality      {:person/by-id :one
-                     :person/pet   :many}}
-
- :walkable-demo.handler.example/run-query {}
-
- :walkable-demo.handler.example/fulcro
-
- #:walkable.sql-query-builder
- {:duct/logger #ig/ref :duct/logger
-  :run-query   #ig/ref :walkable-demo.handler.example/run-query
-  :sql-db      #ig/ref :duct.database.sql/hikaricp
-  :sql-schema  #ig/ref :walkable-demo.handler.example/sql-schema}}
+}
