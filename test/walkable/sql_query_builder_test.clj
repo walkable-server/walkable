@@ -8,13 +8,29 @@
   (is (= (sut/split-keyword :foo/bar)
         '("foo" "bar"))))
 
-(deftest keyword->column-name-test
+(deftest table-name*-test
+  (is (= (sut/table-name* sut/backticks "prefix.foo")
+         "`prefix`.`foo`"))
+  (is (= (sut/table-name* sut/backticks "foo")
+         "`foo`")))
+
+(deftest table-name-test
+  (is (= (sut/table-name sut/backticks :foo/bar)
+         "`foo`"))
+  (is (= (sut/table-name sut/quotation-marks :soo.foo/bar)
+         "\"soo\".\"foo\"")))
+
+(deftest column-name-test
   (is (= (sut/column-name sut/backticks :foo/bar)
-        "`foo`.`bar`")))
+         "`foo`.`bar`"))
+  (is (= (sut/column-name sut/quotation-marks :soo.foo/bar)
+         "\"soo\".\"foo\".\"bar\"")))
 
 (deftest clojuric-name-test
   (is (= (sut/clojuric-name sut/backticks :foo/bar)
-        "`foo/bar`")))
+         "`foo/bar`"))
+  (is (= (sut/clojuric-name sut/quotation-marks :prefix.foo/bar)
+         "\"prefix.foo/bar\"")))
 
 (deftest ->column-names-test
   (is (= (sut/->column-names sut/backticks [:foo/bar :loo/lar])
