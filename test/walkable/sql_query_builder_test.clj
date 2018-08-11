@@ -8,13 +8,29 @@
   (is (= (sut/split-keyword :foo/bar)
         '("foo" "bar"))))
 
-(deftest keyword->column-name-test
+(deftest table-name*-test
+  (is (= (sut/table-name* sut/backticks "prefix.foo")
+         "`prefix`.`foo`"))
+  (is (= (sut/table-name* sut/backticks "foo")
+         "`foo`")))
+
+(deftest table-name-test
+  (is (= (sut/table-name sut/backticks :foo/bar)
+         "`foo`"))
+  (is (= (sut/table-name sut/quotation-marks :soo.foo/bar)
+         "\"soo\".\"foo\"")))
+
+(deftest column-name-test
   (is (= (sut/column-name sut/backticks :foo/bar)
-        "`foo`.`bar`")))
+         "`foo`.`bar`"))
+  (is (= (sut/column-name sut/quotation-marks :soo.foo/bar)
+         "\"soo\".\"foo\".\"bar\"")))
 
 (deftest clojuric-name-test
   (is (= (sut/clojuric-name sut/backticks :foo/bar)
-        "`foo/bar`")))
+         "`foo/bar`"))
+  (is (= (sut/clojuric-name sut/quotation-marks :prefix.foo/bar)
+         "\"prefix.foo/bar\"")))
 
 (deftest ->column-names-test
   (is (= (sut/->column-names sut/backticks [:foo/bar :loo/lar])
@@ -24,11 +40,6 @@
   (is (= (sut/->clojuric-names sut/backticks [:foo/bar :loo/lar])
         {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
-(deftest ->join-statement-test
-  (is (= (sut/->join-statement {:quote-marks sut/backticks
-                                :joins       [["foo" "bar"] ["boo" "far"]]})
-        " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
-
 (deftest target-column-tests
   (is (= (sut/target-column [:pet/owner :person/number])
         :person/number))
@@ -37,13 +48,15 @@
         :person-pet/pet-index)))
 
 (deftest target-table-tests
-  (is (= (sut/target-table [:pet/owner :person/number])
-        "person"))
-  (is (= (sut/target-table [:pet/index :person-pet/pet-index
+  (is (= (sut/target-table sut/backticks [:pet/owner :person/number])
+         "`person`"))
+  (is (= (sut/target-table sut/backticks
+                           [:pet/index :person-pet/pet-index
                             :person-pet/person-number :person/number])
-        "person_pet")))
+         "`person_pet`")))
 
 (deftest ->join-statements-tests
+  (is (nil? (sut/->join-statements sut/backticks [:pet/owner-id :person/id])))
   (is (= (sut/->join-statements sut/backticks
            [:pet/index :person-pet/pet-index
             :person-pet/person-number :person/number])
@@ -131,21 +144,33 @@
                                          :by-yob :person/yob}})))
 
 (deftest conditional-idents->target-tables-test
-  (is (= (sut/conditional-idents->target-tables
+  (is (= (sut/conditional-idents->target-tables sut/backticks
            {:person/by-id :person/number
             :pets/by-ids  :pet/index})
-        {:person/by-id "person", :pets/by-ids "pet"})))
+         {:person/by-id "`person`", :pets/by-ids "`pet`"})))
+
+(deftest unconditional-idents->target-tables-test
+  (is (= (sut/unconditional-idents->target-tables sut/backticks
+           {:people/all "person"
+            :pets/all   "pet"})
+        {:people/all "`person`", :pets/all "`pet`"}))
+
+  (is (= (sut/unconditional-idents->target-tables sut/quotation-marks
+           {:people/all "public.person"
+            :pets/all   "public.pet"})
+        {:people/all "\"public\".\"person\""
+         :pets/all "\"public\".\"pet\""})))
 
 (deftest joins->target-tables-test
-  (is (= (sut/joins->target-tables
+  (is (= (sut/joins->target-tables sut/backticks
            {:person/pet [:person/number :person-pet/person-number
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
             :farmer/cow [:farmer/cow-index :cow/index]})
-        {:person/pet "person_pet",
-         :pet/owner  "person_pet",
-         :farmer/cow "cow"})))
+         {:person/pet "`person_pet`",
+          :pet/owner  "`person_pet`",
+          :farmer/cow "`cow`"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns

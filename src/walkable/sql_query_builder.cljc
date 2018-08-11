@@ -24,15 +24,35 @@
   (->> ((juxt namespace name) k)
     (map #(-> % (clojure.string/replace #"-" "_")))))
 
+(defn table-name*
+  "Given a raw table name, outputs its quoted form ready to use in an
+  SQL query."
+  [[quote-open quote-close] raw-table-name]
+  {:pre [(string? raw-table-name)]
+   :post [string?]}
+  (->> (clojure.string/split raw-table-name #"\.")
+       (map #(str quote-open % quote-close))
+       (clojure.string/join ".")))
+
+(defn table-name
+  "Given a keyword, extracts the table in quoted form ready to use in an
+  SQL query."
+  [[quote-open quote-close] k]
+  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
+   :post [string?]}
+  (let [[raw-table-name raw-column-name] (split-keyword k)]
+    (table-name* [quote-open quote-close] raw-table-name)))
+
 (defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
   [[quote-open quote-close] k]
   {:pre [(s/valid? ::expressions/namespaced-keyword k)]
    :post [string?]}
-  (->> (split-keyword k)
-    (map #(str quote-open % quote-close))
-    (clojure.string/join ".")))
+  (let [[raw-table-name raw-column-name] (split-keyword k)]
+    (->> [(table-name* [quote-open quote-close] raw-table-name)
+          (str quote-open raw-column-name quote-close)]
+         (clojure.string/join "."))))
 
 (defn clojuric-name
   "Converts a keyword to an SQL alias"
@@ -64,31 +84,18 @@
   (zipmap ks
     (map #(clojuric-name quote-marks %) ks)))
 
-(defn ->join-statement
-  "Produces a SQL JOIN statement (of type string) given two pairs of
-  table/column"
-  [{:keys [quote-marks joins]}]
-  {:post [string?]}
-  (let [[[table-1 column-1] [table-2 column-2]] joins
-        [quote-open quote-close]                quote-marks]
-    (assert (every? string? [table-1 column-1 table-2 column-2]))
-    (str
-      " JOIN " quote-open table-2 quote-close
-      " ON "   quote-open table-1 quote-close "." quote-open column-1 quote-close
-      " = "    quote-open table-2 quote-close "." quote-open column-2 quote-close)))
-
-(s/def ::no-join
+(s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 2))
 
-(s/def ::one-join
+(s/def ::with-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 4))
 
 (s/def ::join-seq
   (s/or
-    :no-join  ::no-join
-    :one-join ::one-join))
+   :without-join-table ::without-join-table
+   :with-join-table    ::with-join-table))
 
 (defn ->join-statements
   "Helper for compile-schema. Generates JOIN statement strings for all
@@ -97,9 +104,12 @@
   {:pre  [(s/valid? ::join-seq join-seq)]
    :post [string?]}
   (let [[tag] (s/conform ::join-seq join-seq)]
-    (when (= :one-join tag)
-      (->join-statement {:quote-marks quote-marks
-                         :joins       (map split-keyword (drop 2 join-seq))}))))
+    (when (= :with-join-table tag)
+      (let [[source join-source join-target target] join-seq]
+        (str
+         " JOIN " (table-name quote-marks target)
+         " ON " (column-name quote-marks join-target)
+         " = " (column-name quote-marks target))))))
 
 (s/def ::join-specs
   (s/coll-of (s/tuple ::expressions/namespaced-keyword ::join-seq)))
@@ -113,17 +123,17 @@
   (second join-seq))
 
 (defn target-table
-  [join-seq]
-  (first (split-keyword (target-column join-seq))))
+  [quote-marks join-seq]
+  (table-name quote-marks (target-column join-seq)))
 
 (defn joins->target-tables
   "Produces map of join keys to their corresponding source table name."
-  [joins]
+  [quote-marks joins]
   {:pre  [(s/valid? ::join-specs joins)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k join-seq]]
             (assoc result k
-              (target-table join-seq)))
+              (target-table quote-marks join-seq)))
     {} joins))
 
 (defn joins->target-columns
@@ -155,25 +165,24 @@
   "Builds the final query string ready for SQL server."
   [{:keys [selection target-table
            join-statement where-conditions
-           offset limit order-by quote-marks] :as input}]
+           offset limit order-by] :as input}]
 
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
-  (let [[quote-open quote-close] quote-marks]
-    (str "SELECT " selection
-      " FROM " quote-open target-table quote-close
+  (str "SELECT " selection
+       " FROM " target-table
 
-      join-statement
+       join-statement
 
-      (when where-conditions
-        (str " WHERE "
-          where-conditions))
-      (when order-by
-        (str " ORDER BY " order-by))
-      (when limit
-        (str " LIMIT " limit))
-      (when offset
-        (str " OFFSET " offset)))))
+       (when where-conditions
+         (str " WHERE "
+              where-conditions))
+       (when order-by
+         (str " ORDER BY " order-by))
+       (when limit
+         (str " LIMIT " limit))
+       (when offset
+         (str " OFFSET " offset))))
 
 (defn join-filter-subquery
   [quote-marks joins]
@@ -181,7 +190,7 @@
     (column-name quote-marks (source-column joins))
     " IN ("
     (->query-string {:selection      (column-name quote-marks (target-column joins))
-                     :target-table   (target-table joins)
+                     :target-table   (target-table quote-marks joins)
                      :quote-marks    quote-marks
                      :join-statement (->join-statements quote-marks joins)})
     " WHERE ?)"))
@@ -305,14 +314,27 @@
 (s/def ::conditional-ident
   (s/tuple keyword? ::expressions/namespaced-keyword))
 
+(s/def ::unconditional-ident
+  (s/tuple keyword? string?))
+
 (defn conditional-idents->target-tables
   "Produces map of ident keys to their corresponding source table name."
-  [idents]
+  [quote-marks idents]
   {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [ident-key column-keyword]]
             (assoc result ident-key
-              (first (split-keyword column-keyword))))
+              (table-name quote-marks column-keyword)))
+          {} idents))
+
+(defn unconditional-idents->target-tables
+  "Produces map of ident keys to their corresponding source table name."
+  [quote-marks idents]
+  {:pre  [(s/valid? (s/coll-of ::unconditional-ident) idents)]
+   :post [#(s/valid? ::keyword-string-map %)]}
+  (reduce (fn [result [ident-key raw-table-name]]
+            (assoc result ident-key
+                   (table-name* quote-marks raw-table-name)))
     {} idents))
 
 (s/def ::multi-keys
@@ -476,9 +498,9 @@
         :ident-keywords   (set (keys idents))
         :quote-marks      quote-marks
         :required-columns (expand-denpendencies required-columns)
-        :target-tables    (merge (conditional-idents->target-tables conditional-idents)
-                            unconditional-idents
-                            (joins->target-tables joins))
+        :target-tables    (merge (conditional-idents->target-tables quote-marks conditional-idents)
+                            (unconditional-idents->target-tables quote-marks unconditional-idents)
+                            (joins->target-tables quote-marks joins))
         :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
 
