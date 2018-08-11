@@ -104,9 +104,12 @@
   {:pre  [(s/valid? ::join-seq join-seq)]
    :post [string?]}
   (let [[tag] (s/conform ::join-seq join-seq)]
-    (when (= :one-join tag)
-      (->join-statement {:quote-marks quote-marks
-                         :joins       (map split-keyword (drop 2 join-seq))}))))
+    (when (= :with-join-table tag)
+      (let [[source join-source join-target target] join-seq]
+        (str
+         " JOIN " (table-name quote-marks target)
+         " ON " (column-name quote-marks join-target)
+         " = " (column-name quote-marks target))))))
 
 (s/def ::join-specs
   (s/coll-of (s/tuple ::expressions/namespaced-keyword ::join-seq)))
