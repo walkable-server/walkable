@@ -321,7 +321,8 @@
    :post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [ident-key column-keyword]]
             (assoc result ident-key
-              (first (split-keyword column-keyword))))
+              (table-name quote-marks column-keyword)))
+          {} idents))
     {} idents))
 
 (s/def ::multi-keys
