@@ -34,6 +34,15 @@
        (map #(str quote-open % quote-close))
        (clojure.string/join ".")))
 
+(defn table-name
+  "Given a keyword, extracts the table in quoted form ready to use in an
+  SQL query."
+  [[quote-open quote-close] k]
+  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
+   :post [string?]}
+  (let [[raw-table-name raw-column-name] (split-keyword k)]
+    (table-name* [quote-open quote-close] raw-table-name)))
+
 (defn column-name
   "Converts a keyword to column name in full form (which means table
   name included) ready to use in an SQL query."
