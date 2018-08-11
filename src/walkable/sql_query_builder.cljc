@@ -123,8 +123,8 @@
   (second join-seq))
 
 (defn target-table
-  [join-seq]
-  (first (split-keyword (target-column join-seq))))
+  [quote-marks join-seq]
+  (table-name quote-marks (target-column join-seq)))
 
 (defn joins->target-tables
   "Produces map of join keys to their corresponding source table name."
