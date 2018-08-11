@@ -36,13 +36,6 @@
                                    ;; [mysql/mysql-connector-java "5.1.45"]
                                    [org.xerial/sqlite-jdbc "3.21.0.1"]
 
-                                   [duct/module.cljs "0.3.2" :exclusions [org.clojure/clojurescript]]
-                                   [duct/server.figwheel "0.2.1" :exclusions [org.clojure/clojurescript]]
-                                   [devcards "0.2.4" :exclusions [org.clojure/clojurescript]]
-
-                                   [fulcrologic/fulcro "2.4.4" :exclusions [org.clojure/clojurescript]]
-                                   [fulcrologic/fulcro-spec "2.0.3-1" :scope "test" :exclusions [fulcrologic/fulcro]]
-
                                    [integrant/repl "0.3.0"]
                                    [eftest "0.4.3"]
                                    [kerodon "0.9.0"]]}})
