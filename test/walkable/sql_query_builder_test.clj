@@ -40,11 +40,6 @@
   (is (= (sut/->clojuric-names sut/backticks [:foo/bar :loo/lar])
         {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
-(deftest ->join-statement-test
-  (is (= (sut/->join-statement {:quote-marks sut/backticks
-                                :joins       [["foo" "bar"] ["boo" "far"]]})
-        " JOIN `boo` ON `foo`.`bar` = `boo`.`far`")))
-
 (deftest target-column-tests
   (is (= (sut/target-column [:pet/owner :person/number])
         :person/number))
