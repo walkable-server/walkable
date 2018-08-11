@@ -149,6 +149,18 @@
             :pets/by-ids  :pet/index})
          {:person/by-id "`person`", :pets/by-ids "`pet`"})))
 
+(deftest unconditional-idents->target-tables-test
+  (is (= (sut/unconditional-idents->target-tables sut/backticks
+           {:people/all "person"
+            :pets/all   "pet"})
+        {:people/all "`person`", :pets/all "`pet`"}))
+
+  (is (= (sut/unconditional-idents->target-tables sut/quotation-marks
+           {:people/all "public.person"
+            :pets/all   "public.pet"})
+        {:people/all "\"public\".\"person\""
+         :pets/all "\"public\".\"pet\""})))
+
 (deftest joins->target-tables-test
   (is (= (sut/joins->target-tables sut/backticks
            {:person/pet [:person/number :person-pet/person-number
