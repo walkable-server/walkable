@@ -498,9 +498,9 @@
         :ident-keywords   (set (keys idents))
         :quote-marks      quote-marks
         :required-columns (expand-denpendencies required-columns)
-        :target-tables    (merge (conditional-idents->target-tables conditional-idents)
-                            unconditional-idents
-                            (joins->target-tables joins))
+        :target-tables    (merge (conditional-idents->target-tables quote-marks conditional-idents)
+                            (unconditional-idents->target-tables quote-marks unconditional-idents)
+                            (joins->target-tables quote-marks joins))
         :target-columns   (joins->target-columns joins)
         :source-columns   (joins->source-columns joins)
 
