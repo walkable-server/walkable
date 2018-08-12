@@ -14,9 +14,7 @@
   {:dev          [:project/dev :profiles/dev]
    :repl         {:prep-tasks   ^:replace ["javac" "compile"]
                   :repl-options {:init-ns          user
-                                 :timeout          120000
-                                 :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
-   :uberjar      {:aot :all}
+                                 :timeout          120000}}
    :profiles/dev {}
    :project/dev  {:main           ^:skip-aot walkable-demo.main
                   ;; :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
@@ -27,8 +25,8 @@
                                    [duct/module.logging "0.3.1"]
                                    [duct/logger.timbre "0.4.1"]
                                    [org.clojure/test.check "0.10.0-alpha3"]
-                                   [duct/module.web "0.6.4"]
-                                   [duct/module.ataraxy "0.2.0"]
+                                   ;;[duct/module.web "0.6.4"]
+                                   ;;[duct/module.ataraxy "0.2.0"]
                                    [cheshire "5.8.0"]
 
                                    [duct/module.sql "0.4.2"]
