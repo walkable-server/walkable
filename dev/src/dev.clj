@@ -9,8 +9,6 @@
             [eftest.runner :as eftest]
             [integrant.core :as ig]
             [duct.database.sql :as sql]
-            [duct.logger :as log]
-            [duct.database.sql.hikaricp]
             [hikari-cp.core :as hikari-cp]
             [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]
@@ -23,13 +21,6 @@
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
-(def wrap-logger #'duct.database.sql.hikaricp/wrap-logger)
-
-;; fix a bug in duct/hikari-cp module
-(defmethod ig/init-key :duct.database.sql/hikaricp [_ {:keys [logger] :as options}]
-  (sql/->Boundary {:datasource (-> (hikari-cp/make-datasource (dissoc options :logger))
-                                 (cond-> logger (wrap-logger logger)))}))
-
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
 
