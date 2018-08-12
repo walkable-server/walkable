@@ -6,12 +6,9 @@
             [clojure.java.io :as io]
             [duct.core :as duct]
             [duct.core.repl :as duct-repl]
-            [duct.repl.figwheel :refer [cljs-repl]]
             [eftest.runner :as eftest]
             [integrant.core :as ig]
             [duct.database.sql :as sql]
-            [duct.logger :as log]
-            [duct.database.sql.hikaricp]
             [hikari-cp.core :as hikari-cp]
             [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]
@@ -24,13 +21,6 @@
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
-(def wrap-logger #'duct.database.sql.hikaricp/wrap-logger)
-
-;; fix a bug in duct/hikari-cp module
-(defmethod ig/init-key :duct.database.sql/hikaricp [_ {:keys [logger] :as options}]
-  (sql/->Boundary {:datasource (-> (hikari-cp/make-datasource (dissoc options :logger))
-                                 (cond-> logger (wrap-logger logger)))}))
-
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
 
@@ -39,12 +29,6 @@
 
 (defn e [sql]
   (jdbc/execute! (db) sql))
-
-(derive ::devcards :duct/module)
-
-(defmethod ig/init-key ::devcards [_ {build-id :build-id :or {build-id 0}}]
-  {:req #{:duct.server/figwheel}
-   :fn  #(assoc-in % [:duct.server/figwheel :builds build-id :build-options :devcards] true)})
 
 (duct/load-hierarchy)
 
