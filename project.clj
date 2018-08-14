@@ -6,38 +6,41 @@
                  [org.clojure/clojurescript "1.10.339" :scope "provided"]
                  [clojure-future-spec "1.9.0-beta4"]
                  ;; not work with latest spec version yet
-                 ;;[org.clojure/spec.alpha "0.2.168"]
-                 [com.wsscode/pathom "2.0.19"]
+                 ;; [org.clojure/spec.alpha "0.2.168"]
+                 [com.wsscode/pathom "2.1.1"]
                  [org.clojure/core.async "0.4.474" :scope "provided"]]
   :resource-paths ["resources"]
   :profiles
-  {:dev          [:project/dev :profiles/dev]
-   :repl         {:prep-tasks   ^:replace ["javac" "compile"]
-                  :repl-options {:init-ns          user
-                                 :timeout          120000}}
-   :profiles/dev {}
-   :project/dev  {:main           ^:skip-aot walkable-demo.main
-                  ;; :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
-                  :plugins        [[duct/lein-duct "0.10.6"]]
-                  :source-paths   ["dev/src" "dev/test"]
-                  :resource-paths ["dev/resources" "target/resources"]
-                  :dependencies   [[duct/core "0.6.2"]
-                                   [duct/module.logging "0.3.1"]
-                                   [duct/logger.timbre "0.4.1"]
-                                   [org.clojure/test.check "0.10.0-alpha3"]
-                                   ;;[duct/module.web "0.6.4"]
-                                   ;;[duct/module.ataraxy "0.2.0"]
-                                   [cheshire "5.8.0"]
+  {:dev      [:project/common]
+   :sqlite   [:project/common :profiles/sqlite]
+   :mysql    [:project/common :profiles/mysql]
+   :postgres [:project/common :profiles/postgres]
+   :repl     {:prep-tasks   ^:replace ["javac" "compile"]
+              :repl-options {:init-ns user
+                             :timeout 120000}}
 
-                                   [duct/module.sql "0.4.2"]
-                                   [duct/database.sql.hikaricp "0.3.3"]
+   :profiles/sqlite   {:source-paths   ["dev/src/common" "dev/src/sqlite"]
+                       :test-paths     ["dev/test/common" "dev/test/sqlite"]
+                       :resource-paths ["dev/resources/common" "dev/resources/sqlite"]
+                       :dependencies   [[org.xerial/sqlite-jdbc "3.23.1"]]}
+   :profiles/mysql    {:source-paths   ["dev/src/common" "dev/src/my-sql"]
+                       :test-paths     ["dev/test/my-sql" "dev/test/common"]
+                       :resource-paths ["dev/resources/common" "dev/resources/my-sql"]
+                       :dependencies   [[mysql/mysql-connector-java "8.0.12"]]}
+   :profiles/postgres {:source-paths   ["dev/src/common" "dev/src/postgres"]
+                       :test-paths     ["dev/test/postgres" "dev/test/common"]
+                       :resource-paths ["dev/resources/common" "dev/resources/postgres"]
+                       :dependencies   [[org.postgresql/postgresql "42.2.4"]]}
+   :project/common    {:plugins      [[duct/lein-duct "0.10.6"]]
+                       :dependencies [[duct/core "0.6.2"]
+                                      [duct/module.logging "0.3.1"]
+                                      [duct/logger.timbre "0.4.1"]
+                                      [org.clojure/test.check "0.10.0-alpha3"]
+                                      [cheshire "5.8.0"]
 
-                                   ;; enable if you use postgresql
-                                   ;; [org.postgresql/postgresql "42.2.4"]
-                                   ;; enable if you use mysql
-                                   ;; [mysql/mysql-connector-java "5.1.45"]
-                                   [org.xerial/sqlite-jdbc "3.23.1"]
+                                      [duct/module.sql "0.4.2"]
+                                      [duct/database.sql.hikaricp "0.3.3"]
 
-                                   [integrant/repl "0.3.1"]
-                                   [eftest "0.5.2"]
-                                   [kerodon "0.9.0"]]}})
+                                      [integrant/repl "0.3.1"]
+                                      [eftest "0.5.2"]
+                                      [kerodon "0.9.0"]]}})
