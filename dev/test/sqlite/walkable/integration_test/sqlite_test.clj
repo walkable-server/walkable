@@ -1,4 +1,4 @@
-(ns walkable.integration-test
+(ns walkable.integration-test.sqlite-test
   (:require [walkable.sql-query-builder :as sqb]
             [walkable.integration-test.helper :refer [run-scenario-tests]]
             [walkable.integration-test.common :refer [common-scenarios]]
@@ -13,7 +13,7 @@
 (duct/load-hierarchy)
 
 (def system
-  (-> (duct/read-config (io/resource "config.edn"))
+  (-> (duct/read-config (io/resource "config-sqlite.edn"))
     (duct/prep)
     (ig/init)))
 
