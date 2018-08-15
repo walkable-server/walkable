@@ -1,4 +1,5 @@
 (ns walkable.integration-test.postgres-test
+  {:integration true}
   (:require [walkable.sql-query-builder :as sqb]
             [walkable.integration-test.helper :refer [run-scenario-tests]]
             [walkable.integration-test.common :refer [common-scenarios]]
