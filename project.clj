@@ -10,6 +10,8 @@
                  [com.wsscode/pathom "2.1.1"]
                  [org.clojure/core.async "0.4.474" :scope "provided"]]
   :resource-paths ["resources"]
+  :test-selectors {:default     (complement :integration)
+                   :integration :integration}
   :profiles
   {:dev      [:project/common]
    :sqlite   [:project/common :profiles/sqlite]
