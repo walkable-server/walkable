@@ -3,50 +3,50 @@
 
  ;; scenario 1 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-cow-table]
- {:up   ["CREATE TABLE "cow" ("index" SERIAL PRIMARY KEY, "color" TEXT)"
-         "INSERT INTO "cow" ("index", "color") VALUES (10, 'black'), (20, 'brown')"]
-  :down ["DROP TABLE "cow""]}
+ {:up   ["CREATE TABLE \"cow\" (\"index\" SERIAL PRIMARY KEY, \"color\" TEXT)"
+         "INSERT INTO \"cow\" (\"index\", \"color\") VALUES (10, 'black'), (20, 'brown')"]
+  :down ["DROP TABLE \"cow\""]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-farmer-table]
- {:up   ["CREATE TABLE "farmer" ("number" SERIAL PRIMARY KEY, "cow_index" INTEGER REFERENCES "cow"("index"), "name" TEXT)"
-         "INSERT INTO "farmer" ("number", "name", "cow_index") VALUES (1, 'jon', 10), (2, 'mary', 20)"]
-  :down ["DROP TABLE "farmer""]}
+ {:up   ["CREATE TABLE \"farmer\" (\"number\" SERIAL PRIMARY KEY, \"cow_index\" INTEGER REFERENCES \"cow\"(\"index\"), \"name\" TEXT)"
+         "INSERT INTO \"farmer\" (\"number\", \"name\", \"cow_index\") VALUES (1, 'jon', 10), (2, 'mary', 20)"]
+  :down ["DROP TABLE \"farmer\""]}
 
  ;; scenario 2 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-2/create-kid-table]
- {:up   ["CREATE TABLE "kid" ("number" SERIAL PRIMARY KEY, "name" TEXT)"
-         "INSERT INTO "kid" ("number", "name") VALUES (1, 'jon'), (2, 'mary')"]
-  :down ["DROP TABLE "kid""]}
+ {:up   ["CREATE TABLE \"kid\" (\"number\" SERIAL PRIMARY KEY, \"name\" TEXT)"
+         "INSERT INTO \"kid\" (\"number\", \"name\") VALUES (1, 'jon'), (2, 'mary')"]
+  :down ["DROP TABLE \"kid\""]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-2/create-toy-table]
- {:up   ["CREATE TABLE "toy" ("index" SERIAL PRIMARY KEY, "owner_number" INTEGER REFERENCES "kid"("number"), "color" TEXT)"
-         "INSERT INTO "toy" ("index", "color", "owner_number") VALUES (10, 'yellow', 1), (20, 'green', 2)"]
-  :down ["DROP TABLE "toy""]}
+ {:up   ["CREATE TABLE \"toy\" (\"index\" SERIAL PRIMARY KEY, \"owner_number\" INTEGER REFERENCES \"kid\"(\"number\"), \"color\" TEXT)"
+         "INSERT INTO \"toy\" (\"index\", \"color\", \"owner_number\") VALUES (10, 'yellow', 1), (20, 'green', 2)"]
+  :down ["DROP TABLE \"toy\""]}
 
  ;; scenario 3 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-person-table]
- {:up   ["CREATE TABLE "person" ("number" SERIAL PRIMARY KEY, "name" TEXT, "yob" INTEGER, "secret" TEXT, "hidden" BOOLEAN)"
-         "INSERT INTO "person" ("number", "name", "yob", "secret", "hidden") VALUES (1, 'jon', 1980, 'only jon knows', true), (2, 'mary', 1992, 'surprise', false)" ]
-  :down ["DROP TABLE "person""]}
+ {:up   ["CREATE TABLE \"person\" (\"number\" SERIAL PRIMARY KEY, \"name\" TEXT, \"yob\" INTEGER, \"secret\" TEXT, \"hidden\" BOOLEAN)"
+         "INSERT INTO \"person\" (\"number\", \"name\", \"yob\", \"secret\", \"hidden\") VALUES (1, 'jon', 1980, 'only jon knows', true), (2, 'mary', 1992, 'surprise', false)" ]
+  :down ["DROP TABLE \"person\""]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-pet-table]
- {:up   ["CREATE TABLE "pet" ("index" SERIAL PRIMARY KEY, "color" TEXT, "yob" INTEGER, "private" TEXT)"
-         "INSERT INTO "pet" ("index", "color", "yob", "private") VALUES (10, 'yellow', 2015, 'you bastard'), (20, 'green', 2016, 'idk')"]
-  :down ["DROP TABLE "pet""]}
+ {:up   ["CREATE TABLE \"pet\" (\"index\" SERIAL PRIMARY KEY, \"color\" TEXT, \"yob\" INTEGER, \"private\" TEXT)"
+         "INSERT INTO \"pet\" (\"index\", \"color\", \"yob\", \"private\") VALUES (10, 'yellow', 2015, 'you bastard'), (20, 'green', 2016, 'idk')"]
+  :down ["DROP TABLE \"pet\""]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-person_pet-table]
- {:up   ["CREATE TABLE "person_pet" ("id" SERIAL PRIMARY KEY, "person_number" INTEGER REFERENCES "person"("number"), "pet_index" INTEGER REFERENCES "pet"("index"), "adoption_year" INTEGER)"
-         "INSERT INTO "person_pet" ("person_number", "pet_index", "adoption_year") VALUES (1, 10, 2015), (2, 20, 2017)"]
-  :down ["DROP TABLE "person_pet""]}
+ {:up   ["CREATE TABLE \"person_pet\" (\"id\" SERIAL PRIMARY KEY, \"person_number\" INTEGER REFERENCES \"person\"(\"number\"), \"pet_index\" INTEGER REFERENCES \"pet\"(\"index\"), \"adoption_year\" INTEGER)"
+         "INSERT INTO \"person_pet\" (\"person_number\", \"pet_index\", \"adoption_year\") VALUES (1, 10, 2015), (2, 20, 2017)"]
+  :down ["DROP TABLE \"person_pet\""]}
 
  ;; scenario 4 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-4/create-human-table]
- {:up   ["CREATE TABLE "human" ("number" SERIAL PRIMARY KEY, "name" TEXT, "yob" INTEGER)"
-         "INSERT INTO "human" ("number", "name", "yob") VALUES (1, 'jon', 1980), (2, 'mary', 1992), (3, 'peter', 1989), (4, 'sandra', 1970)" ]
-  :down ["DROP TABLE "human""]}
+ {:up   ["CREATE TABLE \"human\" (\"number\" SERIAL PRIMARY KEY, \"name\" TEXT, \"yob\" INTEGER)"
+         "INSERT INTO \"human\" (\"number\", \"name\", \"yob\") VALUES (1, 'jon', 1980), (2, 'mary', 1992), (3, 'peter', 1989), (4, 'sandra', 1970)" ]
+  :down ["DROP TABLE \"human\""]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-4/create-follow-table]
- {:up   ["CREATE TABLE "follow" ("human_1" INTEGER REFERENCES "human"("number"), "human_2" INTEGER REFERENCES "human"("number"), "year" INTEGER)"
-         "INSERT INTO "follow" ("human_1", "human_2", "year") VALUES (1, 2, 2015), (1, 3, 2017), (2, 1, 2014), (2, 3, 2015), (1, 4, 2012)"]
-  :down ["DROP TABLE "follow""]}
+ {:up   ["CREATE TABLE \"follow\" (\"human_1\" INTEGER REFERENCES \"human\"(\"number\"), \"human_2\" INTEGER REFERENCES \"human\"(\"number\"), \"year\" INTEGER)"
+         "INSERT INTO \"follow\" (\"human_1\", \"human_2\", \"year\") VALUES (1, 2, 2015), (1, 3, 2017), (2, 1, 2014), (2, 3, 2015), (1, 4, 2012)"]
+  :down ["DROP TABLE \"follow\""]}
  }
