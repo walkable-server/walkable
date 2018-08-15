@@ -23,9 +23,9 @@
                        :test-paths     ["dev/test/common" "dev/test/sqlite"]
                        :resource-paths ["dev/resources/common" "dev/resources/sqlite"]
                        :dependencies   [[org.xerial/sqlite-jdbc "3.23.1"]]}
-   :profiles/mysql    {:source-paths   ["dev/src/common" "dev/src/my-sql"]
-                       :test-paths     ["dev/test/my-sql" "dev/test/common"]
-                       :resource-paths ["dev/resources/common" "dev/resources/my-sql"]
+   :profiles/mysql    {:source-paths   ["dev/src/common" "dev/src/mysql"]
+                       :test-paths     ["dev/test/common" "dev/test/mysql"]
+                       :resource-paths ["dev/resources/common" "dev/resources/mysql"]
                        :dependencies   [[mysql/mysql-connector-java "8.0.12"]]}
    :profiles/postgres {:source-paths   ["dev/src/common" "dev/src/postgres"]
                        :test-paths     ["dev/test/postgres" "dev/test/common"]
