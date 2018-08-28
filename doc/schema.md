@@ -253,9 +253,17 @@ and table `cow` has:
 |----+-------+----------|
 ```
 
-The schema for this example can be a good exercise for the reader of
-this documentation. (Sorry, actually I'm just too lazy to type it
-here :D )
+First, you need to do a `:join` from `cow` to `farmer`
+
+Then you will be able to reverse this join.
+
+```
+{:joins          {:cow/owner [:cow/owner-id :farmer/id]}
+ :reversed-joins {:farmer/cows :cow/owner}
+ :cardinality    {:cow/owner :one}}
+```
+
+You may also want to add `:cardinality` to `:cow/owner` .
 
 ## 3 :reversed-joins
 
