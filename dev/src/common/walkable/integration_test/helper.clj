@@ -22,13 +22,13 @@
   [db db-type scenarios]
   (into []
     (for [[scenario {:keys [core-schema test-suite]}] scenarios
-          {:keys [message query expected]}            test-suite]
+          {:keys [message env query expected]}        test-suite]
       (testing (str "In scenario " scenario " for " db-type ", testing " message)
         (is (= expected
-              (->> query
-                (walkable-parser {::sqb/sql-db             db
-                                  ::sqb/run-query          jdbc/query
-                                  ::p/placeholder-prefixes #{"ph"}
-                                  ::sqb/sql-schema
-                                  (sqb/compile-schema
-                                    (merge core-schema (db-specific-schema db-type)))}))))))))
+              (-> {::p/placeholder-prefixes #{"ph"}}
+                (merge env {::sqb/sql-db    db
+                            ::sqb/run-query jdbc/query
+                            ::sqb/sql-schema
+                            (sqb/compile-schema
+                              (merge core-schema (db-specific-schema db-type)))})
+                (walkable-parser query))))))))
