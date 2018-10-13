@@ -24,12 +24,29 @@
 
 ;; <<< Beginning of Duct framework helpers
 
+(duct/load-hierarchy)
+
+(defn prepare-system [db]
+  (-> (duct/read-config (io/resource (str"config-" (name db) ".edn")))
+    (duct/prep)))
+
+(defn test []
+  (eftest/run-tests (eftest/find-tests "test")))
+
+(when (io/resource "local.clj")
+  (load "local"))
+
 (defn set-target-db! [db]
   (assert (#{:postgres :mysql :sqlite} db))
   (set-refresh-dirs
     "dev/src/common"
     (str "dev/src/" ({:postgres "postgres" :mysql "mysql"} db "sqlite"))
-    "src" "test"))
+    "src" "test")
+  (integrant.repl/set-prep! #(prepare-system db)))
+
+(comment
+  (set-target-db! :postgres)
+)
 
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
@@ -39,20 +56,6 @@
 
 (defn e [sql]
   (jdbc/execute! (db) sql))
-
-(duct/load-hierarchy)
-
-(defn prepare-system []
-  (-> (duct/read-config (io/resource "config.edn"))
-    (duct/prep)))
-
-(defn test []
-  (eftest/run-tests (eftest/find-tests "test")))
-
-(when (io/resource "local.clj")
-  (load "local"))
-
-(integrant.repl/set-prep! prepare-system)
 
 (comment
 ;; make changes to database right from your editor
