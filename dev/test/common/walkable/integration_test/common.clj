@@ -25,6 +25,19 @@
                       :kid/toy   :one
                       :toy/owner :one}})
 
+(def human-follow-schema
+  {:columns          [:human/number :human/name :human/yob]
+   :required-columns {}
+   :idents           {:human/by-id :human/number
+                      :world/all   "human"}
+   :extra-conditions {}
+   :joins            {:human/follow
+                      [:human/number :follow/human-1 :follow/human-2 :human/number]}
+   :reversed-joins   {}
+   :cardinality      {:human/by-id        :one
+                      :human/follow-stats :one
+                      :human/follow       :many}})
+
 (def person-pet-schema
   {:columns          [:person/name
                       :person/yob
@@ -74,6 +87,28 @@
                          {:kid/toy [:toy/index :toy/color]}]}]
       :expected
       {[:kid/by-id 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}
+
+   :human-follow
+   {:core-schema human-follow-schema
+    :test-suite
+    [{:message "self-join should work"
+      :query
+      `[{(:world/all {:order-by :human/number})
+         [:human/number :human/name
+          {(:human/follow {:order-by :human/number})
+           [:human/number
+            :human/name
+            :human/yob]}]}]
+      :expected
+      {:world/all [#:human{:number 1, :name "jon",
+                           :follow [#:human{:number 2, :name "mary", :yob 1992}
+                                    #:human{:number 3, :name "peter", :yob 1989}
+                                    #:human{:number 4, :name "sandra", :yob 1970}]}
+                   #:human{:number 2, :name "mary",
+                           :follow [#:human{:number 1, :name "jon", :yob 1980}
+                                    #:human{:number 3, :name "peter", :yob 1989}]}
+                   #:human{:number 3, :name "peter", :follow []}
+                   #:human{:number 4, :name "sandra", :follow []}]}}]}
 
    :person-pet
    {:core-schema person-pet-schema
