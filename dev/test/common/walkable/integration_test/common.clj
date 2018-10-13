@@ -1,4 +1,5 @@
-(ns walkable.integration-test.common)
+(ns walkable.integration-test.common
+  (:require [com.wsscode.pathom.core :as p]))
 
 (def farmer-cow-schema
   {:columns          [:cow/color
@@ -129,6 +130,36 @@
                                             :person-pet/adoption-year 2015,
                                             :pet/color                "yellow"}]}]}}
 
+     {:message "placeholders should work"
+      :env     {::p/placeholder-prefixes #{"ph" "placeholder"}}
+      :query
+      `[{:people/all
+         [{:placeholder/info [:person/yob :person/name]}
+          {:person/pet [:pet/index
+                        :pet/yob
+                        :pet/color]}
+          {:ph/deep [{:ph/nested [{:placeholder/play [{:person/pet [:pet/index
+                                                                    :pet/yob
+                                                                    :pet/color]}]}]}]}]}]
+      :expected
+      {:people/all
+       [{:placeholder/info #:person {:yob 1980, :name "jon"},
+         :person/pet       [#:pet{:index 10, :yob 2015, :color "yellow"}],
+         :ph/deep
+         {:ph/nested
+          {:placeholder/play
+           {:person/pet [#:pet{:index 10,
+                               :yob   2015,
+                               :color "yellow"}]}}}}
+        {:placeholder/info #:person {:yob 1992, :name "mary"},
+         :person/pet       [#:pet{:index 20, :yob 2016, :color "green"}],
+         :ph/deep
+         {:ph/nested
+          {:placeholder/play
+           {:person/pet [#:pet{:index 20,
+                               :yob   2016,
+                               :color "green"}]}}}}]}}
+
      {:message "pseudo-columns should work"
       :query
       `[{:people/all [:person/number
@@ -136,5 +167,5 @@
                       :person/yob
                       :person/age]}]
       :expected
-      #:people{:all [#:person{:number 1, :name "jon", :yob 1980, :age 38}
-                     #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
+      #:people {:all [#:person{:number 1, :name "jon", :yob 1980, :age 38}
+                      #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
