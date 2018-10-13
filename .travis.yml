@@ -1,1 +1,16 @@
 language: clojure
+services:
+  - mysql
+  - postgresql
+matrix:
+  include:
+  - name: "unit tests"
+    env: TEST_SUITE=unit
+  - name: "sqlite"
+    env: TEST_SUITE=sqlite
+  - name: "mysql"
+    env: TEST_SUITE=mysql
+  - name: "postgres"
+    env: TEST_SUITE=postgres
+install: ./.travis-scripts/install.sh $TEST_SUITE
+script: ./.travis-scripts/run-tests.sh $TEST_SUITE

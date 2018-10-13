@@ -1,0 +1,16 @@
+{:duct.core/environment :development
+ :duct.core/include     ["common"]
+ :duct.module/sql       {:database-url "jdbc:sqlite:walkable_dev.sqlite"}
+ :duct.migrator/ragtime
+ {:migrations [;; common scenarios (starting from 1)
+               #ig/ref :walkable-demo.migration.scenario-1/create-cow-table
+               #ig/ref :walkable-demo.migration.scenario-1/create-farmer-table
+               #ig/ref :walkable-demo.migration.scenario-2/create-kid-table
+               #ig/ref :walkable-demo.migration.scenario-2/create-toy-table
+               #ig/ref :walkable-demo.migration.scenario-3/create-person-table
+               #ig/ref :walkable-demo.migration.scenario-3/create-pet-table
+               #ig/ref :walkable-demo.migration.scenario-3/create-person_pet-table
+               #ig/ref :walkable-demo.migration.scenario-4/create-human-table
+               #ig/ref :walkable-demo.migration.scenario-4/create-follow-table
+               ;; sqlite-specific scenarios (starting from 100)
+               ]}}

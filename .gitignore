@@ -12,7 +12,7 @@ pom.xml.asc
 /profiles.clj
 /dev/resources/local.edn
 /dev/src/local.clj
-/walkable_demo.sqlite
+/walkable_dev.sqlite
 /run.js
 /.nrepl-history
 node_modules
