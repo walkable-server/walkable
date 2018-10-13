@@ -1,6 +1,20 @@
 {:duct.core/environment :development
  :duct.core/include     ["common"]
  :duct.module/sql       {:database-url "jdbc:postgresql://localhost:5432/walkable_dev?user=postgres"}
+
+ [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-100/create-land-animal-table]
+ {:up   ["CREATE SCHEMA \"land\""
+         "CREATE TABLE \"land\".\"animal\" (\"id\" SERIAL PRIMARY KEY, \"name\" TEXT)"
+         "INSERT INTO \"land\".\"animal\" (\"id\", \"name\") VALUES (1, 'elephant'), (2, 'rhino')"]
+  :down ["DROP TABLE \"land\".\"animal\""
+         "DROP SCHEMA \"land\""]}
+ [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-101/create-ocean-animal-table]
+ {:up   ["CREATE SCHEMA \"ocean\""
+         "CREATE TABLE \"ocean\".\"animal\" (\"id\" SERIAL PRIMARY KEY, \"name\" TEXT)"
+         "INSERT INTO \"ocean\".\"animal\" (\"id\", \"name\") VALUES (10, 'whale'), (20, 'shark')"]
+  :down ["DROP TABLE \"ocean\".\"animal\""
+         "DROP SCHEMA \"ocean\""]}
+
  :duct.migrator/ragtime
  {:migrations [;; common scenarios (starting from 1)
                #ig/ref :walkable-demo.migration.scenario-1/create-cow-table
@@ -13,4 +27,8 @@
                #ig/ref :walkable-demo.migration.scenario-4/create-human-table
                #ig/ref :walkable-demo.migration.scenario-4/create-follow-table
                ;; postgres-specific scenarios (starting from 100)
+
+               #ig/ref :walkable-demo.migration.scenario-100/create-land-animal-table
+
+               #ig/ref :walkable-demo.migration.scenario-101/create-ocean-animal-table
                ]}}
