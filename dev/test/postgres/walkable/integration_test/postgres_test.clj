@@ -24,5 +24,30 @@
 (deftest common-scenarios-test
   (run-scenario-tests db :postgres common-scenarios))
 
+(def planet-inhabitant-schema
+  {:columns          #{:land.animal/id :land.animal/name
+                       :ocean.animal/id :ocean.animal/name}
+   :idents           {:land.animal/all    "land.animal"
+                      :land.animal/by-id  :land.animal/id
+                      :ocean.animal/all   "ocean.animal"
+                      :ocean.animal/by-id :ocean.animal/id}
+   :cardinality      {:land.animal/by-id  :one
+                      :ocean.animal/by-id :one}})
+
+(def postgres-scenarios
+  {:planet-species
+   {:core-schema planet-inhabitant-schema
+    :test-suite
+    [{:message "postgres schema should work"
+      :query
+      `[{[:land.animal/by-id 1]
+         [:land.animal/id :land.animal/name]}
+        {:ocean.animal/all
+         [:ocean.animal/id :ocean.animal/name]}]
+      :expected
+      {[:land.animal/by-id 1] #:land.animal {:id 1, :name "elephant"},
+       :ocean.animal/all      [#:ocean.animal{:id 10, :name "whale"}
+                               #:ocean.animal{:id 20, :name "shark"}]}}]}})
+
 (deftest postgres-specific-scenarios-test
-  (run-scenario-tests db :postgres {}))
+  (run-scenario-tests db :postgres postgres-scenarios))
