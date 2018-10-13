@@ -13,6 +13,17 @@
                       :cow/owner    :one
                       :farmer/cow   :one}})
 
+(def kid-toy-schema
+  {:columns          [:kid/name :toy/index :toy/color]
+   :idents           {:kid/by-id :kid/number
+                      :kids/all  "kid"}
+   :extra-conditions {}
+   :joins            {:toy/owner [:toy/owner-number :kid/number]}
+   :reversed-joins   {:kid/toy :toy/owner}
+   :cardinality      {:kid/by-id :one
+                      :kid/toy   :one
+                      :toy/owner :one}})
+
 (def common-scenarios
   {:farmer-cow
    {:core-schema farmer-cow-schema
@@ -23,4 +34,14 @@
          [:farmer/number :farmer/name
           {:farmer/cow [:cow/index :cow/color]}]}]
       :expected
-      {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}})
+      {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
+
+   :kid-toy
+   {:core-schema kid-toy-schema
+    :test-suite
+    [{:message "idents should work"
+      :query
+      '[{[:kid/by-id 1] [:kid/number :kid/name
+                         {:kid/toy [:toy/index :toy/color]}]}]
+      :expected
+      {[:kid/by-id 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}})
