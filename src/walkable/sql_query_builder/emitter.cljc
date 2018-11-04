@@ -68,3 +68,31 @@
   (merge default-emitter
     {:quote-marks backticks}))
 
+(s/def ::query-string-input
+  (s/keys :req-un [::selection ::target-table]
+    :opt-un [::join-statement ::where-conditions
+             ::offset ::limit ::order-by]))
+
+(defn ->query-string
+  "Builds the final query string ready for SQL server."
+  [{:keys                         [selection target-table
+                                   join-statement where-conditions
+                                   offset limit order-by] :as input}]
+
+  {:pre  [(s/valid? ::query-string-input input)]
+   :post [string?]}
+  (str "SELECT " selection
+    " FROM " target-table
+
+    join-statement
+
+    (when where-conditions
+      (str " WHERE "
+        where-conditions))
+    (when order-by
+      (str " ORDER BY " order-by))
+    (when limit
+      (str " LIMIT " limit))
+    (when offset
+      (str " OFFSET " offset))))
+
