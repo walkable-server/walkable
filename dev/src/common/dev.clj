@@ -20,6 +20,8 @@
             [walkable.sql-query-builder.impl.sqlite]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
+            [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.sql-query-builder :as sqb]))
 
 ;; <<< Beginning of Duct framework helpers
@@ -98,12 +100,7 @@
         {::p/reader
          [sqb/async-pull-entities p/map-reader]})]}))
 
-;; use sqb/quotation-marks if you use postgresql
-(def quote-marks sqb/backticks)
-
-;; set to false if you use anything else but sqlite
-;; eg mysql, postgresql
-(def sqlite-union false)
+(def emitter emitter/default-emitter)
 
 ;; Simple join examples
 
@@ -123,10 +120,9 @@
   (parser {::sqb/sql-db    (db)
            ::sqb/run-query run-print-query
 
-           ::sqb/sql-schema
-           (sqb/compile-schema
-             {:quote-marks      quote-marks
-              :sqlite-union     sqlite-union
+           ::sqb/floor-plan
+           (floor-plan/compile-floor-plan
+             {:emitter          emitter
               ;; columns already declared in :joins are not needed
               ;; here
               :columns          [:cow/color
@@ -155,10 +151,9 @@
       (<! (parser {::sqb/sql-db    (db)
                    ::sqb/run-query async-run-print-query
 
-                   ::sqb/sql-schema
-                   (sqb/compile-schema
-                     {:quote-marks      quote-marks
-                      :sqlite-union     sqlite-union
+                   ::sqb/floor-plan
+                   (sqb/compile-floor-plan
+                     {:emitter          emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
                       :columns          [:cow/color
