@@ -1,7 +1,7 @@
 (ns walkable.integration-test.common
   (:require [com.wsscode.pathom.core :as p]))
 
-(def farmer-cow-schema
+(def farmer-cow-floor-plan
   {:columns          [:cow/color
                       :farmer/number
                       :farmer/name]
@@ -14,7 +14,7 @@
                       :cow/owner    :one
                       :farmer/cow   :one}})
 
-(def kid-toy-schema
+(def kid-toy-floor-plan
   {:columns          [:kid/name :toy/index :toy/color]
    :idents           {:kid/by-id :kid/number
                       :kids/all  "kid"}
@@ -25,7 +25,7 @@
                       :kid/toy   :one
                       :toy/owner :one}})
 
-(def human-follow-schema
+(def human-follow-floor-plan
   {:columns          [:human/number :human/name :human/yob]
    :required-columns {}
    :idents           {:human/by-id :human/number
@@ -38,7 +38,7 @@
                       :human/follow-stats :one
                       :human/follow       :many}})
 
-(def person-pet-schema
+(def person-pet-floor-plan
   {:columns          [:person/name
                       :person/yob
                       :person/hidden
@@ -68,7 +68,7 @@
 
 (def common-scenarios
   {:farmer-cow
-   {:core-schema farmer-cow-schema
+   {:core-floor-plan farmer-cow-floor-plan
     :test-suite
     [{:message "filters should work"
       :query
@@ -79,7 +79,7 @@
       {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
 
    :kid-toy
-   {:core-schema kid-toy-schema
+   {:core-floor-plan kid-toy-floor-plan
     :test-suite
     [{:message "idents should work"
       :query
@@ -89,7 +89,7 @@
       {[:kid/by-id 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}
 
    :human-follow
-   {:core-schema human-follow-schema
+   {:core-floor-plan human-follow-floor-plan
     :test-suite
     [{:message "self-join should work"
       :query
@@ -111,7 +111,7 @@
                    #:human{:number 4, :name "sandra", :follow []}]}}]}
 
    :person-pet
-   {:core-schema person-pet-schema
+   {:core-floor-plan person-pet-floor-plan
     :test-suite
     [{:message "join-table should work"
       :query
