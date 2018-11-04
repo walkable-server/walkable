@@ -18,17 +18,20 @@
 
 (defn target-column
   [env]
-  (let [target-columns (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/target-columns)]
+  (let [target-columns (-> env :walkable.sql-query-builder/floor-plan
+                         :walkable.sql-query-builder.floor-plan/target-columns)]
     (get target-columns (dispatch-key env))))
 
 (defn target-table
   [env]
-  (let [target-tables (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/target-tables)]
+  (let [target-tables (-> env :walkable.sql-query-builder/floor-plan
+                        :walkable.sql-query-builder.floor-plan/target-tables)]
     (get target-tables (dispatch-key env))))
 
 (defn source-column
   [env]
-  (let [source-columns (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/source-columns)]
+  (let [source-columns (-> env :walkable.sql-query-builder/floor-plan
+                         :walkable.sql-query-builder.floor-plan/source-columns)]
     (get source-columns (dispatch-key env))))
 
 (defn source-column-value
@@ -38,23 +41,27 @@
 
 (defn source-table
   [env]
-  (let [source-tables (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/source-tables)]
+  (let [source-tables (-> env :walkable.sql-query-builder/floor-plan
+                        :walkable.sql-query-builder.floor-plan/source-tables)]
     (get source-tables (dispatch-key env))))
 
 (defn join-statement
   [env]
-  (let [join-statements (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/join-statements)]
+  (let [join-statements (-> env :walkable.sql-query-builder/floor-plan
+                          :walkable.sql-query-builder.floor-plan/join-statements)]
     (get join-statements (dispatch-key env))))
 
 (defn extra-condition
   [env]
-  (let [extra-conditions (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/extra-conditions)]
+  (let [extra-conditions (-> env :walkable.sql-query-builder/floor-plan
+                           :walkable.sql-query-builder.floor-plan/extra-conditions)]
     (when-let [->condition (get extra-conditions (dispatch-key env))]
       (->condition env))))
 
 (defn extra-pagination
   [env]
-  (let [extra-pagination (-> env :walkable.sql-query-builder/sql-schema :walkable.sql-query-builder/extra-pagination)]
+  (let [extra-pagination (-> env :walkable.sql-query-builder/floor-plan
+                           :walkable.sql-query-builder.floor-plan/extra-pagination)]
     (when-let [->pagination (get extra-pagination (dispatch-key env))]
       (->pagination env))))
 
