@@ -96,3 +96,10 @@
     (when offset
       (str " OFFSET " offset))))
 
+(defn batch-query
+  "Combines multiple SQL queries and their params into a single query
+  using UNION."
+  [query-strings params]
+  (let [union-query (clojure.string/join "\nUNION ALL\n"
+                      query-strings)]
+    (cons union-query (apply concat params))))
