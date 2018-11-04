@@ -152,7 +152,7 @@
                    ::sqb/run-query async-run-print-query
 
                    ::sqb/floor-plan
-                   (sqb/compile-floor-plan
+                   (floor-plan/compile-floor-plan
                      {:emitter          emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
