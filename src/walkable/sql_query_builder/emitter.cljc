@@ -62,8 +62,3 @@
   (merge default-emitter
     {:quote-marks backticks}))
 
-(comment
-  (with-quote-marks sqlite-emitter "abc")
-  (column-name sqlite-emitter :abc.def/xyz)
-  (column-name sqlite-emitter :abc.def/xyz-tuv)
-  (table-name sqlite-emitter :abc.def/xyz-tuv))
