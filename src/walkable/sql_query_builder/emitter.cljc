@@ -24,13 +24,16 @@
 (defn transform-column-name [this column-name]
   ((:transform-column-name this) column-name))
 
+(defn table-name* [this t]
+  (->> (clojure.string/split t #"\.")
+    (map #(with-quote-marks this
+            (or (get (:rename-tables this) %)
+              (transform-table-name this %))))
+    (clojure.string/join ".")))
+
 (defn table-name [this k]
   (let [t (namespace k)]
-    (->> (clojure.string/split t #"\.")
-      (map #(with-quote-marks this
-              (or (get (:rename-tables this) %)
-                (transform-table-name this %))))
-      (clojure.string/join "."))))
+    (table-name* this t)))
 
 (defn column-name [this k]
   (str (table-name this k) "."
