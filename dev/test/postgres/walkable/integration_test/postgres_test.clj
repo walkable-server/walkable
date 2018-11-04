@@ -24,7 +24,7 @@
 (deftest common-scenarios-test
   (run-scenario-tests db :postgres common-scenarios))
 
-(def planet-inhabitant-schema
+(def planet-inhabitant-floor-plan
   {:columns          #{:land.animal/id :land.animal/name
                        :ocean.animal/id :ocean.animal/name}
    :idents           {:land.animal/all    "land.animal"
@@ -36,7 +36,7 @@
 
 (def postgres-scenarios
   {:planet-species
-   {:core-schema planet-inhabitant-schema
+   {:core-floor-plan planet-inhabitant-floor-plan
     :test-suite
     [{:message "postgres schema should work"
       :query
