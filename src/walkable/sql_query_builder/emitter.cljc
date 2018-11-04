@@ -38,8 +38,9 @@
 (defn column-name [this k]
   (str (table-name this k) "."
     (let [c (name k)]
-      (or (get (:rename-columns this) c)
-        (transform-table-name this c)))))
+      (with-quote-marks this
+        (or (get (:rename-columns this) c)
+          (transform-table-name this c))))))
 
 (defn clojuric-name [this k]
   (with-quote-marks this (subs (str k) 1)))
