@@ -258,15 +258,13 @@
            joins            {}
            cardinality      {}}
     :as   input-floor-plan}]
-  #_
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns
                                ::extra-conditions ::extra-pagination
                                ::emitter ::aggregators
                                ::reversed-joins ::joins ::cardinality])
             input-floor-plan)]
-   :post [#(s/valid? ::floor-plan %)]
-   }
+   :post [#(s/valid? ::floor-plan %)]}
   (let [idents (flatten-multi-keys idents)
 
         {:keys [unconditional-idents conditional-idents]}
