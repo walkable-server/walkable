@@ -1,279 +1,30 @@
 (ns walkable.sql-query-builder
   (:require [walkable.sql-query-builder.pagination :as pagination]
             [walkable.sql-query-builder.expressions :as expressions]
+            [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.ast :as ast]
+            [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
-            [clojure.zip :as z]
             [clojure.core.async :refer [go go-loop <! >! put! promise-chan to-chan]]
             [com.wsscode.pathom.core :as p]))
 
-(def backticks
-  (repeat 2 "`"))
-
-(def quotation-marks
-  (repeat 2 "\""))
-
-(def apostrophes
-  (repeat 2 "'"))
-
-(defn split-keyword
-  "Splits a keyword into a tuple of table and column."
-  [k]
-  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
-   :post [vector? #(= 2 (count %)) #(every? string? %)]}
-  (->> ((juxt namespace name) k)
-    (map #(-> % (clojure.string/replace #"-" "_")))))
-
-(defn table-name*
-  "Given a raw table name, outputs its quoted form ready to use in an
-  SQL query."
-  [[quote-open quote-close] raw-table-name]
-  {:pre [(string? raw-table-name)]
-   :post [string?]}
-  (->> (clojure.string/split raw-table-name #"\.")
-       (map #(str quote-open % quote-close))
-       (clojure.string/join ".")))
-
-(defn table-name
-  "Given a keyword, extracts the table in quoted form ready to use in an
-  SQL query."
-  [[quote-open quote-close] k]
-  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
-   :post [string?]}
-  (let [[raw-table-name raw-column-name] (split-keyword k)]
-    (table-name* [quote-open quote-close] raw-table-name)))
-
-(defn column-name
-  "Converts a keyword to column name in full form (which means table
-  name included) ready to use in an SQL query."
-  [[quote-open quote-close] k]
-  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
-   :post [string?]}
-  (let [[raw-table-name raw-column-name] (split-keyword k)]
-    (->> [(table-name* [quote-open quote-close] raw-table-name)
-          (str quote-open raw-column-name quote-close)]
-         (clojure.string/join "."))))
-
-(defn clojuric-name
-  "Converts a keyword to an SQL alias"
-  [[quote-open quote-close] k]
-  {:pre [(s/valid? ::expressions/namespaced-keyword k)]
-   :post [string?]}
-  (str quote-open (subs (str k) 1) quote-close))
-
-(s/def ::keyword-string-map
-  (s/coll-of (s/tuple ::expressions/namespaced-keyword string?)))
-
-(s/def ::keyword-keyword-map
-  (s/coll-of (s/tuple ::expressions/namespaced-keyword ::expressions/namespaced-keyword)))
-
-(defn ->column-names
-  "Makes a hash-map of keywords and their equivalent column names"
-  [quote-marks ks]
-  {:pre [(s/valid? (s/coll-of ::expressions/namespaced-keyword) ks)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (zipmap ks
-    (map #(column-name quote-marks %) ks)))
-
-(defn ->clojuric-names
-  "Makes a hash-map of keywords and their Clojuric name (to be use as
-  sql's SELECT aliases"
-  [quote-marks ks]
-  {:pre [(s/valid? (s/coll-of ::expressions/namespaced-keyword) ks)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (zipmap ks
-    (map #(clojuric-name quote-marks %) ks)))
-
-(s/def ::without-join-table
-  (s/coll-of ::expressions/namespaced-keyword
-    :count 2))
-
-(s/def ::with-join-table
-  (s/coll-of ::expressions/namespaced-keyword
-    :count 4))
-
-(s/def ::join-seq
-  (s/or
-   :without-join-table ::without-join-table
-   :with-join-table    ::with-join-table))
-
-(defn ->join-statements
-  "Helper for compile-schema. Generates JOIN statement strings for all
-  join keys given their join sequence."
-  [quote-marks join-seq]
-  {:pre  [(s/valid? ::join-seq join-seq)]
-   :post [string?]}
-  (let [[tag] (s/conform ::join-seq join-seq)]
-    (when (= :with-join-table tag)
-      (let [[source join-source join-target target] join-seq]
-        (str
-         " JOIN " (table-name quote-marks target)
-         " ON " (column-name quote-marks join-target)
-         " = " (column-name quote-marks target))))))
-
-(s/def ::join-specs
-  (s/coll-of (s/tuple ::expressions/namespaced-keyword ::join-seq)))
-
-(defn source-column
-  [join-seq]
-  (first join-seq))
-
-(defn target-column
-  [join-seq]
-  (second join-seq))
-
-(defn target-table
-  [quote-marks join-seq]
-  (table-name quote-marks (target-column join-seq)))
-
-(defn joins->target-tables
-  "Produces map of join keys to their corresponding source table name."
-  [quote-marks joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (target-table quote-marks join-seq)))
-    {} joins))
-
-(defn joins->target-columns
-  "Produces map of join keys to their corresponding target column."
-  [joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (target-column join-seq)))
-    {} joins))
-
-(defn joins->source-columns
-  "Produces map of join keys to their corresponding source column."
-  [joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (source-column join-seq)))
-    {} joins))
-
-(s/def ::query-string-input
-  (s/keys :req-un [::selection ::target-table ::quote-marks]
-    :opt-un [::join-statement ::where-conditions
-             ::offset ::limit ::order-by]))
-
-(defn ->query-string
-  "Builds the final query string ready for SQL server."
-  [{:keys [selection target-table
-           join-statement where-conditions
-           offset limit order-by] :as input}]
-
-  {:pre  [(s/valid? ::query-string-input input)]
-   :post [string?]}
-  (str "SELECT " selection
-       " FROM " target-table
-
-       join-statement
-
-       (when where-conditions
-         (str " WHERE "
-              where-conditions))
-       (when order-by
-         (str " ORDER BY " order-by))
-       (when limit
-         (str " LIMIT " limit))
-       (when offset
-         (str " OFFSET " offset))))
-
-(defn join-filter-subquery
-  [quote-marks joins]
-  (str
-    (column-name quote-marks (source-column joins))
-    " IN ("
-    (->query-string {:selection      (column-name quote-marks (target-column joins))
-                     :target-table   (target-table quote-marks joins)
-                     :quote-marks    quote-marks
-                     :join-statement (->join-statements quote-marks joins)})
-    " WHERE ?)"))
-
-(defn ast-root
-  [ast]
-  (assoc ast ::my-marker :root))
-
-(defn ast-zipper-root?
-  [x]
-  (= :root (::my-marker x)))
-
-(s/def ::zipper-fns
-  (s/keys :req-un [::placeholder? ::leaf?]))
-
-(defn ast-zipper
-  "Make a zipper to navigate an ast tree possibly with placeholder
-  subtrees."
-  [ast {:keys [placeholder? leaf?] :as zipper-fns}]
-  {:pre [(map? ast) (s/valid? ::zipper-fns zipper-fns)]}
-  (->> ast
-    (z/zipper
-      (fn branch? [x] (and (map? x)
-                        (or (ast-zipper-root? x) (placeholder? x))
-                        (seq (:children x))))
-      (fn children [x] (->> (:children x) (filter #(or (leaf? %) (placeholder? %)))))
-      ;; not neccessary because we only want to read, not write
-      (fn make-node [x xs] (assoc x :children (vec xs))))))
-
-(defn all-zipper-children
-  "Given a zipper, returns all its children"
-  [zipper]
-  (->> zipper
-    (iterate z/next)
-    (take-while #(not (z/end? %)))))
-
-(defn find-all-children
-  "Find all direct children, or children in nested placeholders."
-  [ast {:keys [placeholder? leaf?] :as zipper-fns}]
-  {:pre [(map? ast) (s/valid? ::zipper-fns zipper-fns)]}
-  (->>
-    (ast-zipper (ast-root ast)
-      {:leaf?        leaf?
-       :placeholder? placeholder?})
-    (all-zipper-children)
-    (map z/node)
-    (remove #(or (ast-zipper-root? %) (placeholder? %)))))
-
-(s/def ::sql-schema
-  (s/keys :req [::column-keywords
-                ::target-columns
-                ::extra-conditions
-                ::extra-pagination
-                ::join-statements
-                ::join-filter-subqueries
-                ::required-columns
-                ::clojuric-names
-                ::column-names
-                ::ident-keywords
-                ::source-columns
-                ::ident-conditions
-                ::cardinality
-                ::quote-marks
-                ::target-tables
-                ::aggregators
-                ::batch-query]))
-
 (defn process-children
   "Infers which columns to include in SQL query from child keys in env ast"
-  [{::keys [sql-schema] :keys [ast] ::p/keys [placeholder-prefixes]
+  [{::keys [floor-plan] :keys [ast] ::p/keys [placeholder-prefixes]
     :as    env}]
-  {:pre  [(s/valid? (s/keys :req [::column-keywords ::source-columns]
-                      :opt [::required-columns])
-            sql-schema)
+  {:pre  [(s/valid? (s/keys :req [::floor-plan/column-keywords ::floor-plan/source-columns]
+                      :opt [::floor-plan/required-columns])
+            floor-plan)
 
           (if placeholder-prefixes
             (set? placeholder-prefixes)
             true)]
    :post [#(s/valid? (s/keys :req-un [::join-children ::columns-to-query]) %)]}
-  (let [{::keys [column-keywords required-columns source-columns]} sql-schema
+  (let [{::floor-plan/keys [column-keywords required-columns source-columns]} floor-plan
 
         all-children
-        (find-all-children ast
+        (ast/find-all-children ast
           {:placeholder? #(contains? placeholder-prefixes
                             (namespace (:dispatch-key %)))
            :leaf?        #(or ;; it's a column child
@@ -311,216 +62,6 @@
                          child-required-keys
                          child-source-columns)}))
 
-(s/def ::conditional-ident
-  (s/tuple keyword? ::expressions/namespaced-keyword))
-
-(s/def ::unconditional-ident
-  (s/tuple keyword? string?))
-
-(defn conditional-idents->target-tables
-  "Produces map of ident keys to their corresponding source table name."
-  [quote-marks idents]
-  {:pre  [(s/valid? (s/coll-of ::conditional-ident) idents)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [ident-key column-keyword]]
-            (assoc result ident-key
-              (table-name quote-marks column-keyword)))
-          {} idents))
-
-(defn unconditional-idents->target-tables
-  "Produces map of ident keys to their corresponding source table name."
-  [quote-marks idents]
-  {:pre  [(s/valid? (s/coll-of ::unconditional-ident) idents)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [ident-key raw-table-name]]
-            (assoc result ident-key
-                   (table-name* quote-marks raw-table-name)))
-    {} idents))
-
-(s/def ::multi-keys
-  (s/coll-of (s/tuple (s/or :single-key keyword?
-                        :multiple-keys (s/coll-of keyword))
-               (constantly true))))
-
-(s/def ::single-keys
-  (s/coll-of (s/tuple keyword? (constantly true))))
-
-(defn expand-multi-keys
-  "Expands a map where keys can be a vector of keywords to pairs where
-  each keyword has its own entry."
-  [m]
-  {:pre  [(s/valid? ::multi-keys m)]
-   :post [#(s/valid? ::single-keys %)]}
-  (reduce (fn [result [ks v]]
-            (if (sequential? ks)
-              (let [new-pairs (mapv (fn [k] [k v]) ks)]
-                (vec (concat result new-pairs)))
-              (conj result [ks v])))
-    [] m))
-
-(defn flatten-multi-keys
-  "Expands multiple keys then group values of the same key"
-  [m]
-  {:pre  [(s/valid? ::multi-keys m)]
-   :post [#(s/valid? ::single-keys %)]}
-  (let [expanded  (expand-multi-keys m)
-        key-set   (set (map first expanded))
-        keys+vals (mapv (fn [current-key]
-                          (let [current-vals (mapv second (filter (fn [[k v]] (= current-key k)) expanded))]
-                            [current-key (if (= 1 (count current-vals))
-                                           (first current-vals)
-                                           current-vals)]))
-                    key-set)]
-    (into {} keys+vals)))
-
-(defn ident->condition
-  "Converts given ident key in env to equivalent condition dsl."
-  [env key]
-  {:pre  [(s/valid? ::expressions/namespaced-keyword key)
-          (s/valid? (s/keys :req-un [::ast]) env)]
-   :post [#(s/valid? ::expressions/expression %)]}
-  (conj [:= key] (env/ident-value env)))
-
-(defn compile-extra-conditions
-  [extra-conditions]
-  (reduce (fn [result [k v]]
-            (assoc result k
-              (if (fn? v)
-                v
-                (fn [env] v))))
-    {} extra-conditions))
-
-(def compile-extra-pagination compile-extra-conditions)
-
-(defn compile-join-statements
-  [quote-marks joins]
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (->join-statements quote-marks join-seq)))
-    {} joins))
-
-(defn compile-join-filter-subqueries
-  [quote-marks joins]
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (join-filter-subquery quote-marks join-seq)))
-    {} joins))
-
-(defn expand-reversed-joins [reversed-joins joins]
-  (let [more (reduce (fn [result [backward forward]]
-                       (assoc result backward
-                         (reverse (get joins forward))))
-               {} reversed-joins)]
-    ;; if a join exists in joins, keep it instead of
-    ;; reversing associated backward join
-    (merge more joins)))
-
-(defn expand-denpendencies* [m]
-  (reduce (fn [result [k vs]]
-            (assoc result k
-              (set (flatten (mapv #(if-let [deps (get m %)]
-                                     (vec deps)
-                                     %)
-                              vs)))))
-    {} m))
-
-(defn expand-denpendencies [m]
-  (let [m' (expand-denpendencies* m)]
-    (if (= m m')
-      m
-      (expand-denpendencies m'))))
-
-(defn separate-idents
-  "Helper function for compile-schema. Separates all user-supplied
-  idents to unconditional idents and conditional idents for further
-  processing."
-  [idents]
-  (reduce (fn [result [k v]]
-            (if (string? v)
-              (assoc-in result [:unconditional-idents k] v)
-              (assoc-in result [:conditional-idents k] v)))
-    {:unconditional-idents {}
-     :conditional-idents   {}}
-    idents))
-
-(defn batch-query
-  "Combines multiple SQL queries and their params into a single query
-  using UNION."
-  [query-strings params]
-  (let [union-query (clojure.string/join "\nUNION ALL\n"
-                      query-strings)]
-    (cons union-query (apply concat params))))
-
-(defn wrap-select
-  "Wrap a SQL string in (...)"
-  [s]
-  (str "(" s ")"))
-
-(defn wrap-select-sqlite
-  "Wrap a SQL string in SELECT * FROM (...)"
-  [s]
-  (str "SELECT * FROM (" s ")"))
-
-(defn compile-schema
-  "Given a brief user-supplied schema, derives an efficient schema
-  ready for pull-entities to use."
-  [{:keys [columns pseudo-columns required-columns idents extra-conditions extra-pagination
-           reversed-joins joins cardinality quote-marks sqlite-union
-           aggregators]
-    :or   {quote-marks      backticks
-           aggregators  {}
-           extra-conditions {}
-           extra-pagination {}
-           joins            {}
-           cardinality      {}}
-    :as   input-schema}]
-
-  {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
-                      :opt-un [::pseudo-columns ::required-columns ::extra-conditions ::extra-pagination
-                               ::sqlite-union ::quote-marks ::aggregators
-                               ::reversed-joins ::joins ::cardinality])
-            input-schema)]
-   :post [#(s/valid? ::sql-schema %)]}
-  (let [idents                                            (flatten-multi-keys idents)
-        {:keys [unconditional-idents conditional-idents]} (separate-idents idents)
-        extra-conditions                                  (flatten-multi-keys extra-conditions)
-        extra-pagination                                  (flatten-multi-keys extra-pagination)
-        joins                                             (->> (flatten-multi-keys joins)
-                                                            (expand-reversed-joins reversed-joins))
-        aggregators                                       (flatten-multi-keys aggregators)
-        cardinality                                       (merge (flatten-multi-keys cardinality)
-                                                            (zipmap (keys aggregators) (repeat :one)))
-
-        true-columns                                      (set (apply concat columns (vals joins)))
-        columns                                           (set (concat true-columns
-                                                                 (keys pseudo-columns)))]
-    #::{:column-keywords  columns
-        :ident-keywords   (set (keys idents))
-        :quote-marks      quote-marks
-        :required-columns (expand-denpendencies required-columns)
-        :target-tables    (merge (conditional-idents->target-tables quote-marks conditional-idents)
-                            (unconditional-idents->target-tables quote-marks unconditional-idents)
-                            (joins->target-tables quote-marks joins))
-        :target-columns   (joins->target-columns joins)
-        :source-columns   (joins->source-columns joins)
-
-        :batch-query      (fn [query-strings params]
-                            (batch-query (map (if sqlite-union
-                                                wrap-select-sqlite
-                                                wrap-select)
-                                           query-strings) params))
-
-        :cardinality      cardinality
-        :ident-conditions conditional-idents
-        :extra-conditions (compile-extra-conditions extra-conditions)
-        :extra-pagination (compile-extra-pagination extra-pagination)
-        :column-names     (merge (->column-names quote-marks true-columns)
-                            pseudo-columns aggregators)
-        :clojuric-names   (->clojuric-names quote-marks (concat columns (keys aggregators)))
-        :join-statements  (compile-join-statements quote-marks joins)
-        :aggregators  (set (keys aggregators))
-        :join-filter-subqueries (compile-join-filter-subqueries quote-marks joins)}))
-
 (defn clean-up-all-conditions
   "Receives all-conditions produced by process-conditions. Only keeps
   non-empty conditions."
@@ -534,15 +75,10 @@
 (defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
   om.next query params."
-  [{::keys [sql-schema] :as env}]
-  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
-   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (let [{::keys [aggregators]} sql-schema]
-    {:offset (env/offset env)
-     :limit  (env/limit env)
-
-     :order-by
-     (env/order-by env)}))
+  [env]
+  {:offset   (env/offset env)
+   :limit    (env/limit env)
+   :order-by (env/order-by env)})
 
 (defn stringify-order-by [column-names m]
   (update m :order-by #(pagination/->order-by-string column-names %)))
@@ -552,11 +88,19 @@
    :limit    (get extra :limit    (or (get supplied :limit)    (get extra 'limit)))
    :order-by (get extra :order-by (or (get supplied :order-by) (get extra 'order-by)))})
 
-(defn process-pagination [{::keys [sql-schema] :as env}]
-  {:pre  [(s/valid? (s/keys :req [::column-names]) sql-schema)]
+(defn process-pagination [{::keys [floor-plan] :as env}]
+  {:pre  [(s/valid? (s/keys :req [::floor-plan/column-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
   (->> (merge-pagination (env/extra-pagination env) (supplied-pagination env))
-    (stringify-order-by (::column-names sql-schema))))
+    (stringify-order-by (::floor-plan/column-names floor-plan))))
+
+(defn ident->condition
+  "Converts given ident key in env to equivalent condition dsl."
+  [env key]
+  {:pre  [(s/valid? ::expressions/namespaced-keyword key)
+          (s/valid? (s/keys :req-un [::ast]) env)]
+   :post [#(s/valid? ::expressions/expression %)]}
+  (conj [:= key] (env/ident-value env)))
 
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
@@ -573,9 +117,9 @@
 
   - supplied-condition: ad-hoc condition supplied in om.next
   query (often by client apps)"
-  [{::keys [sql-schema] :as env}]
-  (let [{::keys [ident-conditions]}
-        sql-schema
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [ident-conditions]} floor-plan
+
         e (p/entity env)
         k (env/dispatch-key env)
 
@@ -602,8 +146,8 @@
     [ident-condition join-condition extra-condition supplied-condition]))
 
 (defn parameterize-all-conditions
-  [{::keys [sql-schema] :as env} columns-to-query]
-  (let [{::keys [column-names join-filter-subqueries]} sql-schema
+  [{::keys [floor-plan] :as env} columns-to-query]
+  (let [{::floor-plan/keys [column-names join-filter-subqueries]} floor-plan
 
         all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
@@ -614,8 +158,8 @@
         ((juxt :raw-string :params))))))
 
 (defn process-selection
-  [{::keys [sql-schema] :as env} columns-to-query]
-  (let [{::keys [column-names clojuric-names]} sql-schema
+  [{::keys [floor-plan] :as env} columns-to-query]
+  (let [{::floor-plan/keys [column-names clojuric-names]} floor-plan
 
         target-column (env/target-column env)]
     (concat
@@ -645,7 +189,7 @@
 
 (defn parameterize-all-selection
   [env columns-to-query]
-  (let [column-names (-> env ::sql-schema ::column-names)
+  (let [column-names (-> env ::floor-plan ::floor-plan/column-names)
         xs (process-selection env columns-to-query)]
     (->> {:raw-string (->> (repeat (count xs) \?)
                         (clojure.string/join ", "))
@@ -657,7 +201,7 @@
   "Replaces any keyword found in all-params with their corresponding
   column-name"
   [env all-params]
-  (let [column-names (-> env ::sql-schema ::column-names)]
+  (let [column-names (-> env ::floor-plan ::floor-plan/column-names)]
     (mapv (fn stringify-keywords [param]
             (if (expressions/namespaced-keyword? param)
               (get column-names param)
@@ -672,27 +216,27 @@
 
   - join-children: set of direct nested levels that will require their
   own SQL query."
-  [{::keys [sql-schema] :as env}]
-  {:pre [(s/valid? (s/keys :req [::column-names
-                                 ::clojuric-names
-                                 ::quote-marks]
-                     :opt [::join-statements
-                           ::target-tables
-                           ::target-columns])
-           sql-schema)]}
-  (let [{::keys [quote-marks aggregators]}       sql-schema
-        k                                        (env/dispatch-key env)
-        {:keys [join-children columns-to-query]} (if (contains? aggregators k)
-                                                   {:columns-to-query #{k}
-                                                    :join-children    #{}}
-                                                   (process-children env))
-        [selection select-params]                (parameterize-all-selection env columns-to-query)
-        [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
-        {:keys [offset limit order-by]}          (process-pagination env)]
+  [{::keys [floor-plan] :as env}]
+  {:pre [(s/valid? (s/keys :req [::floor-plan/column-names
+                                 ::floor-plan/clojuric-names
+                                 ::floor-plan/emitter]
+                     :opt [::floor-plan/join-statements
+                           ::floor-plan/target-tables
+                           ::floor-plan/target-columns])
+           floor-plan)]}
+  (let [{::floor-plan/keys [emitter aggregators]} floor-plan
+        k                                         (env/dispatch-key env)
+        {:keys [join-children columns-to-query]}  (if (contains? aggregators k)
+                                                    {:columns-to-query #{k}
+                                                     :join-children    #{}}
+                                                    (process-children env))
+        [selection select-params]                 (parameterize-all-selection env columns-to-query)
+        [where-conditions where-params]           (parameterize-all-conditions env columns-to-query)
+        {:keys [offset limit order-by]}           (process-pagination env)]
     {:query-string-input {:target-table     (env/target-table env)
                           :join-statement   (env/join-statement env)
                           :selection        selection
-                          :quote-marks      quote-marks
+                          :emitter          emitter
                           :where-conditions where-conditions
                           :offset           offset
                           :limit            limit
@@ -706,22 +250,22 @@
 
   The env given to the Pathom parser must contains:
 
-  - sql-schema: output of compile-schema
+  - floor-plan: output of compile-schema
 
   - sql-db: a database instance
 
   - run-query: a function that run an SQL query (optionally with
   params) against the given sql-db. Shares the same signature with
   clojure.java.jdbc/query."
-  [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [ident-keywords
-                 batch-query
-                 target-tables
-                 target-columns
-                 source-columns
-                 join-statements
-                 aggregators
-                 cardinality]} sql-schema
+  [{::keys [floor-plan sql-db run-query] :as env}]
+  (let [{::floor-plan/keys [ident-keywords
+                            batch-query
+                            target-tables
+                            target-columns
+                            source-columns
+                            join-statements
+                            aggregators
+                            cardinality]} floor-plan
         k                      (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
@@ -730,7 +274,7 @@
 
             query-string
             (when (contains? ident-keywords k)
-              (->query-string query-string-input))
+              (emitter/->query-string query-string-input))
 
             entities
             (if query-string
@@ -763,7 +307,7 @@
                               (assoc-in [(get env ::p/entity-key) source-column]
                                 (get e source-column)))))
 
-                        query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
+                        query-strings (map #(emitter/->query-string (:query-string-input %)) query-string-inputs)
                         all-params    (map :query-params query-string-inputs)
 
                         join-children-data
@@ -804,21 +348,21 @@
   puts relevent data to ::p/entity ready for p/map-reader plugin.
 
   The env given to the Pathom parser must contains:
-  - sql-schema: output of compile-schema
+  - floor-plan: output of compile-schema
   - sql-db: a database instance
   - run-query: a function that run an SQL query (optionally with
   params) against the given sql-db. Shares the same input with
   clojure.java.jdbc/query. Returns query result in a channel."
-  [{::keys [sql-schema sql-db run-query] :as env}]
-  (let [{::keys [ident-keywords
-                 batch-query
-                 target-tables
-                 target-columns
-                 source-columns
-                 join-statements
-                 aggregators
-                 cardinality]} sql-schema
-        k                      (env/dispatch-key env)]
+  [{::keys [floor-plan sql-db run-query] :as env}]
+  (let [{::floor-plan/keys [ident-keywords
+                            batch-query
+                            target-tables
+                            target-columns
+                            source-columns
+                            join-statements
+                            aggregators
+                            cardinality]} floor-plan
+        k                                 (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
@@ -826,7 +370,7 @@
 
             query-string
             (when (contains? ident-keywords k)
-              (->query-string query-string-input))
+              (emitter/->query-string query-string-input))
 
             one?
             (= :one (get cardinality k))
@@ -881,7 +425,7 @@
                                 (assoc-in [(get env ::p/entity-key) source-column]
                                   (get e source-column)))))
 
-                          query-strings (map #(->query-string (:query-string-input %)) query-string-inputs)
+                          query-strings (map #(emitter/->query-string (:query-string-input %)) query-string-inputs)
                           all-params    (map :query-params query-string-inputs)
 
                           join-children-data
