@@ -222,25 +222,23 @@
   own SQL query."
   [{::keys [floor-plan] :as env}]
   {:pre [(s/valid? (s/keys :req [::floor-plan/column-names
-                                 ::floor-plan/clojuric-names
-                                 ::floor-plan/emitter]
+                                 ::floor-plan/clojuric-names]
                      :opt [::floor-plan/join-statements
                            ::floor-plan/target-tables
                            ::floor-plan/target-columns])
            floor-plan)]}
-  (let [{::floor-plan/keys [emitter aggregators]} floor-plan
-        k                                         (env/dispatch-key env)
-        {:keys [join-children columns-to-query]}  (if (contains? aggregators k)
-                                                    {:columns-to-query #{k}
-                                                     :join-children    #{}}
-                                                    (process-children env))
-        [selection select-params]                 (parameterize-all-selection env columns-to-query)
-        [where-conditions where-params]           (parameterize-all-conditions env columns-to-query)
-        {:keys [offset limit order-by]}           (process-pagination env)]
+  (let [{::floor-plan/keys [aggregators]}        floor-plan
+        k                                        (env/dispatch-key env)
+        {:keys [join-children columns-to-query]} (if (contains? aggregators k)
+                                                   {:columns-to-query #{k}
+                                                    :join-children    #{}}
+                                                   (process-children env))
+        [selection select-params]                (parameterize-all-selection env columns-to-query)
+        [where-conditions where-params]          (parameterize-all-conditions env columns-to-query)
+        {:keys [offset limit order-by]}          (process-pagination env)]
     {:query-string-input {:target-table     (env/target-table env)
                           :join-statement   (env/join-statement env)
                           :selection        selection
-                          :emitter          emitter
                           :where-conditions where-conditions
                           :offset           offset
                           :limit            limit
