@@ -268,7 +268,7 @@
                             join-statements
                             aggregators
                             cardinality]} floor-plan
-        k                      (env/dispatch-key env)]
+        k                                 (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [query-string-input query-params join-children]}
