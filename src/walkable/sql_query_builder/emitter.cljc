@@ -80,10 +80,9 @@
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys                         [selection target-table
-                                   join-statement where-conditions
-                                   offset limit order-by] :as input}]
-
+  [{:keys [selection target-table join-statement where-conditions
+           offset limit order-by]
+    :as input}]
   {:pre  [(s/valid? ::query-string-input input)]
    :post [string?]}
   (str "SELECT " selection
