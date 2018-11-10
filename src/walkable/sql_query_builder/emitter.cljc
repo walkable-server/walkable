@@ -31,16 +31,20 @@
               (transform-table-name this %))))
     (clojure.string/join ".")))
 
+(defn true-keyword [this k]
+  ((:rename-keywords this) k k))
+
 (defn table-name [this k]
-  (let [t (namespace k)]
+  (let [t (namespace (true-keyword this k))]
     (table-name* this t)))
 
 (defn column-name [this k]
-  (str (table-name this k) "."
-    (let [c (name k)]
-      (with-quote-marks this
-        (or (get (:rename-columns this) c)
-          (transform-table-name this c))))))
+  (let [k (true-keyword this k)]
+    (str (table-name this k) "."
+      (let [c (name k)]
+        (with-quote-marks this
+          (or (get (:rename-columns this) c)
+            (transform-table-name this c)))))))
 
 (defn clojuric-name [this k]
   (with-quote-marks this (subs (str k) 1)))
@@ -55,6 +59,7 @@
    :transform-column-name dash-to-underscore
    :rename-tables         {}
    :rename-columns        {}
+   :rename-keywords       {}
    :wrap-select-strings   ["(" ")"]})
 
 (def sqlite-emitter
