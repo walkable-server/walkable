@@ -176,7 +176,9 @@
                     (when-not (= ::s/invalid form)
                       (expressions/inline-params
                         {:raw-string (str "(?) AS " clojuric-name)
-                         :params     [(expressions/process-expression {:column-names column-names} form)]}))))))
+                         :params     [(expressions/process-expression
+                                        {:column-names column-names}
+                                        form)]}))))))
         (if target-column
           (remove #(= % target-column) columns-to-query)
           columns-to-query))
@@ -185,7 +187,9 @@
           (when-not (= ::s/invalid form)
             [(expressions/inline-params
                {:raw-string (str "? AS " (get clojuric-names target-column))
-                :params     [(expressions/process-expression {:column-names column-names} form)]})]))))))
+                :params     [(expressions/process-expression
+                               {:column-names column-names}
+                               form)]})]))))))
 
 (defn parameterize-all-selection
   [env columns-to-query]
