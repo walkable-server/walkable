@@ -12,4 +12,4 @@ distance.
 [walkable "1.1.0-SNAPSHOT"]
 ```
 
-Please read our [beautiful documentation here](https://walkable.gitbook.io/walkable/)
+Please read our [beautiful documentation here](https://walkable.gitlab.io/)
