@@ -1,4 +1,7 @@
 (ns walkable.sql-query-builder.expressions
+  #?(:cljs (:require-macros [walkable.sql-query-builder.expressions
+                             :refer [def-simple-cast-types
+                                     import-functions import-infix-operators]]))
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]
             [clojure.set :as set]))
