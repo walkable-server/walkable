@@ -1,4 +1,4 @@
-(defproject walkable "1.0.0-SNAPSHOT"
+(defproject walkable "1.1.0-SNAPSHOT"
   :description "A serious way to fetch data from SQL using Clojure: Datomic pull syntax, Clojure flavored filtering and more."
   :url "https://github.com/walkable-server/walkable"
   :min-lein-version "2.0.0"
