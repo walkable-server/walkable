@@ -1,17 +1,15 @@
 (ns dev
   (:require [com.wsscode.pathom.core :as p]
             [walkable.sql-query-builder :as sqb]
+            [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.floor-plan :as floor-plan]
             ["sqlite3" :as sqlite3]
             [cljs.core.async :as async :refer [put! >! <! promise-chan]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 ;; (enable-console-print!)
 
-(def sqlite-db (sqlite3/Database. "walkable_demo.sqlite"))
-
-(def quote-marks sqb/backticks)
-
-(def sqlite-union true)
+(def sqlite-db (sqlite3/Database. "walkable_dev.sqlite"))
 
 (def async-parser
   (p/async-parser
@@ -42,14 +40,11 @@
       parser async-parser]
   (go
     (println "\n\n<-- final result -->\n"
-      (<! (parser {::sqb/sql-db
-                   sqlite-db
-                   ::sqb/run-query
-                   async-run-print-query
-                   ::sqb/sql-schema
-                   (sqb/compile-schema
-                     {:quote-marks      quote-marks
-                      :sqlite-union     sqlite-union
+      (<! (parser {::sqb/sql-db    sqlite-db
+                   ::sqb/run-query async-run-print-query
+                   ::sqb/floor-plan
+                   (floor-plan/compile-floor-plan
+                     {:emitter          emitter/sqlite-emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
                       :columns          [:cow/color
@@ -78,10 +73,9 @@
         (parser {::sqb/sql-db    sqlite-db
                  ::sqb/run-query async-run-print-query
 
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
+                   {:emitter          emitter/sqlite-emitter
                     :columns          [:kid/name :toy/index :toy/color]
                     :idents           {:kid/by-id :kid/number
                                        :kids/all  "kid"}
@@ -122,11 +116,10 @@
       (<!
         (parser {::sqb/sql-db    sqlite-db
                  ::sqb/run-query async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
                    ;; which columns are available in SQL table?
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
+                   {:emitter          emitter/sqlite-emitter
                     :columns          [:person/name
                                        :person/yob
                                        :person/hidden
@@ -150,6 +143,7 @@
                                        :person/pet   :many}})}
           ;; try eg-2, too
           eg-1)))))
+
 #_
 (let [eg-1
       '[{:me [:person/number :person/name :person/yob]}]
@@ -163,8 +157,8 @@
 
                  ::sqb/sql-db    sqlite-db
                  ::sqb/run-query async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
                    ;; which columns are available in SQL table?
                    {:quote-marks      quote-marks
                     :sqlite-union     sqlite-union
@@ -198,11 +192,10 @@
         (parser {::p/placeholder-prefixes #{"ph"}
                  ::sqb/sql-db             sqlite-db
                  ::sqb/run-query          async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
                    ;; which columns are available in SQL table?
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
+                   {:emitter          emitter/sqlite-emitter
                     :columns          [:person/name
                                        :person/yob
                                        :person/hidden
@@ -222,6 +215,7 @@
                     :cardinality      {:person/by-id :one
                                        :person/pet   :many}})}
           eg-1)))))
+
 #_
 (let [eg-1
       '[{:world/all
@@ -241,10 +235,9 @@
       (<!
         (parser {::sqb/sql-db    sqlite-db
                  ::sqb/run-query async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
+                   {:emitter          emitter/sqlite-emitter
                     :columns          [:human/number :human/name :human/yob]
                     :required-columns {}
                     :idents           {:human/by-id :human/number
@@ -257,6 +250,7 @@
                                        :human/follow-stats :one
                                        :human/follow       :many}})}
           eg-1)))))
+
 #_
 (let [eg-1
       ;; use pseudo-columns in in filters!
@@ -276,10 +270,9 @@
       (<!
         (parser {::sqb/sql-db    sqlite-db
                  ::sqb/run-query async-run-print-query
-                 ::sqb/sql-schema
-                 (sqb/compile-schema
-                   {:quote-marks      quote-marks
-                    :sqlite-union     sqlite-union
+                 ::sqb/floor-plan
+                 (floor-plan/compile-floor-plan
+                   {:emitter          emitter/sqlite-emitter
                     :columns          [:human/number :human/name :human/yob]
                     :required-columns {}
                     :idents           {:human/by-id :human/number
