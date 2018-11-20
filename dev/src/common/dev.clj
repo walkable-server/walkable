@@ -16,8 +16,6 @@
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
-            ;; or walkable.sql-query-builder.impl.postgres
-            [walkable.sql-query-builder.impl.sqlite]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
@@ -28,8 +26,11 @@
 
 (duct/load-hierarchy)
 
+(defn config-by-db [db]
+  (io/resource (str"config-" (name db) ".edn")))
+
 (defn prepare-system [db]
-  (-> (duct/read-config (io/resource (str"config-" (name db) ".edn")))
+  (-> (duct/read-config (config-by-db db))
     (duct/prep)))
 
 (defn test []
@@ -44,11 +45,17 @@
     "dev/src/common"
     (str "dev/src/" ({:postgres "postgres" :mysql "mysql"} db "sqlite"))
     "src" "test")
+  (case db
+    :postgres (require '[walkable.sql-query-builder.impl.postgres])
+    :sqlite   (require '[walkable.sql-query-builder.impl.sqlite])
+    true)
   (integrant.repl/set-prep! #(prepare-system db)))
 
-(comment
-  (set-target-db! :postgres)
-)
+;; automatically set target db
+(cond
+  (config-by-db :postgres) (set-target-db! :postgres)
+  (config-by-db :sqlite)   (set-target-db! :sqlite)
+  (config-by-db :mysql)    (set-target-db! :mysql))
 
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
