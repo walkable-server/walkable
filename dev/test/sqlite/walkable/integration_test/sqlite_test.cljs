@@ -37,13 +37,13 @@
         {:keys [message env query expected]}            test-suite]
     {:msg      (str "In scenario " scenario " for " db-type ", testing " message)
      :result   (walkable-parser
-                 (merge env {::sqb/sql-db             db
-                             ::sqb/run-query          async-run-query
-                             ::p/placeholder-prefixes #{"ph"}
-                             ::sqb/floor-plan
-                             (floor-plan/compile-floor-plan
-                               (merge core-floor-plan
-                                 {:emitter (db-specific-emitter db-type)}))})
+                 (->> env (merge {::sqb/sql-db             db
+                                  ::sqb/run-query          async-run-query
+                                  ::p/placeholder-prefixes #{"ph"}
+                                  ::sqb/floor-plan
+                                  (floor-plan/compile-floor-plan
+                                    (merge core-floor-plan
+                                      {:emitter (db-specific-emitter db-type)}))}))
                  query)
      :expected expected}))
 
