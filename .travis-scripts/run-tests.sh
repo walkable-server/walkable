@@ -7,6 +7,8 @@ case "$1" in
         ;;
     sqlite)
         lein with-profile sqlite test :integration
+        ./node_modules/.bin/shadow-cljs compile test
+        nodejs test.js
         ;;
     postgres)
         lein with-profile postgres test :integration
