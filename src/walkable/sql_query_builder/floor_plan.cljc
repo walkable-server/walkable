@@ -292,8 +292,10 @@
         :source-columns   (joins->source-columns joins)
 
         :batch-query (fn [query-strings params]
-                       (emitter/batch-query (map #(emitter/wrap-select emitter %)
-                                              query-strings) params))
+                       (-> (if (= 1 (count query-strings))
+                             query-strings
+                             (map #(emitter/wrap-select emitter %) query-strings))
+                         (emitter/batch-query params)))
 
         :cardinality            cardinality
         :ident-conditions       conditional-idents

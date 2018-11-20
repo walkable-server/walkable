@@ -7,6 +7,7 @@ case "$1" in
         ;;
     sqlite)
         lein with-profile sqlite install
+        npm install
         ;;
     postgres)
         psql -c 'create database walkable_dev;' -U postgres

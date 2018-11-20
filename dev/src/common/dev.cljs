@@ -3,7 +3,9 @@
             [walkable.sql-query-builder :as sqb]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
+            [walkable.integration-test.common :as common]
             ["sqlite3" :as sqlite3]
+            [walkable.sql-query-builder.impl.sqlite]
             [cljs.core.async :as async :refer [put! >! <! promise-chan]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 

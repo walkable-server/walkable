@@ -1,7 +1,12 @@
+dist: cosmic
 language: clojure
 services:
   - mysql
   - postgresql
+addons:
+  apt:
+    packages:
+      - nodejs
 matrix:
   include:
   - name: "unit tests"
