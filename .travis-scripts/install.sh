@@ -7,7 +7,6 @@ case "$1" in
         ;;
     sqlite)
         lein with-profile sqlite install
-        apt-get install nodejs
         npm install
         ;;
     postgres)
