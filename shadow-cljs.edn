@@ -4,11 +4,13 @@
   [clojure-future-spec "1.9.0-beta4"]]
 
  :source-paths
- ["src" "dev/src/common" "dev/src/sqlite"]
+ ["src" "dev/src/common" "dev/src/sqlite" "test"]
 
  :builds
  {:app {:target    :node-script
         :output-to "run.js"
         :main      dev/main
-        :devtools {;; :before-load-async demo.script/stop
-                   :after-load dev/main}}}}
+        :devtools  {;; :before-load-async demo.script/stop
+                    :after-load dev/main}}
+  :test {:target    :node-test
+         :output-to "test.js"}}}
