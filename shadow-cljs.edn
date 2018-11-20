@@ -4,7 +4,7 @@
   [clojure-future-spec "1.9.0-beta4"]]
 
  :source-paths
- ["src" "dev/src/common" "dev/src/sqlite" "test"]
+ ["src" "dev/src/common" "dev/test/common" "dev/test/sqlite" "test"]
 
  :builds
  {:app {:target    :node-script
