@@ -377,13 +377,6 @@
             one?
             (= :one (get cardinality k))
 
-            do-join
-            (if (contains? aggregators k)
-              #(get (first %2) k)
-              (if one?
-                #(p/join (first %2) %1)
-                #(p/join-seq %1 %2)))
-
             entities-ch
             (promise-chan)
 
@@ -460,12 +453,14 @@
               (println "entities-with-join-children-data: " entities-with-join-children-data)))
         (let [result-chan (promise-chan)]
           (go (let [entities-with-join-children-data (<! entities-with-join-children-data-ch)]
-                (>! result-chan
-                  (if (seq entities-with-join-children-data)
-                    (<! (do-join env entities-with-join-children-data))
-                    (if one?
-                      {}
-                      [])))))
+                (if (seq entities-with-join-children-data)
+                  (if (contains? aggregators k)
+                    (>! result-chan (get (first entities-with-join-children-data) k))
+                    (let [do-join (if one?
+                                    #(p/join (first %2) %1)
+                                    #(p/join-seq %1 %2))]
+                      (>! result-chan (<! (do-join env entities-with-join-children-data)))))
+                  (>! result-chan (if one? {} [])))))
           result-chan))
 
       ::p/continue)))
