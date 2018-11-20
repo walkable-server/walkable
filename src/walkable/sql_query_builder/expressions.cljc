@@ -48,11 +48,11 @@
       (s/cat :operator ::unsafe-expression
         :params (s/* (constantly true))))
     :join-filters
-    (s/and map?
-      (s/+
-        (s/or :join-filter
-          (s/cat :join-key ::namespaced-keyword
-            :expression ::expression))))))
+    (s/coll-of
+      (s/or :join-filter
+        (s/cat :join-key ::namespaced-keyword
+          :expression ::expression))
+      :kind map? :into [])))
 
 ;; the rule for parentheses in :raw-string
 ;; outer raw string should provide them

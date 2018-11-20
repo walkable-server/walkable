@@ -1,7 +1,7 @@
 {:dependencies
- [[org.clojure/clojurescript "1.10.238"]
+ [[org.clojure/clojurescript "1.10.439"]
   [com.wsscode/pathom "2.0.0-beta3" :exclusions [org.clojure/clojurescript]]
-  [clojure-future-spec "1.9.0-beta4"]]
+  [org.clojure/spec.alpha "0.2.176"]]
 
  :source-paths
  ["src" "dev/src/common" "dev/test/common" "dev/test/sqlite" "test"]
