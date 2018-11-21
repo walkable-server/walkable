@@ -1,6 +1,7 @@
 (ns walkable.sql-query-builder.floor-plan-test
   (:require [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as sut]
+            [walkable.sql-query-builder.pagination :as pagination]
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 
@@ -121,3 +122,27 @@
             :pets/all   "public.pet"})
         {:people/all "\"public\".\"person\""
          :pets/all "\"public\".\"pet\""})))
+
+(deftest merge-pagination-test
+  (let [all-fallbacks     (sut/compile-pagination-fallbacks
+                            {:people/all
+                             {:offset   {:default  5
+                                         :validate #(<= 2 % 4)}
+                              :limit    {:default  10
+                                         :validate #(<= 12 % 14)}
+                              :order-by {:default  [:x/a]
+                                         :validate #{:x/a :x/b}}}})
+        current-fallbacks (:people/all all-fallbacks)]
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset   4
+              :limit    8
+              :order-by [:x/invalid-key]})
+          {:offset 4, :limit 10, :order-by [:x/a]}))
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset   4
+              :limit    :invalid-type
+              :order-by [:x/a :asc :x/b :desc]})
+          {:offset 4, :limit 10, :order-by [:x/a :asc :x/b :desc]})))
+)
