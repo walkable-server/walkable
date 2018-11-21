@@ -172,7 +172,15 @@
                 (fn [env] v))))
     {} extra-conditions))
 
-(def compile-extra-pagination compile-extra-conditions)
+(defn compile-pagination-fallbacks
+  [pagination-fallbacks]
+  (reduce (fn [result [k {:keys [offset limit order-by]}]]
+            (assoc result
+              k
+              {:offset-fallback   (pagination/offset-fallback offset)
+               :limit-fallback    (pagination/limit-fallback limit)
+               :order-by-fallback (pagination/order-by-fallback order-by)}))
+    {} pagination-fallbacks))
 
 (defn compile-join-statements
   [emitter joins]
@@ -229,7 +237,7 @@
   (s/keys :req [::column-keywords
                 ::target-columns
                 ::extra-conditions
-                ::extra-pagination
+                ::pagination-fallbacks
                 ::join-statements
                 ::join-filter-subqueries
                 ::required-columns
@@ -248,19 +256,19 @@
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
   [{:keys [columns pseudo-columns required-columns idents
-           emitter extra-conditions extra-pagination
+           emitter extra-conditions pagination-fallbacks
            reversed-joins joins cardinality
            aggregators]
-    :or   {emitter          emitter/default-emitter
-           aggregators      {}
-           extra-conditions {}
-           extra-pagination {}
-           joins            {}
-           cardinality      {}}
+    :or   {emitter              emitter/default-emitter
+           aggregators          {}
+           extra-conditions     {}
+           pagination-fallbacks {}
+           joins                {}
+           cardinality          {}}
     :as   input-floor-plan}]
   {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
                       :opt-un [::pseudo-columns ::required-columns
-                               ::extra-conditions ::extra-pagination
+                               ::extra-conditions ::pagination-fallbacks
                                ::emitter ::aggregators
                                ::reversed-joins ::joins ::cardinality])
             input-floor-plan)]
@@ -270,13 +278,14 @@
         {:keys [unconditional-idents conditional-idents]}
         (separate-idents idents)
 
-        extra-conditions (flatten-multi-keys extra-conditions)
-        extra-pagination (flatten-multi-keys extra-pagination)
-        joins            (->> (flatten-multi-keys joins)
-                           (expand-reversed-joins reversed-joins))
-        aggregators      (flatten-multi-keys aggregators)
-        cardinality      (merge (flatten-multi-keys cardinality)
-                           (zipmap (keys aggregators) (repeat :one)))
+        extra-conditions     (flatten-multi-keys extra-conditions)
+        pagination-fallbacks (flatten-multi-keys pagination-fallbacks)
+
+        joins       (->> (flatten-multi-keys joins)
+                      (expand-reversed-joins reversed-joins))
+        aggregators (flatten-multi-keys aggregators)
+        cardinality (merge (flatten-multi-keys cardinality)
+                      (zipmap (keys aggregators) (repeat :one)))
 
         true-columns (set (apply concat columns (vals joins)))
         columns      (set (concat true-columns
@@ -300,7 +309,7 @@
         :cardinality            cardinality
         :ident-conditions       conditional-idents
         :extra-conditions       (compile-extra-conditions extra-conditions)
-        :extra-pagination       (compile-extra-pagination extra-pagination)
+        :pagination-fallbacks   (compile-pagination-fallbacks pagination-fallbacks)
         :column-names           (merge (column-names emitter true-columns)
                                   pseudo-columns aggregators)
         :clojuric-names         (clojuric-names emitter (concat columns (keys aggregators)))
