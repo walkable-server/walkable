@@ -28,3 +28,6 @@
                        (map order-params->string)
                        (apply str)))))
             (clojure.string/join ", ")))))))
+
+(defn stringify-order-by [column-names m]
+  (update m :order-by #(->order-by-string column-names %)))

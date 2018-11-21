@@ -80,9 +80,6 @@
    :limit    (env/limit env)
    :order-by (env/order-by env)})
 
-(defn stringify-order-by [column-names m]
-  (update m :order-by #(pagination/->order-by-string column-names %)))
-
 (defn merge-pagination [extra supplied]
   {:offset   (get extra :offset   (or (get supplied :offset)   (get extra 'offset)))
    :limit    (get extra :limit    (or (get supplied :limit)    (get extra 'limit)))
