@@ -29,3 +29,12 @@
   (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first 0])
         nil)))
 
+(deftest wrap-validate-order-by-test
+  (is (= (map (sut/wrap-validate-order-by #{:x/a :x/b})
+           [[:x/a :asc :x/b :desc :nils-first]
+            [:x/a :asc :x/b :desc :nils-first :x/invalid-key]
+            [:x/a :asc :x/b :desc :nils-first :not-namespaced-keyword]
+            [:x/a :asc :x/b :desc :nils-first 'invalid-type]
+            :invalid-type])
+        [true false false false false])))
+

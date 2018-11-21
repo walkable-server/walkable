@@ -25,6 +25,13 @@
     (when-not (= ::s/invalid form)
       (map :column form))))
 
+(defn wrap-validate-order-by [f]
+  (comp boolean
+    (if (ifn? f)
+      #(when-let [xs (order-by-columns %)]
+         (every? f xs))
+      #(order-by-columns %))))
+
 (def order-params->string
   {:asc        " ASC"
    :desc       " DESC"
