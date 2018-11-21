@@ -151,3 +151,26 @@
               :limit    :invalid-type
               :order-by [:x/a :asc :x/b :desc]})
           {:offset 4, :limit 10, :order-by [:x/a :asc :x/b :desc]}))))
+
+(deftest merge-pagination-partially-test
+  (let [all-fallbacks     (sut/compile-pagination-fallbacks
+                            {:people/all
+                             {:offset   {:default  5
+                                         :validate #(<= 2 % 4)}}})
+        current-fallbacks (:people/all all-fallbacks)]
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset   4
+              :limit    8
+              :order-by [:x/random-key]})
+          {:offset   4
+           :limit    8
+           :order-by [:x/random-key]}))
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset   6
+              :limit    8
+              :order-by [:x/random-key]})
+          {:offset   5
+           :limit    8
+           :order-by [:x/random-key]}))))
