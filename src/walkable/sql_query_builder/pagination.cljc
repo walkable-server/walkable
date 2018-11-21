@@ -20,6 +20,11 @@
     :column ::expressions/namespaced-keyword
     :params (s/* #{:asc :desc :nils-first :nils-last})))
 
+(defn order-by-columns [order-by]
+  (let [form (s/conform (s/+ ::column+order-params) order-by)]
+    (when-not (= ::s/invalid form)
+      (map :column form))))
+
 (def order-params->string
   {:asc        " ASC"
    :desc       " DESC"

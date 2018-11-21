@@ -21,3 +21,11 @@
   (is (= (->> [:invalid 'types] (map (sut/wrap-validate-number #(<= 2 % 4))))
         [false false])))
 
+(deftest order-by-columns-test
+  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first :x/c])
+        [:x/a :x/b :x/c]))
+  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first :y])
+        nil))
+  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first 0])
+        nil)))
+
