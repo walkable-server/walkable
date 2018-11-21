@@ -4,6 +4,11 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [clojure.set :as set]))
 
+(defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
+                        {:keys [offset limit order-by]}]
+  {:offset   (offset-fallback offset)
+   :limit    (limit-fallback limit)
+   :order-by (order-by-fallback order-by)})
 (s/def ::column+order-params
   (s/cat
     :column ::expressions/namespaced-keyword

@@ -80,16 +80,11 @@
    :limit    (env/limit env)
    :order-by (env/order-by env)})
 
-(defn merge-pagination [extra supplied]
-  {:offset   (get extra :offset   (or (get supplied :offset)   (get extra 'offset)))
-   :limit    (get extra :limit    (or (get supplied :limit)    (get extra 'limit)))
-   :order-by (get extra :order-by (or (get supplied :order-by) (get extra 'order-by)))})
-
 (defn process-pagination [{::keys [floor-plan] :as env}]
   {:pre  [(s/valid? (s/keys :req [::floor-plan/column-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (->> (merge-pagination (env/extra-pagination env) (supplied-pagination env))
-    (stringify-order-by (::floor-plan/column-names floor-plan))))
+  (->> (pagination/merge-pagination (env/pagination-fallbacks env) (supplied-pagination env))
+    (pagination/stringify-order-by (::floor-plan/column-names floor-plan))))
 
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
