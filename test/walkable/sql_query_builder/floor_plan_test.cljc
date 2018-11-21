@@ -134,6 +134,12 @@
                                          :validate #{:x/a :x/b}}}})
         current-fallbacks (:people/all all-fallbacks)]
     (is (= (pagination/merge-pagination
+             nil
+             {:offset   4
+              :limit    8
+              :order-by [:x/random-key]})
+          {:offset 4, :limit 8, :order-by [:x/random-key]}))
+    (is (= (pagination/merge-pagination
              current-fallbacks
              {:offset   4
               :limit    8
@@ -144,5 +150,4 @@
              {:offset   4
               :limit    :invalid-type
               :order-by [:x/a :asc :x/b :desc]})
-          {:offset 4, :limit 10, :order-by [:x/a :asc :x/b :desc]})))
-)
+          {:offset 4, :limit 10, :order-by [:x/a :asc :x/b :desc]}))))
