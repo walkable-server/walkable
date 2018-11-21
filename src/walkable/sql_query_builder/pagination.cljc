@@ -9,6 +9,12 @@
   {:offset   (offset-fallback offset)
    :limit    (limit-fallback limit)
    :order-by (order-by-fallback order-by)})
+
+(defn wrap-validate-number [f]
+  (if (ifn? f)
+    #(and (number? %) (f %))
+    #(number? %)))
+
 (s/def ::column+order-params
   (s/cat
     :column ::expressions/namespaced-keyword

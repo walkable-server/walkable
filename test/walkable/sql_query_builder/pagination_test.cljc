@@ -14,3 +14,10 @@
 
   (is (nil? (sut/->order-by-string {}
               [:person/name [:person/age :desc]]))))
+
+(deftest wrap-validate-number-test
+  (is (= (->> (range 8) (map (sut/wrap-validate-number #(<= 2 % 4))))
+        [false false true true true false false false]))
+  (is (= (->> [:invalid 'types] (map (sut/wrap-validate-number #(<= 2 % 4))))
+        [false false])))
+
