@@ -177,9 +177,9 @@
   (reduce (fn [result [k {:keys [offset limit order-by]}]]
             (assoc result
               k
-              {:offset-fallback   (pagination/offset-fallback offset)
-               :limit-fallback    (pagination/limit-fallback limit)
-               :order-by-fallback (pagination/order-by-fallback order-by)}))
+              {:offset-fallback   (when offset (pagination/offset-fallback offset))
+               :limit-fallback    (when limit (pagination/limit-fallback limit))
+               :order-by-fallback (when order-by (pagination/order-by-fallback order-by))}))
     {} pagination-fallbacks))
 
 (defn compile-join-statements
