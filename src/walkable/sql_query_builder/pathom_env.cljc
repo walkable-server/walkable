@@ -58,12 +58,11 @@
     (when-let [->condition (get extra-conditions (dispatch-key env))]
       (->condition env))))
 
-(defn extra-pagination
+(defn pagination-fallbacks
   [env]
-  (let [extra-pagination (-> env :walkable.sql-query-builder/floor-plan
-                           :walkable.sql-query-builder.floor-plan/extra-pagination)]
-    (when-let [->pagination (get extra-pagination (dispatch-key env))]
-      (->pagination env))))
+  (let [fallbacks (-> env :walkable.sql-query-builder/floor-plan
+                    :walkable.sql-query-builder.floor-plan/pagination-fallbacks)]
+    (get fallbacks (dispatch-key env))))
 
 (defn params [env]
   (get-in env [:ast :params]))
