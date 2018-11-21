@@ -5,8 +5,7 @@
 Everything you need from an SQL database should be within walking
 distance.
 
-[![Build Status](https://travis-ci.org/walkable-server/walkable.svg?branch=master)](https://travis-ci.org/walkable-server/walkable)
-
+[![Build Status](https://travis-ci.com/walkable-server/walkable.svg?branch=master)](https://travis-ci.com/walkable-server/walkable)
 ```
 ;; no stable version yet
 [walkable "1.1.0-SNAPSHOT"]
