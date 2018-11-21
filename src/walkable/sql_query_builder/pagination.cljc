@@ -32,6 +32,17 @@
          (every? f xs))
       #(order-by-columns %))))
 
+(defn fallback [wrap-validate {:keys [default validate]}]
+  (fn [supplied]
+    (if ((wrap-validate validate) supplied)
+      supplied
+      default)))
+
+(def offset-fallback #(fallback wrap-validate-number %))
+(def limit-fallback offset-fallback)
+
+(def order-by-fallback #(fallback wrap-validate-order-by %))
+
 (def order-params->string
   {:asc        " ASC"
    :desc       " DESC"
