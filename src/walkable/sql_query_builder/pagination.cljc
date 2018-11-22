@@ -23,10 +23,12 @@
     :column ::expressions/namespaced-keyword
     :params (s/* #{:asc :desc :nils-first :nils-last})))
 
-(defn order-by-columns [order-by]
+(defn conform-order-by [clojuric-names order-by]
   (let [form (s/conform (s/+ ::column+order-params) order-by)]
     (when-not (= ::s/invalid form)
-      (map :column form))))
+      (let [form (filter #(contains? clojuric-names (:column %)) form)]
+        (when (seq form)
+          (vec form))))))
 
 (defn wrap-validate-order-by [f]
   (comp boolean

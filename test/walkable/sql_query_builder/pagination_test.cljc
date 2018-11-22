@@ -21,13 +21,16 @@
   (is (= (->> [:invalid 'types] (map (sut/wrap-validate-number #(<= 2 % 4))))
         [false false])))
 
-(deftest order-by-columns-test
-  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first :x/c])
-        [:x/a :x/b :x/c]))
-  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first :y])
-        nil))
-  (is (= (sut/order-by-columns [:x/a :asc :x/b :desc :nils-first 0])
-        nil)))
+(deftest conform-order-by-test
+  (is (= (map #(sut/conform-order-by {:x/a "`x/a`" :x/b "`x/b`"} %)
+           [[:x/a :asc :x/b :desc :nils-first :x/invalid-key]
+            [:x/a :asc :x/b :desc :nils-first 'invalid-type]
+            [:x/a :asc :x/b :desc :nils-first]
+            :invalid-type])
+        [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+         nil
+         [{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+         nil])))
 
 (deftest wrap-validate-order-by-test
   (is (= (map (sut/wrap-validate-order-by #{:x/a :x/b})
