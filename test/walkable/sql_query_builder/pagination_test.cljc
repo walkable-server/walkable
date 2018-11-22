@@ -49,15 +49,22 @@
         [2 2])))
 
 (deftest order-by-fallback-test
-  (is (= (map (sut/order-by-fallback {:default [:x/a] :validate #{:x/a :x/b}})
-           [[:x/a :asc :x/b :desc :nils-first]
-            [:x/a :asc :x/invalid-key :desc :nils-first]
-            [:x/a :asc :x/b :desc :nils-first :not-namespaced-keyword]
-            [:x/a :asc :x/b :desc :nils-first 'invalid-type]])
-        [[:x/a :asc :x/b :desc :nils-first]
-         [:x/a]
-         [:x/a]
-         [:x/a]])))
+  (is (= (map (sut/order-by-fallback {:default  [{:column :x/a, :params [:asc]}]
+                                      :validate #{:x/a :x/b}})
+           [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
+            [{:column :x/a, :params [:desc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
+            nil])
+        [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
+         [{:column :x/a, :params [:asc]}]
+         [{:column :x/a, :params [:asc]}]]))
+  (is (= (map (sut/order-by-fallback {:default  [{:column :x/a, :params [:asc]}]})
+           [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
+            [{:column :x/a, :params [:desc]} {:column :x/any-key, :params [:desc :nils-first]}]
+            nil])
+        [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
+         [{:column :x/a, :params [:desc]} {:column :x/any-key, :params [:desc :nils-first]}]
+         [{:column :x/a, :params [:asc]}]])))
+
 (deftest add-conformed-order-by-test
   (is (= (sut/add-conformed-order-by
            {:x/a "`x/a`" :x/b "`x/b`"}
