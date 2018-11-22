@@ -4,15 +4,6 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [clojure.set :as set]))
 
-(defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
-                        {:keys [offset limit order-by]}]
-  (let [offset-fallback   (or offset-fallback identity)
-        limit-fallback    (or limit-fallback identity)
-        order-by-fallback (or order-by-fallback identity)]
-    {:offset   (offset-fallback offset)
-     :limit    (limit-fallback limit)
-     :order-by (order-by-fallback order-by)}))
-
 (defn wrap-validate-number [f]
   (if (ifn? f)
     #(and (number? %) (f %))
@@ -80,4 +71,13 @@
     (assoc :order-by (->order-by-string clojuric-names conformed-order-by))
     (dissoc :conformed-order-by)))
 
+(defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
+                        {:keys [offset limit conformed-order-by order-by-columns]}]
+  (let [offset-fallback   (or offset-fallback identity)
+        limit-fallback    (or limit-fallback identity)
+        order-by-fallback (or order-by-fallback identity)]
+    {:offset             (offset-fallback offset)
+     :limit              (limit-fallback limit)
+     :order-by-columns   order-by-columns
+     :conformed-order-by (order-by-fallback conformed-order-by)}))
 
