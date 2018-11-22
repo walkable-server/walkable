@@ -21,6 +21,9 @@
         (when (seq form)
           (vec form))))))
 
+(defn conform-fallback-default [clojuric-names fallback]
+  (update fallback :default #(conform-order-by clojuric-names %)))
+
 (defn wrap-validate-order-by [f]
   (comp boolean
     (if (ifn? f)
