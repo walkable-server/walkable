@@ -288,9 +288,10 @@
         cardinality (merge (flatten-multi-keys cardinality)
                       (zipmap (keys aggregators) (repeat :one)))
 
-        true-columns (set (apply concat columns (vals joins)))
-        columns      (set (concat true-columns
-                            (keys pseudo-columns)))]
+        true-columns   (set (apply concat columns (vals joins)))
+        columns        (set (concat true-columns
+                              (keys pseudo-columns)))
+        clojuric-names (clojuric-names emitter (concat columns (keys aggregators)))]
     #::{:column-keywords  columns
         :ident-keywords   (set (keys idents))
         :emitter          emitter
@@ -310,10 +311,10 @@
         :cardinality            cardinality
         :ident-conditions       conditional-idents
         :extra-conditions       (compile-extra-conditions extra-conditions)
-        :pagination-fallbacks   (compile-pagination-fallbacks pagination-fallbacks)
+        :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)
         :column-names           (merge (column-names emitter true-columns)
                                   pseudo-columns aggregators)
-        :clojuric-names         (clojuric-names emitter (concat columns (keys aggregators)))
+        :clojuric-names         clojuric-names
         :join-statements        (compile-join-statements emitter joins)
         :aggregators            (set (keys aggregators))
         :join-filter-subqueries (compile-join-filter-subqueries emitter joins)}))
