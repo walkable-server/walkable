@@ -58,3 +58,12 @@
          [:x/a]
          [:x/a]
          [:x/a]])))
+(deftest add-conformed-order-by-test
+  (is (= (sut/add-conformed-order-by
+           {:x/a "`x/a`" :x/b "`x/b`"}
+           {:order-by [:x/a :asc
+                       :x/b :desc :nils-first]})
+        {:conformed-order-by
+         [{:column :x/a, :params [:asc]}
+          {:column :x/b, :params [:desc :nils-first]}]})))
+

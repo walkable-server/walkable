@@ -67,6 +67,11 @@
                  (apply str)))))
       (clojure.string/join ", "))))
 
+(defn add-conformed-order-by [clojuric-names {:keys [order-by] :as m}]
+  (-> m
+    (assoc :conformed-order-by (conform-order-by clojuric-names order-by))
+    (dissoc :order-by)))
+
 
 (defn stringify-order-by [clojuric-names m]
   (update m :order-by #(->order-by-string clojuric-names %)))
