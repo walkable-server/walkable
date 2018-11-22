@@ -75,6 +75,9 @@
 (defn add-order-by-columns [{:keys [conformed-order-by] :as m}]
   (assoc m :order-by-columns (into #{} (map :column) conformed-order-by)))
 
+(defn stringify-order-by [clojuric-names {:keys [conformed-order-by] :as m}]
+  (-> m
+    (assoc :order-by (->order-by-string clojuric-names conformed-order-by))
+    (dissoc :conformed-order-by)))
 
-(defn stringify-order-by [clojuric-names m]
-  (update m :order-by #(->order-by-string clojuric-names %)))
+

@@ -77,3 +77,16 @@
           {:column :x/b, :params [:desc :nils-first]}],
          :order-by-columns #{:x/a :x/b}})))
 
+(deftest stringify-order-by-test
+  (is (= (sut/stringify-order-by
+           {:x/a "`x/a`" :x/b "`x/b`"}
+           {:conformed-order-by
+            [{:column :x/a, :params [:asc]}
+             {:column :x/b, :params [:desc :nils-first]}]})
+        {:order-by "`x/a` ASC, `x/b` DESC NULLS FIRST"}))
+
+  (is (= (sut/stringify-order-by
+           {:x/a "`x/a`" :x/b "`x/b`"}
+           {:conformed-order-by
+            nil})
+        {:order-by nil})))
