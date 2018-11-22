@@ -173,13 +173,14 @@
     {} extra-conditions))
 
 (defn compile-pagination-fallbacks
-  [pagination-fallbacks]
+  [clojuric-names pagination-fallbacks]
   (reduce (fn [result [k {:keys [offset limit order-by]}]]
             (assoc result
               k
               {:offset-fallback   (pagination/offset-fallback offset)
                :limit-fallback    (pagination/limit-fallback limit)
-               :order-by-fallback (pagination/order-by-fallback order-by)}))
+               :order-by-fallback (pagination/order-by-fallback
+                                    (pagination/conform-fallback-default clojuric-names order-by))}))
     {} pagination-fallbacks))
 
 (defn compile-join-statements
