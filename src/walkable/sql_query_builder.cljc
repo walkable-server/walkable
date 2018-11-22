@@ -81,10 +81,12 @@
    :order-by (env/order-by env)})
 
 (defn process-pagination [{::keys [floor-plan] :as env}]
-  {:pre  [(s/valid? (s/keys :req [::floor-plan/column-names]) floor-plan)]
-   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
-  (->> (pagination/merge-pagination (env/pagination-fallbacks env) (supplied-pagination env))
-    (pagination/stringify-order-by (::floor-plan/clojuric-names floor-plan))))
+  {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) floor-plan)]
+   :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
+  (pagination/process-pagination
+    (::floor-plan/clojuric-names floor-plan)
+    (supplied-pagination env)
+    (env/pagination-fallbacks env)))
 
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."

@@ -84,3 +84,10 @@
      :order-by-columns   order-by-columns
      :conformed-order-by (order-by-fallback conformed-order-by)}))
 
+(defn process-pagination
+  [clojuric-names supplied-pagination pagination-fallbacks]
+  (->> supplied-pagination
+    (add-conformed-order-by clojuric-names)
+    (add-order-by-columns)
+    (merge-pagination pagination-fallbacks)
+    (stringify-order-by clojuric-names)))
