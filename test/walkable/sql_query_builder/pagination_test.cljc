@@ -4,16 +4,12 @@
             [clojure.test :as t :refer [deftest testing is]]))
 
 (deftest ->order-by-string-tests
-  (is (= (sut/->order-by-string {:person/name "p.n" :person/age "p.a"}
-           [:person/name
-            :person/age :desc :nils-last])
-        "p.n, p.a DESC NULLS LAST"))
+  (is (= (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+           [{:column :person/name} {:column :person/age, :params [:desc :nils-last]}])
+        "`p`.`n`, `p`.`a` DESC NULLS LAST"))
 
-  (is (nil? (sut/->order-by-string {:person/name "p.n" :person/age "p.a"}
-              [])))
-
-  (is (nil? (sut/->order-by-string {}
-              [:person/name [:person/age :desc]]))))
+  (is (nil? (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+              nil))))
 
 (deftest wrap-validate-number-test
   (is (= (->> (range 8) (map (sut/wrap-validate-number #(<= 2 % 4))))
