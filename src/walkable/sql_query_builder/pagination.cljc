@@ -75,13 +75,12 @@
     (dissoc :conformed-order-by)))
 
 (defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
-                        {:keys [offset limit conformed-order-by order-by-columns]}]
+                        {:keys [offset limit conformed-order-by]}]
   (let [offset-fallback   (or offset-fallback identity)
         limit-fallback    (or limit-fallback identity)
         order-by-fallback (or order-by-fallback identity)]
     {:offset             (offset-fallback offset)
      :limit              (limit-fallback limit)
-     :order-by-columns   order-by-columns
      :conformed-order-by (order-by-fallback conformed-order-by)}))
 
 (defn process-pagination

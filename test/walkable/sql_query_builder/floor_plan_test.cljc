@@ -138,31 +138,25 @@
              nil
              {:offset             4
               :limit              8
-              :order-by-columns   #{:x/b}
               :conformed-order-by [{:column :x/b}]})
           {:offset             4,
            :limit              8,
-           :order-by-columns   #{:x/b}
            :conformed-order-by [{:column :x/b}]}))
     (is (= (pagination/merge-pagination
              current-fallbacks
              {:offset             4
               :limit              8
-              :order-by-columns   #{:x/invalid-key}
               :conformed-order-by [:x/invalid-key]})
           {:offset             4,
            :limit              10,
-           :order-by-columns   #{:x/invalid-key},
            :conformed-order-by [{:column :x/a}]}))
     (is (= (pagination/merge-pagination
              current-fallbacks
              {:offset             4
               :limit              :invalid-type
-              :order-by-columns   #{:x/a}
               :conformed-order-by [{:column :x/a}]})
           {:offset             4,
            :limit              10,
-           :order-by-columns   #{:x/a},
            :conformed-order-by [{:column :x/a}]}))))
 
 (deftest merge-pagination-partially-test
@@ -176,19 +170,15 @@
              current-fallbacks
              {:offset             4
               :limit              8
-              :order-by-columns   #{:x/a}
               :conformed-order-by [{:column :x/a}]})
           {:offset             4
            :limit              8
-           :order-by-columns   #{:x/a}
            :conformed-order-by [{:column :x/a}]}))
     (is (= (pagination/merge-pagination
              current-fallbacks
              {:offset             6
               :limit              8
-              :order-by-columns   #{:x/random-key}
               :conformed-order-by [{:column :x/random-key}]})
           {:offset             5
            :limit              8
-           :order-by-columns   #{:x/random-key}
            :conformed-order-by [{:column :x/random-key}]}))))
