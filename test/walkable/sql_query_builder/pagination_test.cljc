@@ -34,12 +34,15 @@
 
 (deftest wrap-validate-order-by-test
   (is (= (map (sut/wrap-validate-order-by #{:x/a :x/b})
-           [[:x/a :asc :x/b :desc :nils-first]
-            [:x/a :asc :x/b :desc :nils-first :x/invalid-key]
-            [:x/a :asc :x/b :desc :nils-first :not-namespaced-keyword]
-            [:x/a :asc :x/b :desc :nils-first 'invalid-type]
-            :invalid-type])
-        [true false false false false])))
+           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+            [{:column :x/a, :params [:asc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
+            nil])
+        [true false false]))
+  (is (= (map (sut/wrap-validate-order-by nil)
+           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+            [{:column :x/a, :params [:asc]} {:column :x/any-key, :params [:desc :nils-first]}]
+            nil])
+        [true true false])))
 
 (deftest offset-fallback-test
   (is (= (map (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})

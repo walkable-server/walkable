@@ -33,9 +33,10 @@
 (defn wrap-validate-order-by [f]
   (comp boolean
     (if (ifn? f)
-      #(when-let [xs (order-by-columns %)]
-         (every? f xs))
-      #(order-by-columns %))))
+      (fn [conformed-order-by]
+        (when conformed-order-by
+          (every? f (map :column conformed-order-by))))
+      identity)))
 
 (defn fallback [wrap-validate {:keys [default validate]}]
   (when default
