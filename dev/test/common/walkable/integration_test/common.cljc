@@ -76,8 +76,37 @@
          [:farmer/number :farmer/name
           {:farmer/cow [:cow/index :cow/color]}]}]
       :expected
-      {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
-
+      {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}
+     {:message  "no pagination"
+      :query
+      `[{:farmers/all
+         [:farmer/number :farmer/name
+          {:farmer/cow [:cow/index :cow/color]}]}]
+      :expected
+      #:farmers {:all [#:farmer{:number 1, :name "jon", :cow #:cow {:index 10, :color "black"}}
+                       #:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
+   :farmer-cow-paginated
+   {:core-floor-plan (assoc farmer-cow-floor-plan
+                       :pagination-fallbacks
+                       {:farmers/all
+                        {:order-by {:default  [:farmer/name :desc]
+                                    :validate #{:farmer/name :farmer/number}}}})
+    :test-suite
+    [{:message  "pagination fallbacks"
+      :query
+      `[{:farmers/all
+         [:farmer/number :farmer/name
+          {:farmer/cow [:cow/index :cow/color]}]}]
+      :expected
+      #:farmers{:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}
+                      #:farmer{:number 1, :name "jon", :cow #:cow {:index 10, :color "black"}}]}}
+     {:message  "supplied pagination"
+      :query
+      `[{(:farmers/all {:limit 1})
+         [:farmer/number :farmer/name
+          {:farmer/cow [:cow/index :cow/color]}]}]
+      :expected
+      #:farmers {:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
    :kid-toy
    {:core-floor-plan kid-toy-floor-plan
     :test-suite
