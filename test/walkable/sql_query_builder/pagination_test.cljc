@@ -67,3 +67,13 @@
          [{:column :x/a, :params [:asc]}
           {:column :x/b, :params [:desc :nils-first]}]})))
 
+(deftest add-order-by-columns-test
+  (is (= (sut/add-order-by-columns
+           {:conformed-order-by
+            [{:column :x/a, :params [:asc]}
+             {:column :x/b, :params [:desc :nils-first]}]})
+        {:conformed-order-by
+         [{:column :x/a, :params [:asc]}
+          {:column :x/b, :params [:desc :nils-first]}],
+         :order-by-columns #{:x/a :x/b}})))
+
