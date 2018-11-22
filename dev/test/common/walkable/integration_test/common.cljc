@@ -106,7 +106,14 @@
          [:farmer/number :farmer/name
           {:farmer/cow [:cow/index :cow/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
+      #:farmers {:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}
+     {:message  "without order-by column in query"
+      :query
+      `[{(:farmers/all {:limit 1})
+         [:farmer/number
+          {:farmer/cow [:cow/index :cow/color]}]}]
+      :expected
+      #:farmers {:all [#:farmer{:number 2, :cow #:cow {:index 20, :color "brown"}}]}}]}
    :kid-toy
    {:core-floor-plan kid-toy-floor-plan
     :test-suite
