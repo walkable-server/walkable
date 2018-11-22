@@ -53,19 +53,19 @@
    :nils-first " NULLS FIRST"
    :nils-last  " NULLS LAST"})
 
-(defn ->order-by-string [column-names order-by]
+(defn ->order-by-string [clojuric-names order-by]
   (let [form (s/conform (s/+ ::column+order-params) order-by)]
     (when-not (= ::s/invalid form)
-      (let [form (filter #(contains? column-names (:column %)) form)]
+      (let [form (filter #(contains? clojuric-names (:column %)) form)]
         (when (seq form)
           (->> form
             (map (fn [{:keys [column params]}]
                    (str
-                     (get column-names column)
+                     (get clojuric-names column)
                      (->> params
                        (map order-params->string)
                        (apply str)))))
             (clojure.string/join ", ")))))))
 
-(defn stringify-order-by [column-names m]
-  (update m :order-by #(->order-by-string column-names %)))
+(defn stringify-order-by [clojuric-names m]
+  (update m :order-by #(->order-by-string clojuric-names %)))

@@ -84,7 +84,7 @@
   {:pre  [(s/valid? (s/keys :req [::floor-plan/column-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by]) %)]}
   (->> (pagination/merge-pagination (env/pagination-fallbacks env) (supplied-pagination env))
-    (pagination/stringify-order-by (::floor-plan/column-names floor-plan))))
+    (pagination/stringify-order-by (::floor-plan/clojuric-names floor-plan))))
 
 (defn ident->condition
   "Converts given ident key in env to equivalent condition dsl."
