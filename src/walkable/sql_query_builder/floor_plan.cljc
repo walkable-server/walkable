@@ -173,13 +173,14 @@
     {} extra-conditions))
 
 (defn compile-pagination-fallbacks
-  [pagination-fallbacks]
+  [clojuric-names pagination-fallbacks]
   (reduce (fn [result [k {:keys [offset limit order-by]}]]
             (assoc result
               k
-              {:offset-fallback   (when offset (pagination/offset-fallback offset))
-               :limit-fallback    (when limit (pagination/limit-fallback limit))
-               :order-by-fallback (when order-by (pagination/order-by-fallback order-by))}))
+              {:offset-fallback   (pagination/offset-fallback offset)
+               :limit-fallback    (pagination/limit-fallback limit)
+               :order-by-fallback (pagination/order-by-fallback
+                                    (pagination/conform-fallback-default clojuric-names order-by))}))
     {} pagination-fallbacks))
 
 (defn compile-join-statements
@@ -287,9 +288,10 @@
         cardinality (merge (flatten-multi-keys cardinality)
                       (zipmap (keys aggregators) (repeat :one)))
 
-        true-columns (set (apply concat columns (vals joins)))
-        columns      (set (concat true-columns
-                            (keys pseudo-columns)))]
+        true-columns   (set (apply concat columns (vals joins)))
+        columns        (set (concat true-columns
+                              (keys pseudo-columns)))
+        clojuric-names (clojuric-names emitter (concat columns (keys aggregators)))]
     #::{:column-keywords  columns
         :ident-keywords   (set (keys idents))
         :emitter          emitter
@@ -309,10 +311,10 @@
         :cardinality            cardinality
         :ident-conditions       conditional-idents
         :extra-conditions       (compile-extra-conditions extra-conditions)
-        :pagination-fallbacks   (compile-pagination-fallbacks pagination-fallbacks)
+        :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)
         :column-names           (merge (column-names emitter true-columns)
                                   pseudo-columns aggregators)
-        :clojuric-names         (clojuric-names emitter (concat columns (keys aggregators)))
+        :clojuric-names         clojuric-names
         :join-statements        (compile-join-statements emitter joins)
         :aggregators            (set (keys aggregators))
         :join-filter-subqueries (compile-join-filter-subqueries emitter joins)}))

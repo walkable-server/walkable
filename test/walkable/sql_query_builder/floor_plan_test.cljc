@@ -125,6 +125,7 @@
 
 (deftest merge-pagination-test
   (let [all-fallbacks     (sut/compile-pagination-fallbacks
+                            {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
                             {:people/all
                              {:offset   {:default  5
                                          :validate #(<= 2 % 4)}
@@ -135,19 +136,49 @@
         current-fallbacks (:people/all all-fallbacks)]
     (is (= (pagination/merge-pagination
              nil
-             {:offset   4
-              :limit    8
-              :order-by [:x/random-key]})
-          {:offset 4, :limit 8, :order-by [:x/random-key]}))
+             {:offset             4
+              :limit              8
+              :conformed-order-by [{:column :x/b}]})
+          {:offset             4,
+           :limit              8,
+           :conformed-order-by [{:column :x/b}]}))
     (is (= (pagination/merge-pagination
              current-fallbacks
-             {:offset   4
-              :limit    8
-              :order-by [:x/invalid-key]})
-          {:offset 4, :limit 10, :order-by [:x/a]}))
+             {:offset             4
+              :limit              8
+              :conformed-order-by [:x/invalid-key]})
+          {:offset             4,
+           :limit              10,
+           :conformed-order-by [{:column :x/a}]}))
     (is (= (pagination/merge-pagination
              current-fallbacks
-             {:offset   4
-              :limit    :invalid-type
-              :order-by [:x/a :asc :x/b :desc]})
-          {:offset 4, :limit 10, :order-by [:x/a :asc :x/b :desc]}))))
+             {:offset             4
+              :limit              :invalid-type
+              :conformed-order-by [{:column :x/a}]})
+          {:offset             4,
+           :limit              10,
+           :conformed-order-by [{:column :x/a}]}))))
+
+(deftest merge-pagination-partially-test
+  (let [all-fallbacks     (sut/compile-pagination-fallbacks
+                            {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
+                            {:people/all
+                             {:offset {:default  5
+                                       :validate #(<= 2 % 4)}}})
+        current-fallbacks (:people/all all-fallbacks)]
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset             4
+              :limit              8
+              :conformed-order-by [{:column :x/a}]})
+          {:offset             4
+           :limit              8
+           :conformed-order-by [{:column :x/a}]}))
+    (is (= (pagination/merge-pagination
+             current-fallbacks
+             {:offset             6
+              :limit              8
+              :conformed-order-by [{:column :x/random-key}]})
+          {:offset             5
+           :limit              8
+           :conformed-order-by [{:column :x/random-key}]}))))
