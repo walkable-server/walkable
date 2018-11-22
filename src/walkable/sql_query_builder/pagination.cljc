@@ -87,6 +87,6 @@
   [clojuric-names supplied-pagination pagination-fallbacks]
   (->> supplied-pagination
     (add-conformed-order-by clojuric-names)
-    (add-order-by-columns)
     (merge-pagination pagination-fallbacks)
+    (add-order-by-columns)
     (stringify-order-by clojuric-names)))
