@@ -323,6 +323,9 @@
                         :params     params#}))))))))
 
 (import-infix-operators {}
+  [like])
+
+(import-infix-operators {}
   {bit-and "&"
    bit-or  "|"})
 
