@@ -303,8 +303,9 @@
                           (process-query
                             (-> env
                               (assoc :ast join-child)
-                              (assoc-in [(get env ::p/entity-key) source-column]
-                                (get e source-column)))))
+                              (as-> env
+                                (update env (get env ::p/entity-key)
+                                  #(assoc (p/maybe-atom %) source-column (get e source-column)))))))
 
                         query-strings (map #(emitter/->query-string (:query-string-input %)) query-string-inputs)
                         all-params    (map :query-params query-string-inputs)
@@ -414,8 +415,9 @@
                             (process-query
                               (-> env
                                 (assoc :ast join-child)
-                                (assoc-in [(get env ::p/entity-key) source-column]
-                                  (get e source-column)))))
+                                (as-> env
+                                  (update env (get env ::p/entity-key)
+                                    #(assoc (p/maybe-atom %) source-column (get e source-column)))))))
 
                           query-strings (map #(emitter/->query-string (:query-string-input %)) query-string-inputs)
                           all-params    (map :query-params query-string-inputs)
