@@ -4,7 +4,7 @@
             [clojure.test :as t :refer [deftest testing is]]))
 
 (deftest inline-params-tests
-  (is (= (sut/inline-params
+  (is (= (sut/inline-params {}
            {:raw-string " ? "
             :params     [{:raw-string "2018 - `human`.`yob`"
                           :params     []}]})
