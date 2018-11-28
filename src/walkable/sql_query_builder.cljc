@@ -168,7 +168,7 @@
                                                                    (column-name env)
                                                                    column-name))]
                     (when-not (= ::s/invalid form)
-                      (expressions/inline-params
+                      (expressions/inline-params {}
                         {:raw-string (str "(?) AS " clojuric-name)
                          :params     [(expressions/process-expression
                                         {:column-names column-names}
@@ -179,7 +179,7 @@
       (when target-column
         (let [form (s/conform ::expressions/expression (env/source-column-value env))]
           (when-not (= ::s/invalid form)
-            [(expressions/inline-params
+            [(expressions/inline-params {}
                {:raw-string (str "? AS " (get clojuric-names target-column))
                 :params     [(expressions/process-expression
                                {:column-names column-names}
@@ -192,7 +192,7 @@
     (->> {:raw-string (->> (repeat (count xs) \?)
                         (clojure.string/join ", "))
           :params     xs}
-      (expressions/inline-params)
+      (expressions/inline-params {})
       ((juxt :raw-string :params)))))
 
 (defn process-all-params
