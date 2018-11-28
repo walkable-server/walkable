@@ -6,15 +6,15 @@
             [clojure.string :as string]
             [clojure.set :as set]))
 
-(defn inline-params
-  [{:keys [raw-string params]}]
-  {:params     (flatten (map :params params))
-   :raw-string (->> (conj (mapv :raw-string params) nil)
-                 (interleave (string/split (if (= "?" raw-string)
-                                             " ? "
-                                             raw-string)
-                               #"\?"))
-                 (apply str))})
+(defrecord SymbolicExpression [name])
+
+(defn se [n]
+  (SymbolicExpression. n))
+
+(defn symbolic-exp? [x]
+  (instance? SymbolicExpression x))
+
+(declare inline-params)
 
 (defn namespaced-keyword?
   [x]
@@ -34,6 +34,7 @@
 
 (s/def ::expression
   (s/or
+    :symbolic-expression symbolic-exp?
     :nil nil?
     :number number?
     :boolean boolean?
@@ -103,7 +104,7 @@
       (str "First argument to `cast` is not an invalid expression."))
     (assert type-str
       (str "Invalid type to `cast`. You may want to implement `cast-type` for the given type."))
-    (inline-params
+    (inline-params env
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
 
@@ -357,7 +358,7 @@
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (inline-params
+  (inline-params env
     (process-operator env
       [operator (mapv #(process-expression env %) params)])))
 
@@ -370,18 +371,32 @@
   (let [subquery (-> env :join-filter-subqueries join-key)]
     (assert subquery
       (str "No join filter found for join key " join-key))
-    (inline-params
+    (inline-params env
       {:raw-string subquery
        :params     [(process-expression env expression)]})))
 
 (defmethod process-expression :join-filters
   [env [_kw join-filters]]
-  (inline-params
+  (inline-params env
     {:raw-string (str "("
                    (clojure.string/join ") AND ("
                      (repeat (count join-filters) \?))
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
+
+(defmethod process-expression :symbolic-expression
+  [{::keys [symbolic-expressions] :as env} [_kw symbolic-exp]]
+  (let [n (:name symbolic-exp)]
+    (if (contains? symbolic-expressions n)
+      (let [value (get symbolic-expressions n)
+            form  (s/conform ::expression value)]
+        (assert (not= ::s/invalid form)
+          (str "Invalid expression: " value))
+        (inline-params env
+          {:raw-string "?"
+           :params     [(process-expression env form)]}))
+      {:raw-string "?"
+       :params     symbolic-exp})))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
@@ -416,7 +431,7 @@
                                            column))]
         (assert (not= ::s/invalid form)
           (str "Invalid pseudo column for " column-keyword ": " column))
-        (inline-params
+        (inline-params env
           {:raw-string "(?)"
            :params     [(process-expression env form)]})))))
 
@@ -474,6 +489,26 @@
     (let [else?           (= 3 n)]
       {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
+
+(defn inline-symbolic-expressions
+  [{::keys [symbolic-expressions] :as env} {:keys [raw-string params]}]
+  {:raw-string raw-string
+   :params     (mapv (fn [p]
+                       (if (symbolic-exp? p)
+                         (process-expression env [:symbolic-expression p])
+                         p))
+                 params)})
+
+(defn inline-params
+  [env {:keys [raw-string params]}]
+  (inline-symbolic-expressions env
+    {:params     (into [] (flatten (map :params params)))
+     :raw-string (->> (conj (mapv :raw-string params) nil)
+                   (interleave (string/split (if (= "?" raw-string)
+                                               " ? "
+                                               raw-string)
+                                 #"\?"))
+                   (apply str))}))
 
 (defn parameterize
   [env clauses]
