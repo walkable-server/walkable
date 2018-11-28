@@ -5,7 +5,7 @@
   :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]
                  [org.clojure/clojurescript "1.10.339" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.176"]
-                 [com.wsscode/pathom "2.1.1"]
+                 [com.wsscode/pathom "2.2.0"]
                  [org.clojure/core.async "0.4.474" :scope "provided"]]
   :resource-paths ["resources"]
   :test-selectors {:default     (complement :integration)
