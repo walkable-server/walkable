@@ -107,7 +107,7 @@
   the entity from upper level.
 
   - extra-condition: extra constraints for an ident or a join defined
-  in schema.
+  in floor-plan.
 
   - supplied-condition: ad-hoc condition supplied in om.next
   query (often by client apps)"
@@ -249,7 +249,7 @@
 
   The env given to the Pathom parser must contains:
 
-  - floor-plan: output of compile-schema
+  - floor-plan: output of compile-floor-plan
 
   - sql-db: a database instance
 
@@ -348,7 +348,7 @@
   puts relevent data to ::p/entity ready for p/map-reader plugin.
 
   The env given to the Pathom parser must contains:
-  - floor-plan: output of compile-schema
+  - floor-plan: output of compile-floor-plan
   - sql-db: a database instance
   - run-query: a function that run an SQL query (optionally with
   params) against the given sql-db. Shares the same input with

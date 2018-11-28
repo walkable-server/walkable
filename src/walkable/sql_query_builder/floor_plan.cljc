@@ -32,7 +32,7 @@
    :with-join-table    ::with-join-table))
 
 (defn join-statements
-  "Helper for compile-schema. Generates JOIN statement strings for all
+  "Helper for compile-floor-plan. Generates JOIN statement strings for all
   join keys given their join sequence."
   [emitter join-seq]
   {:pre  [(s/valid? ::join-seq join-seq)]
@@ -222,7 +222,7 @@
       (expand-denpendencies m'))))
 
 (defn separate-idents
-  "Helper function for compile-schema. Separates all user-supplied
+  "Helper function for compile-floor-plan. Separates all user-supplied
   idents to unconditional idents and conditional idents for further
   processing."
   [idents]

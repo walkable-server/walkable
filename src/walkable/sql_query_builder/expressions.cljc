@@ -407,7 +407,7 @@
   (let [column (get column-names column-keyword)]
     (assert column
       (str "Invalid column keyword " column-keyword
-        ". You may want to add it to schema."))
+        ". You may want to add it to `:columns` in your floor-plan."))
     (if (string? column)
       {:raw-string column
        :params     []}
