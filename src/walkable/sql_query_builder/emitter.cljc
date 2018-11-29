@@ -107,3 +107,10 @@
   (let [union-query (clojure.string/join "\nUNION ALL\n"
                       query-strings)]
     (cons union-query (apply concat params))))
+
+(defn emitter->batch-query [emitter]
+  (fn [query-strings params]
+    (-> (if (= 1 (count query-strings))
+          query-strings
+          (map #(wrap-select emitter %) query-strings))
+      (batch-query params))))
