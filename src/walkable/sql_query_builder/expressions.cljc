@@ -423,7 +423,7 @@
 
 (defmethod process-expression :string
   [_env [_kw string]]
-  {:raw-string " ? "
+  {:raw-string "?"
    :params     string})
 
 (defmethod process-expression :column
@@ -513,10 +513,9 @@
   (inline-symbolic-expressions env
     {:params     (into [] (flatten (map :params params)))
      :raw-string (->> (conj (mapv :raw-string params) nil)
-                   (interleave (string/split (if (= "?" raw-string)
-                                               " ? "
-                                               raw-string)
-                                 #"\?"))
+                   (interleave (if (= "?" raw-string)
+                                 ["" ""]
+                                 (string/split raw-string #"\?")))
                    (apply str))}))
 
 (defn parameterize
