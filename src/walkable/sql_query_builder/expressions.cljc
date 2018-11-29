@@ -132,8 +132,7 @@
 (defmethod process-operator :and
   [_env [_operator params]]
   (if (empty? params)
-    {:raw-string "?"
-     :params     [true]}
+    (single-raw-string true)
     {:raw-string (clojure.string/join " AND "
                    (repeat (count params) "(?)"))
      :params     params}))
@@ -143,8 +142,7 @@
 (defmethod process-operator :or
   [_env [_operator params]]
   (if (empty? params)
-    {:raw-string "?"
-     :params     [false]}
+    (single-raw-string false)
     {:raw-string (clojure.string/join " OR "
                    (repeat (count params) "(?)"))
      :params     params}))
@@ -434,8 +432,7 @@
 
 (defmethod process-expression :string
   [_env [_kw string]]
-  {:raw-string "?"
-   :params     [string]})
+  (single-raw-string string))
 
 (defmethod process-expression :column
   [{:keys [static-columns] :as env} [_kw column-keyword]]
