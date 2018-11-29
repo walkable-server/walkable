@@ -411,7 +411,7 @@
           {:raw-string "?"
            :params     [(process-expression env form)]}))
       {:raw-string "?"
-       :params     symbolic-exp})))
+       :params     [symbolic-exp]})))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
@@ -431,7 +431,7 @@
 (defmethod process-expression :string
   [_env [_kw string]]
   {:raw-string "?"
-   :params     string})
+   :params     [string]})
 
 (defmethod process-expression :column
   [{:keys [column-names pathom-env] :as env} [_kw column-keyword]]
