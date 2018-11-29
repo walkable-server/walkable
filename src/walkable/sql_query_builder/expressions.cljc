@@ -132,7 +132,8 @@
 (defmethod process-operator :or
   [_env [_operator params]]
   (if (empty? params)
-    conformed-nil
+    {:raw-string "?"
+     :params     [false]}
     {:raw-string (clojure.string/join " OR "
                    (repeat (count params) "(?)"))
      :params     params}))
