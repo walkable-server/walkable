@@ -125,6 +125,10 @@
 
 (defmethod operator? :and [_operator] true)
 
+(defn single-raw-string [x]
+  {:raw-string "?"
+   :params     [x]})
+
 (defmethod process-operator :and
   [_env [_operator params]]
   (if (empty? params)
