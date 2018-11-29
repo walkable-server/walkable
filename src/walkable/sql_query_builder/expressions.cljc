@@ -121,9 +121,8 @@
 (defmethod process-operator :and
   [_env [_operator params]]
   (if (empty? params)
-    {:raw-string "(?)"
-     :params     [{:raw-string " ? "
-                   :params     [true]}]}
+    {:raw-string "?"
+     :params     [true]}
     {:raw-string (clojure.string/join " AND "
                    (repeat (count params) "(?)"))
      :params     params}))
