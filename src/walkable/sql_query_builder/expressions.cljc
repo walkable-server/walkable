@@ -21,7 +21,6 @@
                  expr))
     exprs))
 
-#?(:clj
 (declare inline-params)
 
 (defn namespaced-keyword?
