@@ -125,9 +125,9 @@
                 {:x/b [:= :b/bar "mere"]}])
         {:params ["meh" "mere"],
          :raw-string (str "((x.a_id IN (SELECT a.id FROM a"
-                       " WHERE (a.foo)=( ? ))))"
+                       " WHERE (a.foo)=(?))))"
                        " OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id"
-                       " WHERE (b.bar)=( ? ))))")})))
+                       " WHERE (b.bar)=(?))))")})))
 
 #?(:clj
    (deftest operator-sql-names-test
