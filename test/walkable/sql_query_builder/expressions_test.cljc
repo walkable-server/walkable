@@ -35,7 +35,7 @@
 
 (deftest or-tests
   (is (= (sut/process-operator {} [:or []])
-        {:raw-string "NULL", :params []}))
+        {:raw-string "?", :params [false]}))
   (is (= (sut/process-operator {} [:or [{}]])
         {:raw-string "(?)", :params [{}]}))
   (is (= (sut/process-operator {} [:or [{} {}]])
