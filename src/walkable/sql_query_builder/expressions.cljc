@@ -433,8 +433,8 @@
   (if-let [column (get static-columns column-keyword)]
     {:raw-string column
      :params     []}
-    {:raw-string "?"
-     :params     [(SymbolicExpression. column-keyword)]}))
+    ;; non-static columns are converted to symbolic expressions
+    (single-raw-string (SymbolicExpression. column-keyword))))
 
 (defmethod operator? :case [_operator] true)
 
