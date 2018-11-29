@@ -72,6 +72,14 @@
   {:raw-string "NULL"
    :params     []})
 
+(def conformed-true
+  {:raw-string "TRUE"
+   :params     []})
+
+(def conformed-false
+  {:raw-string "FALSE"
+   :params     []})
+
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
   (fn [type-kw type-params] type-kw))
@@ -409,8 +417,9 @@
 
 (defmethod process-expression :boolean
   [_env [_kw value]]
-  {:raw-string (if value "TRUE" "FALSE")
-   :params     []})
+  (if value
+    conformed-true
+    conformed-false))
 
 (defmethod process-expression :string
   [_env [_kw string]]
