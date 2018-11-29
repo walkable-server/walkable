@@ -318,3 +318,78 @@
         :join-statements        (compile-join-statements emitter joins)
         :aggregators            (set (keys aggregators))
         :join-filter-subqueries (compile-join-filter-subqueries emitter joins)}))
+
+(defn compile-floor-plan*
+  "Given a brief user-supplied floor-plan, derives an efficient floor-plan
+  ready for pull-entities to use."
+  [{:keys [columns pseudo-columns required-columns idents
+           emitter extra-conditions pagination-fallbacks
+           reversed-joins joins cardinality
+           aggregators batch-query
+           unconditional-idents conditional-idents
+           join-statements
+           target-columns source-columns]
+    :or   {emitter              emitter/default-emitter
+           aggregators          {}
+           extra-conditions     {}
+           pagination-fallbacks {}
+           joins                {}
+           cardinality          {}}
+    :as   input-floor-plan}]
+  (merge #::{:cardinality      cardinality
+             :emitter          emitter
+             :batch-query      batch-query
+             :target-columns   target-columns
+             :source-columns   source-columns
+             :ident-conditions conditional-idents
+             :required-columns required-columns
+             :join-statements  join-statements
+             :extra-conditions extra-conditions}
+    (let [true-column-keywords (set (apply concat columns (vals joins)))
+          true-columns         (column-names emitter true-column-keywords)
+          columns              (set (concat true-column-keywords
+                                      (keys pseudo-columns)))
+          clojuric-names       (clojuric-names emitter
+                                 (concat columns (keys aggregators)))
+          static-columns       (column-names emitter true-column-keywords)]
+      #::{:column-keywords columns
+          :ident-keywords  (set (keys idents))
+          :target-tables   (merge (conditional-idents->target-tables emitter conditional-idents)
+                             (unconditional-idents->target-tables emitter unconditional-idents)
+                             (joins->target-tables emitter joins))
+
+          :pagination-fallbacks    (compile-pagination-fallbacks clojuric-names pagination-fallbacks)
+          :static-columns          static-columns
+          :dynamic-column-keywords (set (keys pseudo-columns))
+          :dynamic-columns         pseudo-columns
+          ;; todo: rename to `:processed-columns`
+          :column-names            (merge true-columns pseudo-columns aggregators)
+          :processed-columns       (merge true-columns pseudo-columns aggregators)
+          :clojuric-names          clojuric-names
+          :aggregator-keywords     (set (keys aggregators))
+          :join-filter-subqueries  (compile-join-filter-subqueries emitter joins)})))
+
+(defn expand-floor-plan
+  [{:keys [reversed-joins aggregators] :as floor-plan}]
+  (-> floor-plan
+    (update :idents flatten-multi-keys)
+    (update :extra-conditions flatten-multi-keys)
+    (update :pagination-fallbacks flatten-multi-keys)
+    (update :aggregators flatten-multi-keys)
+    (update :cardinality merge (zipmap (keys aggregators) (repeat :one)))
+    (update :cardinality flatten-multi-keys)
+    (update :joins flatten-multi-keys)
+    (update :joins #(expand-reversed-joins reversed-joins %))
+    (update :required-columns expand-denpendencies)
+    (update :extra-conditions compile-extra-conditions)))
+
+(defn expand-more
+  [{:keys [joins emitter idents] :as floor-plan}]
+  (-> floor-plan
+    (assoc :batch-query (emitter/emitter->batch-query emitter))
+    (assoc :join-statements (compile-join-statements emitter joins))
+    (merge (separate-idents idents)
+      {:target-columns (joins->target-columns joins)
+       :source-columns (joins->source-columns joins)})))
+
+(def new-compile-floor-plan (comp expand-floor-plan expand-more compile-floor-plan*))
