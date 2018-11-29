@@ -14,6 +14,14 @@
 (defn symbolic-exp? [x]
   (instance? SymbolicExpression x))
 
+(defn expand-symbols [exprs]
+  (clojure.walk/postwalk
+    (fn [expr] (if (and (symbol? expr) (::symbolic (meta expr)))
+                 (SymbolicExpression. expr)
+                 expr))
+    exprs))
+
+#?(:clj
 (declare inline-params)
 
 (defn namespaced-keyword?
