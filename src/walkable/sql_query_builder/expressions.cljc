@@ -493,22 +493,20 @@
 
 (defn inline-symbolic-expressions
   [{::keys [symbolic-expressions] :as env} {:keys [raw-string params]}]
-  {:raw-string raw-string
-   :params     (mapv (fn [p]
-                       (if (symbolic-exp? p)
-                         (process-expression env [:symbolic-expression p])
-                         p))
-                 params)})
+  (inline-params env
+    {:raw-string raw-string
+     :params     (->> params
+                   (mapv #(single-raw-string
+                            (get symbolic-expressions % %))))}))
 
 (defn inline-params
   [env {:keys [raw-string params]}]
-  (inline-symbolic-expressions env
-    {:params     (into [] (flatten (map :params params)))
-     :raw-string (->> (conj (mapv :raw-string params) nil)
-                   (interleave (if (= "?" raw-string)
-                                 ["" ""]
-                                 (string/split raw-string #"\?")))
-                   (apply str))}))
+  {:params     (into [] (flatten (map :params params)))
+   :raw-string (->> (conj (mapv :raw-string params) nil)
+                 (interleave (if (= "?" raw-string)
+                               ["" ""]
+                               (string/split raw-string #"\?")))
+                 (apply str))})
 
 (defn parameterize
   [env clauses]
