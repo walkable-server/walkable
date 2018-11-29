@@ -404,16 +404,10 @@
 (defmethod process-expression :symbolic-expression
   [{::keys [symbolic-expressions] :as env} [_kw symbolic-exp]]
   (let [n (:name symbolic-exp)]
-    (if (contains? symbolic-expressions n)
-      (let [value (get symbolic-expressions n)
-            form  (s/conform ::expression value)]
-        (assert (not= ::s/invalid form)
-          (str "Invalid expression: " value))
-        (inline-params env
-          {:raw-string "?"
-           :params     [(process-expression env form)]}))
-      {:raw-string "?"
-       :params     [symbolic-exp]})))
+    (if-let [value (get symbolic-expressions n)]
+      (inline-params env
+        (single-raw-string value))
+      (single-raw-string symbolic-exp))))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
