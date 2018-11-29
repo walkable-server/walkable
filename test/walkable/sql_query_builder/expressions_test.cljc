@@ -25,8 +25,7 @@
 
 (deftest and-tests
   (is (= (sut/process-operator {} [:and []])
-        {:raw-string "(?)",
-         :params [{:raw-string " ? ", :params [true]}]}))
+        {:raw-string "?", :params [true]}))
   (is (= (sut/process-operator {} [:and [{}]])
         {:raw-string "(?)", :params [{}]}))
   (is (= (sut/process-operator {} [:and [{} {}]])
