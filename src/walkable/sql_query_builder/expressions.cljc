@@ -434,21 +434,26 @@
    :params     [string]})
 
 (defmethod process-expression :column
-  [{:keys [column-names pathom-env] :as env} [_kw column-keyword]]
+  [{:keys [column-names] :as env} [_kw column-keyword]]
   (let [column (get column-names column-keyword)]
     (assert column
       (str "Invalid column keyword " column-keyword
         ". You may want to add it to `:columns` in your floor-plan."))
-    (if (string? column)
+    (cond
+      (string? column)
       {:raw-string column
        :params     []}
-      (let [form (s/conform ::expression (if (fn? column)
-                                           (column pathom-env)
-                                           column))]
+
+      (fn? column)
+      {:raw-string "?"
+       :params [(SymbolicExpression. column-keyword)]}
+
+      :else
+      (let [form (s/conform ::expression column)]
         (assert (not= ::s/invalid form)
           (str "Invalid pseudo column for " column-keyword ": " column))
         (inline-params env
-          {:raw-string "(?)"
+          {:raw-string "?"
            :params     [(process-expression env form)]})))))
 
 (defmethod operator? :case [_operator] true)
