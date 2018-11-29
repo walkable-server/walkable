@@ -5,11 +5,23 @@
 
 (deftest inline-params-tests
   (is (= (sut/inline-params {}
-           {:raw-string " ? "
+           {:raw-string "?"
             :params     [{:raw-string "2018 - `human`.`yob`"
                           :params     []}]})
-        {:raw-string " 2018 - `human`.`yob` "
-         :params     []})))
+        {:raw-string "2018 - `human`.`yob`"
+         :params     []}))
+  (is (= (sut/inline-params {}
+           {:raw-string " ?"
+            :params     [{:raw-string "2018 - `human`.`yob`"
+                          :params     []}]})
+        {:raw-string " 2018 - `human`.`yob`",
+         :params     []}))
+  (is (= (sut/inline-params {}
+           {:raw-string "? "
+            :params     [{:raw-string "2018 - `human`.`yob`"
+                          :params     []}]})
+        {:raw-string "2018 - `human`.`yob` ",
+         :params []})))
 
 (deftest and-tests
   (is (= (sut/process-operator {} [:and []])
