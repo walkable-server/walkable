@@ -7,8 +7,7 @@ distance.
 
 [![Build Status](https://travis-ci.com/walkable-server/walkable.svg?branch=master)](https://travis-ci.com/walkable-server/walkable)
 ```
-;; no stable version yet
-[walkable "1.1.0-SNAPSHOT"]
+[walkable "1.1.0-rc1"]
 ```
 
 Please read our [beautiful documentation here](https://walkable.gitlab.io/)
