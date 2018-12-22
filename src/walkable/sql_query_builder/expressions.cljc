@@ -6,18 +6,18 @@
             [clojure.string :as string]
             [clojure.set :as set]))
 
-(defrecord SymbolicExpression [name])
+(defrecord AtomicVariable [name])
 
-(defn se [n]
-  (SymbolicExpression. n))
+(defn av [n]
+  (AtomicVariable. n))
 
-(defn symbolic-exp? [x]
-  (instance? SymbolicExpression x))
+(defn atomic-variable? [x]
+  (instance? AtomicVariable x))
 
-(defn expand-symbols [exprs]
+(defn expand-atomic-variables [exprs]
   (clojure.walk/postwalk
-    (fn [expr] (if (and (symbol? expr) (::symbolic (meta expr)))
-                 (SymbolicExpression. expr)
+    (fn [expr] (if (and (symbol? expr) (::variable (meta expr)))
+                 (AtomicVariable. expr)
                  expr))
     exprs))
 
@@ -41,7 +41,7 @@
 
 (s/def ::expression
   (s/or
-    :symbolic-expression symbolic-exp?
+    :atomic-variable atomic-variable?
     :nil nil?
     :number number?
     :boolean boolean?
@@ -401,13 +401,12 @@
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
 
-(defmethod process-expression :symbolic-expression
-  [{::keys [symbolic-expressions] :as env} [_kw symbolic-exp]]
-  (let [n (:name symbolic-exp)]
-    (if-let [value (get symbolic-expressions n)]
-      (inline-params env
-        (single-raw-string value))
-      (single-raw-string symbolic-exp))))
+(defmethod process-expression :atomic-variable
+  [{::keys [variable-values] :as env} [_kw atomic-variable]]
+  (let [n (:name atomic-variable)]
+    (if-let [value (get variable-values n)]
+      (single-raw-string value)
+      (single-raw-string atomic-variable))))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
@@ -490,14 +489,14 @@
     (let [else?           (= 3 n)]
       {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
-
-(defn inline-symbolic-expressions
-  [{::keys [symbolic-expressions] :as env} {:keys [raw-string params]}]
+#_
+(defn inline-atomic-variables
+  [{::keys [variable-values] :as env} {:keys [raw-string params]}]
   (inline-params env
     {:raw-string raw-string
      :params     (->> params
                    (mapv #(single-raw-string
-                            (get symbolic-expressions % %))))}))
+                            (get variable-values % %))))}))
 
 (defn inline-params
   [env {:keys [raw-string params]}]
