@@ -433,7 +433,7 @@
     {:raw-string column
      :params     []}
     ;; non-static columns are converted to symbolic expressions
-    (single-raw-string (SymbolicExpression. column-keyword))))
+    (single-raw-string (AtomicVariable. column-keyword))))
 
 (defmethod operator? :case [_operator] true)
 
