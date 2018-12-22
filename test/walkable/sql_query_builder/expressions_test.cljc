@@ -116,22 +116,24 @@
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {} {}]})))
 
 (deftest parameterize-tests
-  (is (= (sut/parameterize {:column-names {:a/foo "a.foo"
-                                           :b/bar "b.bar"}
+  (is (= (sut/parameterize {:static-columns {:a/foo "a.foo"
+                                             :b/bar "b.bar"}
                             :join-filter-subqueries
                             {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
                              :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
            [:or {:x/a [:= :a/foo "meh"]}
-                {:x/b [:= :b/bar "mere"]}])
-        (sut/parameterize {::sut/symbolic-expressions {"meh-symbol" "meh"}
-                           :column-names              {:a/foo "a.foo"
-                                                       :b/bar "b.bar"}
+            {:x/b [:= :b/bar "mere"]}])
+
+        (sut/parameterize {::sut/variable-values {"meh-symbol" "meh"}
+                           :static-columns       {:a/foo "a.foo"
+                                                  :b/bar "b.bar"}
                            :join-filter-subqueries
                            {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
                             :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
-          [:or {:x/a [:= :a/foo (sut/se "meh-symbol")]}
+          [:or {:x/a [:= :a/foo (sut/av "meh-symbol")]}
            {:x/b [:= :b/bar "mere"]}])
-        {:params ["meh" "mere"],
+
+        {:params     ["meh" "mere"],
          :raw-string (str "((x.a_id IN (SELECT a.id FROM a"
                        " WHERE (a.foo)=(?))))"
                        " OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id"
