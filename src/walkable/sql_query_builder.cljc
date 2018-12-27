@@ -146,8 +146,7 @@
         all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (->> all-conditions
-        (expressions/parameterize {:pathom-env             env
-                                   :column-names           column-names
+        (expressions/parameterize {:static-columns         column-names
                                    :join-filter-subqueries join-filter-subqueries})
         ((juxt :raw-string :params))))))
 
