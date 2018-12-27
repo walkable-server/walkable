@@ -428,8 +428,8 @@
   (single-raw-string string))
 
 (defmethod process-expression :column
-  [{:keys [static-columns] :as env} [_kw column-keyword]]
-  (if-let [column (get static-columns column-keyword)]
+  [{:keys [true-columns] :as env} [_kw column-keyword]]
+  (if-let [column (get true-columns column-keyword)]
     {:raw-string column
      :params     []}
     ;; non-static columns are converted to symbolic expressions
