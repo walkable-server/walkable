@@ -139,15 +139,30 @@
           supplied-condition)]
     [ident-condition join-condition extra-condition supplied-condition]))
 
-(defn parameterize-all-conditions
+(defn evaluate-formulas
   [{::keys [floor-plan] :as env} columns-to-query]
-  (let [{::floor-plan/keys [column-names join-filter-subqueries]} floor-plan
+  (let [{::floor-plan/keys [true-columns stateless-formulas stateful-formulas
+                            join-filter-subqueries]} floor-plan
+        formulas
+        (-> (fn [acc k]
+              (if-let [stateless-formula (get stateless-formulas k)]
+                (assoc acc k stateless-formula)
+                (if-let [stateful-formula (get stateful-formulas k)]
+                  (assoc acc k (stateful-formula env))
+                  acc)))
+          (reduce {} columns-to-query))]
+    {:true-columns           true-columns
+     :formulas               formulas
+     :join-filter-subqueries join-filter-subqueries}))
 
-        all-conditions (clean-up-all-conditions (process-conditions env))]
+(defn parameterize-all-conditions
+  [env columns-to-query]
+  (let [all-conditions (clean-up-all-conditions (process-conditions env))
+        ;; jfs            (-> env ::floor-plan ::floor-plan/)
+        ]
     (when all-conditions
       (->> all-conditions
-        (expressions/parameterize {:static-columns         column-names
-                                   :join-filter-subqueries join-filter-subqueries})
+        (expressions/parameterize (evaluate-formulas env columns-to-query))
         ((juxt :raw-string :params))))))
 
 (defn process-selection
