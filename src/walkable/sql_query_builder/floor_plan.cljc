@@ -361,6 +361,8 @@
   (polulate-columns-with-condititional-idents {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
                                                :columns #{:x/id :m/id}})
   )
+
+(defn expand-floor-plan-keys
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
     (update :idents flatten-multi-keys)
@@ -370,17 +372,57 @@
     (update :cardinality merge (zipmap (keys aggregators) (repeat :one)))
     (update :cardinality flatten-multi-keys)
     (update :joins flatten-multi-keys)
+    polulate-columns-with-joins
     (update :joins #(expand-reversed-joins reversed-joins %))
-    (update :required-columns expand-denpendencies)
-    (update :extra-conditions compile-extra-conditions)))
+    (update :required-columns expand-denpendencies)))
 
-(defn expand-more
-  [{:keys [joins emitter idents] :as floor-plan}]
+(defn prepare-keywords
+  [{:keys [columns aggregators idents emitter
+           stateful-formulas stateless-formulas] :as floor-plan}]
   (-> floor-plan
+    (assoc :aggregator-keywords (set (keys aggregators)))
+    (dissoc :aggregators)
+
+    (assoc :column-keywords
+      (clojure.set/union columns
+        (set (keys (merge stateless-formulas stateful-formulas)))))
+
+    (assoc :ident-keywords (set (keys idents)))
+    (dissoc :idents)
+
+    (assoc :true-columns (column-names emitter columns))))
+
+(defn prepare-clojuric-names
+  [{:keys [emitter column-keywords] :as floor-plan}]
+  (-> floor-plan
+    (assoc :clojuric-names (clojuric-names emitter column-keywords))))
+
+(defn separate-floor-plan-keys
+  [{:keys [joins emitter idents
+           extra-conditions]
+    :as floor-plan}]
+  (-> floor-plan
+    separate-extra-conditions
+    separate-formulas
+    separate-idents
+    polulate-columns-with-condititional-idents
+    prepare-keywords
+    prepare-clojuric-names))
+
+(def compile-stateless-conditions identity)
+
+(defn precompile-floor-plan
+  [{:keys [joins emitter idents unconditional-idents conditional-idents] :as floor-plan}]
+  (-> floor-plan
+    (update :stateless-conditions compile-stateless-conditions)
     (assoc :batch-query (emitter/emitter->batch-query emitter))
     (assoc :join-statements (compile-join-statements emitter joins))
-    (merge (separate-idents idents)
-      {:target-columns (joins->target-columns joins)
-       :source-columns (joins->source-columns joins)})))
+    (assoc :target-tables (merge (conditional-idents->target-tables emitter conditional-idents)
+                            (unconditional-idents->target-tables emitter unconditional-idents)
+                            (joins->target-tables emitter joins)))
+    (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))
 
-(def new-compile-floor-plan (comp expand-floor-plan expand-more compile-floor-plan*))
+(def compile-floor-plan (comp expand-floor-plan-keys
+                          separate-floor-plan-keys
+                          precompile-floor-plan
+                          compile-floor-plan*))
