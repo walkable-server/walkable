@@ -333,6 +333,34 @@
              :clojuric-names         clojuric-names
              :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)}))
 
+(defn columns-in-joins
+  [joins]
+  (set (apply concat (vals joins))))
+
+(defn polulate-columns-with-joins
+  [{:keys [joins] :as floor-plan}]
+  (update floor-plan :columns
+    clojure.set/union (columns-in-joins joins)))
+
+(comment
+  (columns-in-joins {:x [:u :v] :y [:m :n]})
+  (polulate-columns-with-joins {:joins   {:x [:u :v] :y [:m :n]}
+                                :columns #{:a :b}}))
+
+(defn columns-in-conditional-idents
+  [conditional-idents]
+  (set (vals conditional-idents)))
+
+(defn polulate-columns-with-condititional-idents
+  [{:keys [conditional-idents] :as floor-plan}]
+  (update floor-plan :columns
+    clojure.set/union (columns-in-conditional-idents conditional-idents)))
+
+(comment
+  (columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
+  (polulate-columns-with-condititional-idents {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
+                                               :columns #{:x/id :m/id}})
+  )
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
     (update :idents flatten-multi-keys)
