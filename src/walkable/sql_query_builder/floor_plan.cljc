@@ -163,14 +163,21 @@
                     key-set)]
     (into {} keys+vals)))
 
-(defn compile-extra-conditions
+(defn separate-extra-conditions*
   [extra-conditions]
   (reduce (fn [result [k v]]
-            (assoc result k
-              (if (fn? v)
-                v
-                (fn [env] v))))
-    {} extra-conditions))
+            (if (fn? v)
+              (assoc-in result [:stateful-conditions k] v)
+              (assoc-in result [:stateless-conditions k] v)))
+    {:stateless-conditions {}
+     :stateful-conditions  {}}
+    extra-conditions))
+
+(defn separate-extra-conditions
+  [{:keys [extra-conditions] :as floor-plan}]
+  (-> floor-plan
+    (merge (separate-extra-conditions* extra-conditions))
+    (dissoc :extra-conditions)))
 
 (defn compile-pagination-fallbacks
   [clojuric-names pagination-fallbacks]
