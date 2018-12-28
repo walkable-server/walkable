@@ -289,54 +289,50 @@
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
-  [{:keys [columns pseudo-columns required-columns idents
-           emitter extra-conditions pagination-fallbacks
+  [{:keys [true-columns column-keywords clojuric-names
+           stateless-formulas stateful-formulas
+           required-columns
+           ident-keywords
+           emitter
+
+           stateless-formulas stateful-formulas
+           stateless-conditions stateful-conditions
+           pagination-fallbacks
            reversed-joins joins cardinality
-           aggregators batch-query
+           aggregator-keywords
+           batch-query
            unconditional-idents conditional-idents
-           join-statements
+           join-statements target-tables
+           join-filter-subqueries
            target-columns source-columns]
-    :or   {emitter              emitter/default-emitter
-           aggregators          {}
-           extra-conditions     {}
-           pagination-fallbacks {}
-           joins                {}
-           cardinality          {}}
-    :as   input-floor-plan}]
-  (merge #::{:cardinality      cardinality
-             :emitter          emitter
-             :batch-query      batch-query
-             :target-columns   target-columns
-             :source-columns   source-columns
-             :ident-conditions conditional-idents
-             :required-columns required-columns
-             :join-statements  join-statements
-             :extra-conditions extra-conditions}
-    (let [true-column-keywords (set (apply concat columns (vals joins)))
-          true-columns         (column-names emitter true-column-keywords)
-          columns              (set (concat true-column-keywords
-                                      (keys pseudo-columns)))
-          clojuric-names       (clojuric-names emitter
-                                 (concat columns (keys aggregators)))
-          static-columns       (column-names emitter true-column-keywords)]
-      #::{:column-keywords columns
-          :ident-keywords  (set (keys idents))
-          :target-tables   (merge (conditional-idents->target-tables emitter conditional-idents)
-                             (unconditional-idents->target-tables emitter unconditional-idents)
-                             (joins->target-tables emitter joins))
+    :or {emitter              emitter/default-emitter
+         aggregators          {}
+         extra-conditions     {}
+         pagination-fallbacks {}
+         joins                {}
+         cardinality          {}}
+    :as input-floor-plan}]
+  (merge #::{:cardinality            cardinality
+             :emitter                emitter
+             :batch-query            batch-query
+             :target-tables          target-tables
+             :join-filter-subqueries join-filter-subqueries
+             :target-columns         target-columns
+             :source-columns         source-columns
+             :ident-conditions       conditional-idents
+             :required-columns       required-columns
+             :join-statements        join-statements
+             :aggregator-keywords    aggregator-keywords
+             :stateless-formulas     stateless-formulas
+             :stateful-formulas      stateful-formulas
+             :stateless-conditions   stateless-conditions
+             :stateful-conditions    stateful-conditions
+             :column-keywords        column-keywords
+             :true-columns           true-columns
+             :ident-keywords         ident-keywords
+             :clojuric-names         clojuric-names
+             :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)}))
 
-          :pagination-fallbacks    (compile-pagination-fallbacks clojuric-names pagination-fallbacks)
-          :static-columns          static-columns
-          :dynamic-column-keywords (set (keys pseudo-columns))
-          :dynamic-columns         pseudo-columns
-          ;; todo: rename to `:processed-columns`
-          :column-names            (merge true-columns pseudo-columns aggregators)
-          :processed-columns       (merge true-columns pseudo-columns aggregators)
-          :clojuric-names          clojuric-names
-          :aggregator-keywords     (set (keys aggregators))
-          :join-filter-subqueries  (compile-join-filter-subqueries emitter joins)})))
-
-(defn expand-floor-plan
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
     (update :idents flatten-multi-keys)
