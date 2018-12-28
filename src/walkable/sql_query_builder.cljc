@@ -157,9 +157,7 @@
 
 (defn parameterize-all-conditions
   [env columns-to-query]
-  (let [all-conditions (clean-up-all-conditions (process-conditions env))
-        ;; jfs            (-> env ::floor-plan ::floor-plan/)
-        ]
+  (let [all-conditions (clean-up-all-conditions (process-conditions env))]
     (when all-conditions
       (->> all-conditions
         (expressions/parameterize (evaluate-formulas env columns-to-query))
