@@ -228,7 +228,7 @@
       m
       (expand-denpendencies m'))))
 
-(defn separate-idents
+(defn separate-idents*
   "Helper function for compile-floor-plan. Separates all user-supplied
   idents to unconditional idents and conditional idents for further
   processing."
@@ -240,6 +240,15 @@
     {:unconditional-idents {}
      :conditional-idents   {}}
     idents))
+
+(defn separate-idents
+  [{:keys [joins idents] :as floor-plan}]
+  (-> floor-plan
+    (merge ;; will add `:unconditional-idents` and `:conditional-idents`:
+      (separate-idents* idents)
+      {:target-columns (joins->target-columns joins)
+       :source-columns (joins->source-columns joins)})
+    (dissoc :idents)))
 
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
