@@ -250,6 +250,23 @@
        :source-columns (joins->source-columns joins)})
     (dissoc :idents)))
 
+(defn separate-formulas*
+  "Helper function for compile-floor-plan. Separates pseudo-columns
+  to stateless formulas and stateful formulas for further processing."
+  [formulas]
+  (-> (reduce (fn [result [k v]]
+                (if (fn? v)
+                  (assoc-in result [:stateful-formulas k] v)
+                  (assoc-in result [:stateless-formulas k] v)))
+        {:stateless-formulas {}
+         :stateful-formulas  {}}
+        formulas)))
+
+(defn separate-formulas
+  [{:keys [pseudo-columns aggregators] :as floor-plan}]
+  (-> floor-plan
+    (merge (separate-formulas* (merge aggregators pseudo-columns)))))
+
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
                 ::target-columns
