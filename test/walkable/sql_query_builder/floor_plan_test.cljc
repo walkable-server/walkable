@@ -95,8 +95,8 @@
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
 
-(deftest separate-idents-test
-  (is (= (sut/separate-idents {:person/by-id  :person/number
+(deftest separate-idents*-test
+  (is (= (sut/separate-idents* {:person/by-id  :person/number
                                :person/by-yob :person/yob
                                :pets/all      "pet"
                                :people/all    "person"})
