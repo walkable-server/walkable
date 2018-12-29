@@ -116,7 +116,7 @@
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {} {}]})))
 
 (deftest parameterize-tests
-  (is (= (sut/parameterize {:static-columns {:a/foo "a.foo"
+  (is (= (sut/parameterize {:true-columns {:a/foo "a.foo"
                                              :b/bar "b.bar"}
                             :join-filter-subqueries
                             {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
@@ -124,13 +124,13 @@
            [:or {:x/a [:= :a/foo "meh"]}
             {:x/b [:= :b/bar "mere"]}])
 
-        (sut/parameterize {::sut/variable-values {"meh-symbol" "meh"}
-                           :static-columns       {:a/foo "a.foo"
+        (sut/parameterize {::sut/variable-values {"meh-var" "meh"}
+                           :true-columns       {:a/foo "a.foo"
                                                   :b/bar "b.bar"}
                            :join-filter-subqueries
                            {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
                             :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
-          [:or {:x/a [:= :a/foo (sut/av "meh-symbol")]}
+          [:or {:x/a [:= :a/foo (sut/av "meh-var")]}
            {:x/b [:= :b/bar "mere"]}])
 
         {:params     ["meh" "mere"],
