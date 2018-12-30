@@ -365,6 +365,7 @@
 (defn expand-floor-plan-keys
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
+    (update :columns set)
     (update :idents flatten-multi-keys)
     (update :extra-conditions flatten-multi-keys)
     (update :pagination-fallbacks flatten-multi-keys)
