@@ -402,13 +402,11 @@
      :params     (mapv #(process-expression env %) join-filters)}))
 
 (defmethod process-expression :atomic-variable
-  [{::keys [formulas variable-values] :as env} [_kw atomic-variable]]
+  [{::keys [variable-values] :as env} [_kw atomic-variable]]
   (let [n (:name atomic-variable)]
-    (if-let [formula (get formulas n)]
-      formula
-      (if-let [value (get variable-values n)]
-        (single-raw-string value)
-        (single-raw-string atomic-variable)))))
+    (if-let [value (get variable-values n)]
+      value
+      (single-raw-string atomic-variable))))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
