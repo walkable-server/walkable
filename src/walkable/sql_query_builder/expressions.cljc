@@ -125,6 +125,10 @@
 
 (defmethod operator? :and [_operator] true)
 
+(defn verbatim-raw-string [s]
+  {:raw-string s
+   :params     []})
+
 (defn single-raw-string [x]
   {:raw-string "?"
    :params     [x]})
