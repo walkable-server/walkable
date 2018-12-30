@@ -116,17 +116,17 @@
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {} {}]})))
 
 (deftest parameterize-tests
-  (is (= (sut/parameterize {:true-columns {:a/foo "a.foo"
-                                             :b/bar "b.bar"}
+  (is (= (sut/parameterize {:formulas {:a/foo (sut/verbatim-raw-string "a.foo")
+                                       :b/bar (sut/verbatim-raw-string "b.bar")}
                             :join-filter-subqueries
                             {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
                              :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
            [:or {:x/a [:= :a/foo "meh"]}
             {:x/b [:= :b/bar "mere"]}])
 
-        (sut/parameterize {::sut/variable-values {"meh-var" "meh"}
-                           :true-columns       {:a/foo "a.foo"
-                                                  :b/bar "b.bar"}
+        (sut/parameterize {::sut/variable-values {"meh-var" (sut/single-raw-string "meh")}
+                           :formulas {:a/foo (sut/verbatim-raw-string "a.foo")
+                                      :b/bar (sut/verbatim-raw-string "b.bar")}
                            :join-filter-subqueries
                            {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
                             :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
