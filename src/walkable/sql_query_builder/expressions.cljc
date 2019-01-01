@@ -492,14 +492,16 @@
     (let [else?           (= 3 n)]
       {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
-#_
-(defn inline-atomic-variables
-  [{::keys [variable-values] :as env} {:keys [raw-string params]}]
+
+(defn substitute-atomic-variables
+  [{:keys [variable-values] :as env} {:keys [raw-string params]}]
   (inline-params env
     {:raw-string raw-string
      :params     (->> params
-                   (mapv #(single-raw-string
-                            (get variable-values % %))))}))
+                   (mapv (fn [param]
+                           (or (and (atomic-variable? param)
+                                 (get variable-values (:name param)))
+                             (single-raw-string param)))))}))
 
 (defn inline-params
   [env {:keys [raw-string params]}]
