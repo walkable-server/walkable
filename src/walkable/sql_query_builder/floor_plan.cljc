@@ -288,6 +288,26 @@
   (= (rotate []) [])
   )
 
+(defn compile-all-formulas [compiled-true-columns formulas]
+  (reduce-kv (fn [result k v]
+               (let [compiled (expressions/compile-to-string {} v)]
+                 (if (unbound-expression? compiled)
+                   (update result :unbound assoc k compiled)
+                   (update result :bound assoc k compiled))))
+    {:unbound {}
+     :bound   compiled-true-columns}
+    formulas))
+
+(comment
+  (= (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+       {:x/c 99 :x/d [:- 100 :x/c]})
+
+    {:unbound {:x/d {:params     [(expressions/av :x/c)],
+                     :raw-string "(100)-(?)"}},
+     :bound   {:x/a {:raw-string "\"x\".\"a\"", :params []},
+               :x/b {:raw-string "\"x\".\"b\"", :params []},
+               :x/c {:raw-string "99", :params []}}}))
+
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
                 ::target-columns
