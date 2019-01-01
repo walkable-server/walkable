@@ -279,6 +279,15 @@
   (true? (unbound-expression? {:raw-string "abc AND ?"
                                :params [(expressions/av :x/a)]})))
 
+(defn rotate [coll]
+  (take (count coll) (drop 1 (cycle coll))))
+
+(comment
+  (= (rotate [:a :b :c :d]) [:b :c :d :a])
+  (= (rotate [:a :b]) [:b :a])
+  (= (rotate []) [])
+  )
+
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
                 ::target-columns
