@@ -406,11 +406,8 @@
      :params     (mapv #(process-expression env %) join-filters)}))
 
 (defmethod process-expression :atomic-variable
-  [{::keys [variable-values] :as env} [_kw atomic-variable]]
-  (let [n (:name atomic-variable)]
-    (if-let [value (get variable-values n)]
-      value
-      (single-raw-string atomic-variable))))
+  [_env [_kw atomic-variable]]
+  (single-raw-string atomic-variable))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
@@ -432,11 +429,8 @@
   (single-raw-string string))
 
 (defmethod process-expression :column
-  [{:keys [formulas] :as env} [_kw column-keyword]]
-  (if-let [value (get formulas column-keyword)]
-    value
-    ;; non-static columns are converted to symbolic expressions
-    (single-raw-string (AtomicVariable. column-keyword))))
+  [_env [_kw column-keyword]]
+  (single-raw-string (AtomicVariable. column-keyword)))
 
 (defmethod operator? :case [_operator] true)
 
