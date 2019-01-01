@@ -267,6 +267,18 @@
   (-> floor-plan
     (merge (separate-formulas* (merge aggregators pseudo-columns)))))
 
+(defn unbound-expression?
+  [compiled-expression]
+  (boolean (some expressions/atomic-variable? (:params compiled-expression))))
+
+(comment
+  (false? (unbound-expression? {:raw-string "abc"
+                                :params []}))
+  (false? (unbound-expression? {:raw-string "abc AND ?"
+                                :params ["bla"]}))
+  (true? (unbound-expression? {:raw-string "abc AND ?"
+                               :params [(expressions/av :x/a)]})))
+
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
                 ::target-columns
