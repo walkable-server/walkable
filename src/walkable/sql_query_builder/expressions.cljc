@@ -498,7 +498,7 @@
                              (single-raw-string param)))))}))
 
 (defn inline-params
-  [env {:keys [raw-string params]}]
+  [_env {:keys [raw-string params]}]
   {:params     (into [] (flatten (map :params params)))
    :raw-string (->> (conj (mapv :raw-string params) nil)
                  (interleave (if (= "?" raw-string)
