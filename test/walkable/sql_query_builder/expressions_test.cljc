@@ -130,6 +130,13 @@
         {:params     [(sut/av :a/foo) "meh" (sut/av :b/bar) "mere"]
          :raw-string "((x.a_id IN (SELECT a.id FROM a WHERE (?)=(?)))) OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE (?)=(?))))"})))
 
+(deftest substitute-atomic-variables-test
+  (is (= (->> (sut/compile-to-string {} [:= :x/a "abc" [:str "x" [:str :x/b 2]]])
+           (sut/substitute-atomic-variables {:variable-values {:x/a {:raw-string "?" :params ["def"]}}})
+           (sut/substitute-atomic-variables {:variable-values {:x/b (sut/compile-to-string {} [:+ 2018 "713"])}}))
+        {:params ["def" "abc" "abc" "x" "713"],
+         :raw-string "(?)=(?) AND (?)=(CONCAT (?, CONCAT ((2018)+(?), 2)))"})))
+
 #?(:clj
    (deftest operator-sql-names-test
      (is (= (sut/operator-sql-names {:upper-case? true} 'abc-def-ghi)
