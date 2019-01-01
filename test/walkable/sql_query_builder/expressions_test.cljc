@@ -4,6 +4,12 @@
             [clojure.test :as t :refer [deftest testing is]]))
 
 (deftest inline-params-tests
+  (= (sut/inline-params {}
+       {:raw-string "? + 1"
+        :params     [{:raw-string "2018 - `human`.`yob` + ?"
+                      :params     [(sut/av :a/b)]}]})
+    {:raw-string "2018 - `human`.`yob` + ? + 1"
+     :params     [(sut/av :a/b)]})
   (is (= (sut/inline-params {}
            {:raw-string "?"
             :params     [{:raw-string "2018 - `human`.`yob`"
