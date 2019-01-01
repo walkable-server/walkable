@@ -506,7 +506,7 @@
                                (string/split raw-string #"\?")))
                  (apply str))})
 
-(defn parameterize
+(defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
     (assert (not= ::s/invalid form)
