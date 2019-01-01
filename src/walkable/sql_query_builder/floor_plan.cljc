@@ -308,6 +308,34 @@
                :x/b {:raw-string "\"x\".\"b\"", :params []},
                :x/c {:raw-string "99", :params []}}}))
 
+(defn bind-all [{:keys [unbound bound]}]
+  (loop [limit   100
+         unbound (seq unbound)
+         bound   bound]
+    (if-let [item (and (pos? limit) (first unbound))]
+      (let [[k v]   item
+            attempt (expressions/substitute-atomic-variables {:variable-values bound}
+                      v)]
+        (if (unbound-expression? attempt)
+          (recur (dec limit)
+            (rotate unbound)
+            bound)
+          (recur (dec limit)
+            (rest unbound)
+            (assoc bound k attempt))))
+      ;; no more work. Exiting loop...
+      {:unbound (into {} unbound)
+       :bound   bound})))
+
+(comment
+  (= (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+                 {:x/c 99 :x/d [:- 100 :x/c]}))
+    {:unbound {}
+     :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                   :b {:raw-string "\"x\".\"b\"", :params []},
+                   :c {:raw-string "99", :params []},
+                   :d {:params [], :raw-string "(100)-(99)"}}}))
+
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
                 ::target-columns
