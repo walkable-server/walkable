@@ -377,6 +377,12 @@
     (update :joins #(expand-reversed-joins reversed-joins %))
     (update :required-columns expand-denpendencies)))
 
+(defn compile-true-columns
+  "Makes a hash-map of keywords and their equivalent compiled form."
+  [emitter ks]
+  (zipmap ks
+    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
+
 (defn prepare-keywords
   [{:keys [columns aggregators idents emitter
            stateful-formulas stateless-formulas] :as floor-plan}]
