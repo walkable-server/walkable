@@ -417,7 +417,8 @@
   "Makes a hash-map of keywords and their equivalent compiled form."
   [emitter ks]
   (zipmap ks
-    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
+    (map #(do {:variable-getters    []
+               :compiled-expression (expressions/verbatim-raw-string (emitter/column-name emitter %))}) ks)))
 
 (defn prepare-keywords
   [{:keys [columns aggregators idents emitter
