@@ -163,22 +163,6 @@
                     key-set)]
     (into {} keys+vals)))
 
-(defn separate-extra-conditions*
-  [extra-conditions]
-  (reduce (fn [result [k v]]
-            (if (fn? v)
-              (assoc-in result [:stateful-conditions k] v)
-              (assoc-in result [:stateless-conditions k] v)))
-    {:stateless-conditions {}
-     :stateful-conditions  {}}
-    extra-conditions))
-
-(defn separate-extra-conditions
-  [{:keys [extra-conditions] :as floor-plan}]
-  (-> floor-plan
-    (merge (separate-extra-conditions* extra-conditions))
-    (dissoc :extra-conditions)))
-
 (defn compile-pagination-fallbacks
   [clojuric-names pagination-fallbacks]
   (reduce (fn [result [k {:keys [offset limit order-by]}]]
@@ -249,23 +233,6 @@
       {:target-columns (joins->target-columns joins)
        :source-columns (joins->source-columns joins)})
     (dissoc :idents)))
-
-(defn separate-formulas*
-  "Helper function for compile-floor-plan. Separates pseudo-columns
-  to stateless formulas and stateful formulas for further processing."
-  [formulas]
-  (-> (reduce (fn [result [k v]]
-                (if (fn? v)
-                  (assoc-in result [:stateful-formulas k] v)
-                  (assoc-in result [:stateless-formulas k] v)))
-        {:stateless-formulas {}
-         :stateful-formulas  {}}
-        formulas)))
-
-(defn separate-formulas
-  [{:keys [pseudo-columns aggregators] :as floor-plan}]
-  (-> floor-plan
-    (merge (separate-formulas* (merge aggregators pseudo-columns)))))
 
 (defn unbound-expression?
   [compiled-expression]
@@ -478,19 +445,14 @@
            extra-conditions]
     :as floor-plan}]
   (-> floor-plan
-    separate-extra-conditions
-    separate-formulas
     separate-idents
     polulate-columns-with-condititional-idents
     prepare-keywords
     prepare-clojuric-names))
 
-(def compile-stateless-conditions identity)
-
 (defn precompile-floor-plan
   [{:keys [joins emitter idents unconditional-idents conditional-idents] :as floor-plan}]
   (-> floor-plan
-    (update :stateless-conditions compile-stateless-conditions)
     (assoc :batch-query (emitter/emitter->batch-query emitter))
     (assoc :join-statements (compile-join-statements emitter joins))
     (assoc :target-tables (merge (conditional-idents->target-tables emitter conditional-idents)
