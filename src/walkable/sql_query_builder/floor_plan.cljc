@@ -256,7 +256,7 @@
   )
 
 (defn compile-all-formulas [compiled-true-columns formulas]
-  (reduce-kv (fn [result k {:keys [variable-getters expression]}]
+  (reduce-kv (fn [result k {:keys [variable-getters expression] :or {variable-getters []}}]
                (let [compiled (expressions/compile-to-string {} expression)]
                  (if (unbound-expression? compiled)
                    (update result :unbound assoc k {:variable-getters    variable-getters
@@ -297,7 +297,7 @@
             bound)
           (recur (dec limit)
             (rest unbound)
-            (assoc bound k {:variable-getters    variable-getters
+            (assoc bound k {:variable-getters   (or variable-getters [])
                             :compiled-expression attempt}))))
       ;; no more work. Exiting loop...
       {:unbound (into {} unbound)
@@ -309,13 +309,13 @@
                   :x/d {:expression [:- 100 :x/c]}}))
 
     {:unbound {},
-     :bound   {:x/a {:variable-getters [],
+     :bound   {:x/a {:variable-getters    [],
                      :compiled-expression {:raw-string "\"x\".\"a\"", :params []}},
                :x/b {:variable-getters    [],
                      :compiled-expression {:raw-string "\"x\".\"b\"", :params []}},
-               :x/c {:variable-getters nil,
+               :x/c {:variable-getters    [],
                      :compiled-expression {:raw-string "99", :params []}},
-               :x/d {:variable-getters nil,
+               :x/d {:variable-getters    [],
                      :compiled-expression {:params [], :raw-string "(100)-(99)"}}}}))
 
 (s/def ::floor-plan
