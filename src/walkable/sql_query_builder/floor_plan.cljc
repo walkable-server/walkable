@@ -303,6 +303,40 @@
       {:unbound (into {} unbound)
        :bound   bound})))
 
+(defn build-dependencies
+  [shared-variable-getters {:keys [bound unbound]}]
+  (let [all-columns           (set (concat (keys bound) (keys unbound)))
+        shared-symbol-getters (set (map :key shared-variable-getters))]
+    (reduce-kv (fn [acc k {:keys [variable-getters compiled-expression]}]
+                 (let [p                  (-> compiled-expression :params)
+                       all-vars           (set (map :name (filter expressions/atomic-variable? p)))
+                       getter-symbols     (set (map :key variable-getters))
+                       symbol-vars        (set (filter symbol? all-vars))
+                       column-vars        (set (filter keyword? all-vars))
+                       undeclared-symbols (clojure.set/difference symbol-vars (clojure.set/union shared-symbol-getters getter-symbols))
+                       undeclared-columns (clojure.set/difference column-vars all-columns)]
+                   (assert (not (contains? column-vars k))
+                     (str "Circular dependency: " k " depends on itself"))
+                   (assert (empty? undeclared-symbols)
+                     (str "Missing variable getter for " undeclared-symbols))
+                   (assert (empty? undeclared-columns)
+                     (str "Missing definition for columns: " undeclared-columns))
+                   (-> acc
+                     (assoc-in [:symbol-vars k] symbol-vars)
+                     (assoc-in [:column-vars k] column-vars))))
+      {}
+      unbound)))
+
+(comment
+  (build-dependencies
+    [{:key 'o}]
+    (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+                {:x/c {:variable-getters []
+                       :expression [:+ :x/d (expressions/av 'o)]}
+                 :x/d {:expression [:- 100 :x/e]}
+                 :x/e {:expression [:- 100 :x/c]}})))
+  )
+
 (comment
   (= (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
                  {:x/c {:expression 99}
