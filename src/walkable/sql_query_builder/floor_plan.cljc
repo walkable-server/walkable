@@ -256,30 +256,24 @@
   )
 
 (defn compile-all-formulas [compiled-true-columns formulas]
-  (reduce-kv (fn [result k {:keys [variable-getters expression] :or {variable-getters []}}]
+  (reduce-kv (fn [result k expression]
                (let [compiled (expressions/compile-to-string {} expression)]
                  (if (unbound-expression? compiled)
-                   (update result :unbound assoc k {:variable-getters    variable-getters
-                                                    :compiled-expression compiled})
-                   (update result :bound assoc k {:variable-getters    variable-getters
-                                                  :compiled-expression compiled}))))
+                   (update result :unbound assoc k compiled)
+                   (update result :bound assoc k compiled))))
     {:unbound {}
      :bound   compiled-true-columns}
     formulas))
 
 (comment
   (= (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-       {:x/c {:expression 99}
-        :x/d {:expression [:- 100 :x/c]}})
-    {:unbound {:x/d {:variable-getters    nil,
-                     :compiled-expression {:params     [(expressions/av :x/c)],
-                                           :raw-string "(100)-(?)"}}},
-     :bound   {:x/a {:variable-getters    [],
-                     :compiled-expression {:raw-string "\"x\".\"a\"", :params []}},
-               :x/b {:variable-getters    [],
-                     :compiled-expression {:raw-string "\"x\".\"b\"", :params []}},
-               :x/c {:variable-getters    nil,
-                     :compiled-expression {:raw-string "99", :params []}}}}))
+       {:x/c 99
+        :x/d [:- 100 :x/c]})
+    {:unbound #:x {:d {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name :x/c}],
+                       :raw-string "(100)-(?)"}},
+     :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                   :b {:raw-string "\"x\".\"b\"", :params []},
+                   :c {:raw-string "99", :params []}}}))
 
 (defn bind-all [{:keys [unbound bound]}]
   (loop [limit   100
