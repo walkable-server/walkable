@@ -494,8 +494,7 @@
      :params     (->> params
                    (mapv (fn [param]
                            (or (and (atomic-variable? param)
-                                 (get-in variable-values
-                                   [(:name param) :compiled-expression]))
+                                 (get variable-values (:name param)))
                              (single-raw-string param)))))}))
 
 (defn inline-params
