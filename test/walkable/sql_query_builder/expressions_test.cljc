@@ -132,8 +132,8 @@
 
 (deftest substitute-atomic-variables-test
   (is (= (->> (sut/compile-to-string {} [:= :x/a "abc" [:+ 24 [:+ :x/b 2]]])
-           (sut/substitute-atomic-variables {:variable-values {:x/a {:compiled-expression {:raw-string "?" :params ["def"]}}}})
-           (sut/substitute-atomic-variables {:variable-values {:x/b {:compiled-expression (sut/compile-to-string {} [:+ 2018 "713"])}}}))
+           (sut/substitute-atomic-variables {:variable-values {:x/a  {:raw-string "?" :params ["def"]}}})
+           (sut/substitute-atomic-variables {:variable-values {:x/b  (sut/compile-to-string {} [:+ 2018 "713"])}}))
         {:params ["def" "abc" "abc" "713"], :raw-string "(?)=(?) AND (?)=((24)+(((2018)+(?))+(2)))"})))
 
 #?(:clj
