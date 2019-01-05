@@ -3,6 +3,7 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.pathom-env :as env]
+            [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]))
 
 (defn column-names
