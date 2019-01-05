@@ -320,29 +320,50 @@
       unbound)))
 
 (comment
-  (build-dependencies
-    [{:key 'o}]
-    (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-                {:x/c {:variable-getters []
-                       :expression [:+ :x/d (expressions/av 'o)]}
-                 :x/d {:expression [:- 100 :x/e]}
-                 :x/e {:expression [:- 100 :x/c]}})))
+  (= (build-dependencies
+      '{o {:key o :fn identity}}
+      (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+                  {:x/c [:+ :x/d (expressions/av 'o)]
+                   :x/d [:- 100 :x/e]
+                   :x/e [:- 100 :x/c]})))
+    '{:symbol-vars #:x{:d #{}, :e #{}, :c #{o}},
+      :column-vars #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}}})
   )
+
+(defn compile-variable-getters
+  [getters]
+  (->> getters
+    (map (fn [{function :fn k :key :keys [top-level?]}]
+           [k
+            (if top-level?
+              (fn [env]
+                (p/cached env [:walkable/top-level-getter k]
+                  (function env)))
+              (fn [env]
+                (function env)))]))
+    (into {})))
+
+(defn check-column-vars
+  [column-vars])
 
 (comment
   (= (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-                 {:x/c {:expression 99}
-                  :x/d {:expression [:- 100 :x/c]}}))
-
+                 {:x/c 99
+                  :x/d [:- 100 :x/c]}))
     {:unbound {},
-     :bound   {:x/a {:variable-getters    [],
-                     :compiled-expression {:raw-string "\"x\".\"a\"", :params []}},
-               :x/b {:variable-getters    [],
-                     :compiled-expression {:raw-string "\"x\".\"b\"", :params []}},
-               :x/c {:variable-getters    [],
-                     :compiled-expression {:raw-string "99", :params []}},
-               :x/d {:variable-getters    [],
-                     :compiled-expression {:params [], :raw-string "(100)-(99)"}}}}))
+     :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                   :b {:raw-string "\"x\".\"b\"", :params []},
+                   :c {:raw-string "99", :params []},
+                   :d {:raw-string "(100)-(99)", :params []}}}))
+
+(comment
+  {:variable-getters [{:top-level?  true
+                       :key         'abc
+                       :fn          (fn [env] :bla)}]}
+  (require '[loom.graph :as g])
+  (require '[loom.alg :as ga])
+  (ga/dag? (g/digraph [1 2] [2 3] [3 1]))
+  )
 
 (s/def ::floor-plan
   (s/keys :req [::column-keywords
