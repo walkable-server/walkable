@@ -297,16 +297,15 @@
        :bound   bound})))
 
 (defn build-dependencies
-  [shared-variable-getters {:keys [bound unbound]}]
-  (let [all-columns           (set (concat (keys bound) (keys unbound)))
-        shared-symbol-getters (set (map :key shared-variable-getters))]
-    (reduce-kv (fn [acc k {:keys [variable-getters compiled-expression]}]
+  [variable-getters {:keys [bound unbound]}]
+  (let [all-columns    (set (concat (keys bound) (keys unbound)))
+        getter-symbols (set (keys variable-getters))]
+    (reduce-kv (fn [acc k compiled-expression]
                  (let [p                  (-> compiled-expression :params)
                        all-vars           (set (map :name (filter expressions/atomic-variable? p)))
-                       getter-symbols     (set (map :key variable-getters))
                        symbol-vars        (set (filter symbol? all-vars))
                        column-vars        (set (filter keyword? all-vars))
-                       undeclared-symbols (clojure.set/difference symbol-vars (clojure.set/union shared-symbol-getters getter-symbols))
+                       undeclared-symbols (clojure.set/difference symbol-vars getter-symbols)
                        undeclared-columns (clojure.set/difference column-vars all-columns)]
                    (assert (not (contains? column-vars k))
                      (str "Circular dependency: " k " depends on itself"))
