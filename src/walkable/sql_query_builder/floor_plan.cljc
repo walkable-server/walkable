@@ -280,7 +280,7 @@
          unbound (seq unbound)
          bound   bound]
     (if-let [item (and (pos? limit) (first unbound))]
-      (let [[k {:keys [variable-getters compiled-expression]}] item
+      (let [[k compiled-expression] item
 
             attempt (expressions/substitute-atomic-variables
                       {:variable-values bound}
@@ -291,8 +291,7 @@
             bound)
           (recur (dec limit)
             (rest unbound)
-            (assoc bound k {:variable-getters   (or variable-getters [])
-                            :compiled-expression attempt}))))
+            (assoc bound k attempt))))
       ;; no more work. Exiting loop...
       {:unbound (into {} unbound)
        :bound   bound})))
