@@ -347,14 +347,13 @@
 (defn compile-variable-getters
   [getters]
   (->> getters
-    (map (fn [{function :fn k :key :keys [top-level?]}]
+    (map (fn [{function :fn k :key :keys [cached?]}]
            [k
-            (if top-level?
+            (if cached?
               (fn [env]
-                (p/cached env [:walkable/top-level-getter k]
+                (p/cached env [:walkable/variable-getter k]
                   (function env)))
-              (fn [env]
-                (function env)))]))
+              function)]))
     (into {})))
 
 (defn check-column-vars
@@ -371,7 +370,7 @@
                    :d {:raw-string "(100)-(99)", :params []}}}))
 
 (comment
-  {:variable-getters [{:top-level?  true
+  {:variable-getters [{:cached?  true
                        :key         'abc
                        :fn          (fn [env] :bla)}]}
   (require '[loom.graph :as g])
