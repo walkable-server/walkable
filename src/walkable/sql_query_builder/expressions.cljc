@@ -506,6 +506,11 @@
                                (string/split raw-string #"\?")))
                  (apply str))})
 
+(defn concatenate
+  [joiner compiled-expressions]
+  {:params     (vec (apply concat (map :params compiled-expressions)))
+   :raw-string (joiner (map :raw-string compiled-expressions))})
+
 (defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
