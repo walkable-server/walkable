@@ -331,6 +331,19 @@
       :column-vars #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}}})
   )
 
+(defn compile-selection [compiled-formula clojuric-name]
+  (expressions/inline-params {}
+    {:raw-string "(?) AS ?"
+     :params     [compiled-formula
+                  (expressions/verbatim-raw-string clojuric-name)]}))
+(comment
+  (= (compile-selection
+       {:raw-string "? - `human`.`yob` ?"
+        :params     [(expressions/av 'current-year)]}
+       "`human/age`")
+    {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name current-year}],
+     :raw-string "(? - `human`.`yob` ?) AS `human/age`"}))
+
 (defn compile-variable-getters
   [getters]
   (->> getters
