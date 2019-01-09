@@ -450,7 +450,7 @@
 
 (defn polulate-columns-with-joins
   [{:keys [joins] :as floor-plan}]
-  (update floor-plan :columns
+  (update floor-plan :true-columns
     clojure.set/union (columns-in-joins joins)))
 
 (comment
@@ -464,19 +464,20 @@
 
 (defn polulate-columns-with-condititional-idents
   [{:keys [conditional-idents] :as floor-plan}]
-  (update floor-plan :columns
+  (update floor-plan :true-columns
     clojure.set/union (columns-in-conditional-idents conditional-idents)))
 
 (comment
   (columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
-  (polulate-columns-with-condititional-idents {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
-                                               :columns #{:x/id :m/id}})
-  )
+  (= (polulate-columns-with-condititional-idents {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
+                                                  :true-columns       #{:x/id :m/id}})
+    {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
+     :true-columns #{:m/id :y/id :x/id}}))
 
 (defn expand-floor-plan-keys
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
-    (update :columns set)
+    (update :true-columns set)
     (update :idents flatten-multi-keys)
     (update :extra-conditions flatten-multi-keys)
     (update :pagination-fallbacks flatten-multi-keys)
@@ -495,20 +496,18 @@
     (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
 
 (defn prepare-keywords
-  [{:keys [columns aggregators idents emitter
-           stateful-formulas stateless-formulas] :as floor-plan}]
+  [{:keys [true-columns aggregators pseudo-columns
+           idents emitter joins] :as floor-plan}]
   (-> floor-plan
     (assoc :aggregator-keywords (set (keys aggregators)))
-    (dissoc :aggregators)
 
     (assoc :column-keywords
-      (clojure.set/union columns
-        (set (keys (merge stateless-formulas stateful-formulas)))))
+      (clojure.set/union true-columns
+        (set (keys (merge aggregators pseudo-columns)))))
 
     (assoc :ident-keywords (set (keys idents)))
-    (dissoc :idents)
-
-    (assoc :true-columns (column-names emitter columns))))
+    (assoc :join-keywords (set (keys joins)))
+    (dissoc :idents)))
 
 (defn prepare-clojuric-names
   [{:keys [emitter column-keywords] :as floor-plan}]
