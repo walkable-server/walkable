@@ -455,8 +455,10 @@
 
 (comment
   (columns-in-joins {:x [:u :v] :y [:m :n]})
-  (polulate-columns-with-joins {:joins   {:x [:u :v] :y [:m :n]}
-                                :columns #{:a :b}}))
+  (= (polulate-columns-with-joins {:joins       {:x [:u :v] :y [:m :n]}
+                                   :true-columns #{:a :b}})
+    {:joins        {:x [:u :v], :y [:m :n]},
+     :true-columns #{:v :n :m :b :a :u}}))
 
 (defn columns-in-conditional-idents
   [conditional-idents]
