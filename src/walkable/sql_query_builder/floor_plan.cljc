@@ -256,7 +256,7 @@
   (= (rotate []) [])
   )
 
-(defn compile-all-formulas [compiled-true-columns formulas]
+(defn compile-formulas-once [compiled-true-columns formulas]
   (reduce-kv (fn [result k expression]
                (let [compiled (expressions/compile-to-string {} expression)]
                  (if (unbound-expression? compiled)
@@ -267,7 +267,7 @@
     formulas))
 
 (comment
-  (= (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+  (= (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
        {:x/c 99
         :x/d [:- 100 :x/c]})
     {:unbound #:x {:d {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name :x/c}],
@@ -276,7 +276,7 @@
                    :b {:raw-string "\"x\".\"b\"", :params []},
                    :c {:raw-string "99", :params []}}}))
 
-(defn bind-all [{:keys [unbound bound]}]
+(defn compile-formulas-recursively [{:keys [unbound bound]}]
   (loop [limit   100
          unbound (seq unbound)
          bound   bound]
@@ -323,7 +323,7 @@
 (comment
   (= (build-dependencies
       '{o {:key o :fn identity}}
-      (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+      (compile-formulas-recursively (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
                   {:x/c [:+ :x/d (expressions/av 'o)]
                    :x/d [:- 100 :x/e]
                    :x/e [:- 100 :x/c]})))
@@ -360,7 +360,7 @@
   [column-vars])
 
 (comment
-  (= (bind-all (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+  (= (compile-formulas-recursively (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
                  {:x/c 99
                   :x/d [:- 100 :x/c]}))
     {:unbound {},
