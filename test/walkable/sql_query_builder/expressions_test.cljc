@@ -29,6 +29,22 @@
         {:raw-string "2018 - `human`.`yob` ",
          :params []})))
 
+(deftest concatenate-params-tests
+  (is (= (sut/concatenate #(apply str %)
+           [{:raw-string "? as a"
+             :params     [(sut/av :a/b)]}
+            {:raw-string "? as b"
+             :params     [(sut/av :c/d)]}])
+        {:params     [(sut/av :a/b) (sut/av :c/d)],
+         :raw-string "? as a? as b"}))
+  (is (= (sut/concatenate #(clojure.string/join ", " %)
+           [{:raw-string "? as a"
+             :params     [(sut/av :a/b)]}
+            {:raw-string "? as b"
+             :params     [(sut/av :c/d)]}])
+        {:params [(sut/av :a/b) (sut/av :c/d)],
+         :raw-string "? as a, ? as b"})))
+
 (deftest and-tests
   (is (= (sut/process-operator {} [:and []])
         {:raw-string "?", :params [true]}))
