@@ -104,13 +104,6 @@
     (:params selection)))
 
 (defn process-query
-  "Helper function for pull-entities. Outputs
-
-  - query-string-input and query-params: to build SQL query to fetch
-  data for entities of current level (using ->query-string)
-
-  - join-children: set of direct nested levels that will require their
-  own SQL query."
   [{::keys [floor-plan] :as env}]
   (let [{::floor-plan/keys [aggregator-keywords ident-keywords]}
         floor-plan
