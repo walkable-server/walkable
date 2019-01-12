@@ -97,6 +97,11 @@
     (expressions/concatenate  #(clojure.string/join ", " %)
       (mapv compiled-selection columns-to-query))))
 
+(defn combine-params
+  [selection conditions]
+  (if conditions
+    (vec (concat (:params selection) (:params conditions)))
+    (:params selection)))
 
 (defn process-query
   "Helper function for pull-entities. Outputs
