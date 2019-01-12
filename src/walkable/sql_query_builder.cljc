@@ -125,16 +125,6 @@
                                {:column-names column-names}
                                form)]})]))))))
 
-(defn parameterize-all-selection
-  [env columns-to-query]
-  (let [column-names (-> env ::floor-plan ::floor-plan/column-names)
-        xs (process-selection env columns-to-query)]
-    (->> {:raw-string (->> (repeat (count xs) \?)
-                        (clojure.string/join ", "))
-          :params     xs}
-      (expressions/inline-params {})
-      ((juxt :raw-string :params)))))
-
 (defn process-all-params
   "Replaces any keyword found in all-params with their corresponding
   column-name"
