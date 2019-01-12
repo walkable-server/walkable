@@ -93,37 +93,9 @@
 
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
-  (let [{::floor-plan/keys [column-names clojuric-names]} floor-plan
-
-        target-column (env/target-column env)]
-    (concat
-      (mapv (fn [k]
-              (let [column-name   (get column-names k)
-                    clojuric-name (get clojuric-names k)]
-                (if (string? column-name)
-                  {:raw-string (str column-name " AS " clojuric-name)
-                   :params     []}
-                  ;; not string? it must be a pseudo-column
-                  (let [form (s/conform ::expressions/expression (if (fn? column-name)
-                                                                   (column-name env)
-                                                                   column-name))]
-                    (when-not (= ::s/invalid form)
-                      (expressions/inline-params {}
-                        {:raw-string (str "(?) AS " clojuric-name)
-                         :params     [(expressions/process-expression
-                                        {:column-names column-names}
-                                        form)]}))))))
-        (if target-column
-          (remove #(= % target-column) columns-to-query)
-          columns-to-query))
-      (when target-column
-        (let [form (s/conform ::expressions/expression (env/source-column-value env))]
-          (when-not (= ::s/invalid form)
-            [(expressions/inline-params {}
-               {:raw-string (str "? AS " (get clojuric-names target-column))
-                :params     [(expressions/process-expression
-                               {:column-names column-names}
-                               form)]})]))))))
+  (let [{::floor-plan/keys [compiled-selection]} floor-plan]
+    (expressions/concatenate  #(clojure.string/join ", " %)
+      (mapv compiled-selection columns-to-query))))
 
 
 (defn process-query
