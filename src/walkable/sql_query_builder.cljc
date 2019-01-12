@@ -125,16 +125,6 @@
                                {:column-names column-names}
                                form)]})]))))))
 
-(defn process-all-params
-  "Replaces any keyword found in all-params with their corresponding
-  column-name"
-  [env all-params]
-  (let [column-names (-> env ::floor-plan ::floor-plan/column-names)]
-    (mapv (fn stringify-keywords [param]
-            (if (expressions/namespaced-keyword? param)
-              (get column-names param)
-              param))
-      all-params)))
 
 (defn process-query
   "Helper function for pull-entities. Outputs
