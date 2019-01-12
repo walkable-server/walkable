@@ -88,14 +88,6 @@
     (supplied-pagination env)
     (env/pagination-fallbacks env)))
 
-(defn ident->condition
-  "Converts given ident key in env to equivalent condition dsl."
-  [env key]
-  {:pre  [(s/valid? ::expressions/namespaced-keyword key)
-          (s/valid? (s/keys :req-un [::ast]) env)]
-   :post [#(s/valid? ::expressions/expression %)]}
-  (conj [:= key] (env/ident-value env)))
-
 (defn process-conditions
   "Combines all conditions to produce the final WHERE
   statement. Returns a vector (which implies an AND) of:
