@@ -89,47 +89,7 @@
     (env/pagination-fallbacks env)))
 
 (defn process-conditions
-  "Combines all conditions to produce the final WHERE
-  statement. Returns a vector (which implies an AND) of:
-
-  - ident-condition: eg [:person/by-id 1] will result `WHERE person.id
-  = 1`
-
-  - join-condition: to filter the joined table given the attribute of
-  the entity from upper level.
-
-  - extra-condition: extra constraints for an ident or a join defined
-  in floor-plan.
-
-  - supplied-condition: ad-hoc condition supplied in om.next
-  query (often by client apps)"
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [ident-conditions]} floor-plan
-
-        e (p/entity env)
-        k (env/dispatch-key env)
-
-        ident-condition
-        (when-let [condition (get ident-conditions k)]
-          (ident->condition env condition))
-
-        target-column (env/target-column env)
-
-        source-column (env/source-column env)
-
-        join-condition
-        (when target-column ;; if it's a join
-          [:= target-column (get e source-column)])
-
-        extra-condition (env/extra-condition env)
-
-        supplied-condition
-        (get-in env [:ast :params :filters])
-
-        supplied-condition
-        (when (s/valid? ::expressions/expression supplied-condition)
-          supplied-condition)]
-    [ident-condition join-condition extra-condition supplied-condition]))
+  [env])
 
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
