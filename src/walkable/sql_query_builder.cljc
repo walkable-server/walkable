@@ -143,6 +143,10 @@
     {:sql-query     sql-query
      :join-children join-children}))
 
+(defn build-parameterized-sql-query
+  [{:keys [raw-string params]}]
+  (vec (cons raw-string params)))
+
 (defn top-level
   [{::keys [floor-plan sql-db run-query] :as env}]
   (let [{::floor-plan/keys [ident-keywords]} floor-plan
