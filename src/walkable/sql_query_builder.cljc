@@ -112,33 +112,36 @@
   - join-children: set of direct nested levels that will require their
   own SQL query."
   [{::keys [floor-plan] :as env}]
-  {:pre [(s/valid? (s/keys :req [::floor-plan/column-names
-                                 ::floor-plan/clojuric-names]
-                     :opt [::floor-plan/join-statements
-                           ::floor-plan/target-tables
-                           ::floor-plan/target-columns])
-           floor-plan)]}
-  (let [{::floor-plan/keys [aggregators]}        floor-plan
-        k                                        (env/dispatch-key env)
-        {:keys [join-children columns-to-query]} (if (contains? aggregators k)
-                                                   {:columns-to-query #{k}
-                                                    :join-children    #{}}
-                                                   (process-children env))
+  (let [{::floor-plan/keys [aggregator-keywords ident-keywords]}
+        floor-plan
 
-        {:keys [offset limit order-by order-by-columns]} (process-pagination env)
+        k (env/dispatch-key env)
 
-        columns-to-query                (clojure.set/union columns-to-query order-by-columns)
-        [selection select-params]       (parameterize-all-selection env columns-to-query)
-        [where-conditions where-params] (parameterize-all-conditions env columns-to-query)]
-    {:query-string-input {:target-table     (env/target-table env)
-                          :join-statement   (env/join-statement env)
-                          :selection        selection
-                          :where-conditions where-conditions
-                          :offset           offset
-                          :limit            limit
-                          :order-by         order-by}
-     :query-params       (process-all-params env (concat select-params where-params))
-     :join-children      join-children}))
+        {:keys [join-children columns-to-query]}
+        (if (contains? aggregator-keywords k)
+          {:columns-to-query #{k}
+           :join-children    #{}}
+          (process-children env))
+
+        {:keys [offset limit order-by order-by-columns]}
+        (process-pagination env)
+
+        columns-to-query (clojure.set/union columns-to-query order-by-columns)
+        selection        (process-selection env columns-to-query)
+        conditions       (process-conditions env)
+        sql-query        (when (contains? ident-keywords k)
+                           {:raw-string
+                            (emitter/->query-string
+                              {:target-table   (env/target-table env)
+                               :join-statement (env/join-statement env)
+                               :selection      (:raw-string selection)
+                               :conditions     (:raw-string conditions)
+                               :offset         offset
+                               :limit          limit
+                               :order-by       order-by})
+                            :params (combine-params selection conditions)})]
+    {:sql-query     sql-query
+     :join-children join-children}))
 
 (defn top-level
   [{::keys [floor-plan sql-db run-query] :as env}]
