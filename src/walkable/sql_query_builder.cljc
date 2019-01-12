@@ -149,23 +149,12 @@
 
 (defn top-level
   [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [ident-keywords]} floor-plan
-        k                                    (env/dispatch-key env)
-
-        {:keys [query-string-input query-params join-children]}
-        (process-query env)
-
-        query-string
-        (when (contains? ident-keywords k)
-          (emitter/->query-string query-string-input))]
-
+  (let [k                                 (env/dispatch-key env)
+        {:keys [sql-query join-children]} (process-query env)]
     {:join-children join-children
-     :entities      (if query-string
+     :entities      (if sql-query
                       ;; for idents
-                      (run-query sql-db
-                        (if query-params
-                          (cons query-string query-params)
-                          query-string))
+                      (run-query sql-db (build-parameterized-sql-query sql-query))
                       ;; joins don't have to build a query themselves
                       ;; just look up the key in their parents data
                       (let [parent (p/entity env)]
