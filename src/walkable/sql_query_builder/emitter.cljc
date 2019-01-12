@@ -75,12 +75,12 @@
 
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]
-    :opt-un [::join-statement ::where-conditions
+    :opt-un [::join-statement ::conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [selection target-table join-statement where-conditions
+  [{:keys [selection target-table join-statement conditions
            offset limit order-by]
     :as input}]
   {:pre  [(s/valid? ::query-string-input input)]
@@ -90,9 +90,9 @@
 
     join-statement
 
-    (when where-conditions
+    (when conditions
       (str " WHERE "
-        where-conditions))
+        conditions))
     (when order-by
       (str " ORDER BY " order-by))
     (when limit
