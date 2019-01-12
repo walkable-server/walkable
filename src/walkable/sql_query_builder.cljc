@@ -131,14 +131,6 @@
           supplied-condition)]
     [ident-condition join-condition extra-condition supplied-condition]))
 
-(defn parameterize-all-conditions
-  [env columns-to-query]
-  (let [all-conditions (clean-up-all-conditions (process-conditions env))]
-    (when all-conditions
-      (->> all-conditions
-        (expressions/parameterize (evaluate-formulas env columns-to-query))
-        ((juxt :raw-string :params))))))
-
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
   (let [{::floor-plan/keys [column-names clojuric-names]} floor-plan
