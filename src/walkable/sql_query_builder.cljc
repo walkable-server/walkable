@@ -88,6 +88,20 @@
     (supplied-pagination env)
     (env/pagination-fallbacks env)))
 
+(defn compile-supplied-condition
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [compiled-formulas join-filter-subqueries]}
+        floor-plan
+
+        supplied-condition
+        (get-in env [:ast :params :filters])]
+    (when supplied-condition
+      (->> supplied-condition
+        (expressions/compile-to-string
+          {:join-filter-subqueries join-filter-subqueries})
+        (expressions/substitute-atomic-variables
+          {:variable-values compiled-formulas})))))
+
 (defn process-conditions
   [env])
 
