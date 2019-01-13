@@ -103,7 +103,16 @@
           {:variable-values compiled-formulas})))))
 
 (defn process-conditions
-  [env])
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [compiled-conditions]} floor-plan
+        k                                         (env/dispatch-key env)]
+    (if-let [iv (env/ident-value env)]
+      (when-let [f (get-in compiled-conditions [k :with-ident-condition])]
+        (f iv))
+      (if-let [c (compile-supplied-condition env)]
+        (when-let [f (get-in compiled-conditions [k :with-supplied-condition])]
+          (f env c))
+        (get-in compiled-conditions [k :with-no-other-condition])))))
 
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
