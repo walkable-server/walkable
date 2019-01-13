@@ -44,7 +44,7 @@
       (let [c (name k)]
         (with-quote-marks this
           (or (get (:rename-columns this) c)
-            (transform-table-name this c)))))))
+            (transform-column-name this c)))))))
 
 (defn clojuric-name [this k]
   (with-quote-marks this (subs (str k) 1)))

@@ -21,7 +21,11 @@
   (is (= (sut/column-name sut/sqlite-emitter :foo/bar)
         "\"foo\".\"bar\""))
   (is (= (sut/column-name sut/mysql-emitter :foo/bar)
-        "`foo`.`bar`")))
+        "`foo`.`bar`"))
+  (is (= (sut/column-name (assoc sut/default-emitter 
+                            :transform-column-name identity) 
+           :prefix-foo/bar-bar)
+        "\"prefix_foo\".\"bar-bar\"")))
 
 (deftest clojuric-name-test
   (is (= (sut/clojuric-name sut/mysql-emitter :foo/bar)
