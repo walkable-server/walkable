@@ -80,6 +80,14 @@
    :limit    (env/limit env)
    :order-by (env/order-by env)})
 
+(defn process-ident-condition
+  [{::keys [floor-plan] :as env}]
+  (when-let [compiled-ident-condition (env/compiled-ident-condition env)]
+    (->> compiled-ident-condition
+      (expressions/substitute-atomic-variables
+        {:variable-values {`ident-value
+                           (expressions/compile-to-string {} (env/ident-value env))}}))))
+
 (defn process-pagination [{::keys [floor-plan] :as env}]
   {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
