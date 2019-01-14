@@ -88,6 +88,13 @@
         {:variable-values {`ident-value
                            (expressions/compile-to-string {} (env/ident-value env))}}))))
 
+(defn process-join-condition
+  [{::keys [floor-plan] :as env}]
+  (when-let [compiled-join-condition (env/compiled-join-condition env)]
+    (->> compiled-join-condition
+      (expressions/substitute-atomic-variables
+        {:variable-values {`source-column-value (env/source-column-value env)}}))))
+
 (defn process-pagination [{::keys [floor-plan] :as env}]
   {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
