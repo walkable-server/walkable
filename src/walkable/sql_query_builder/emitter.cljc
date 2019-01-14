@@ -101,8 +101,23 @@
       (str " OFFSET " offset))))
 
 (defn emitter->batch-query [emitter]
-  (fn [query-strings params]
-    (-> (if (= 1 (count query-strings))
-          query-strings
-          (map #(wrap-select emitter %) query-strings))
-      (batch-query params))))
+  (fn [parameterized-queries]
+    (-> (if (= 1 (count parameterized-queries))
+          (first parameterized-queries)
+          (expressions/concatenate
+            (fn [q] (->> q
+                      (mapv #(wrap-select emitter %))
+                      (clojure.string/join "\nUNION ALL\n")))
+            parameterized-queries)))))
+
+(comment
+  (= ((emitter->batch-query default-emitter)
+      [{:raw-string "x" :params ["a" "b"]}
+       {:raw-string "y" :params ["c" "d"]}])
+    {:params     ["a" "b" "c" "d"],
+     :raw-string "(x)\nUNION ALL\n(y)"})
+  (= ((emitter->batch-query sqlite-emitter)
+      [{:raw-string "x" :params ["a" "b"]}
+       {:raw-string "y" :params ["c" "d"]}])
+    {:params     ["a" "b" "c" "d"],
+     :raw-string "SELECT * FROM (x)\nUNION ALL\nSELECT * FROM (y)"}))
