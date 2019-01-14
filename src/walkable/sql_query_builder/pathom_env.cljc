@@ -16,6 +16,12 @@
     (when (vector? k)
       (second k))))
 
+(defn ident-column
+  [env]
+  (let [ident-columns (-> env :walkable.sql-query-builder/floor-plan
+                        :walkable.sql-query-builder.floor-plan/ident-columns)]
+    (get ident-columns (dispatch-key env))))
+
 (defn target-column
   [env]
   (let [target-columns (-> env :walkable.sql-query-builder/floor-plan
