@@ -124,6 +124,7 @@
         (->> env
           ((juxt process-ident-condition
              process-join-condition
+             process-supplied-condition
              env/compiled-extra-condition))
           (into [] (remove nil?)))]
     (expressions/concatenate #(clojure.string/join " AND " %)
