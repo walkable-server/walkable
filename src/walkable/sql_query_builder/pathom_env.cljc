@@ -69,6 +69,12 @@
                            :walkable.sql-query-builder.floor-plan/compiled-ident-conditions)]
     (get ident-conditions (dispatch-key env))))
 
+(defn compiled-join-condition
+  [env]
+  (let [join-conditions (-> env :walkable.sql-query-builder/floor-plan
+                          :walkable.sql-query-builder.floor-plan/compiled-join-conditions)]
+    (get join-conditions (dispatch-key env))))
+
 (defn pagination-fallbacks
   [env]
   (let [fallbacks (-> env :walkable.sql-query-builder/floor-plan
