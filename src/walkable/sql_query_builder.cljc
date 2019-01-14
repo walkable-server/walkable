@@ -103,7 +103,7 @@
     (supplied-pagination env)
     (env/pagination-fallbacks env)))
 
-(defn compile-supplied-condition
+(defn process-supplied-condition
   [{::keys [floor-plan] :as env}]
   (let [{::floor-plan/keys [compiled-formulas join-filter-subqueries]}
         floor-plan
