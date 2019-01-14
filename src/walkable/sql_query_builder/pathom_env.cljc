@@ -57,12 +57,11 @@
                           :walkable.sql-query-builder.floor-plan/join-statements)]
     (get join-statements (dispatch-key env))))
 
-(defn extra-condition
+(defn compiled-extra-condition
   [env]
   (let [extra-conditions (-> env :walkable.sql-query-builder/floor-plan
-                           :walkable.sql-query-builder.floor-plan/extra-conditions)]
-    (when-let [->condition (get extra-conditions (dispatch-key env))]
-      (->condition env))))
+                           :walkable.sql-query-builder.floor-plan/compiled-extra-conditions)]
+    (get extra-conditions (dispatch-key env))))
 
 (defn pagination-fallbacks
   [env]
