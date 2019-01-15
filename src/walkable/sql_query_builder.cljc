@@ -244,69 +244,30 @@
   params) against the given sql-db. Shares the same signature with
   clojure.java.jdbc/query."
   [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [ident-keywords
-                            batch-query
-                            target-tables
-                            target-columns
+  (let [{::floor-plan/keys [target-tables
+                            aggregator-keywords
                             source-columns
-                            join-statements
-                            aggregators
                             cardinality]} floor-plan
         k                                 (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [join-children entities]} (top-level env)
-            ;;join-child-queries
-            join-children-data-by-join-key
-            (when (and (seq entities) (seq join-children))
-              (into {}
-                (for [join-child join-children]
-                  (let [j             (:dispatch-key join-child)
-                        ;; parent
-                        source-column (get source-columns j)
-                        ;; children
-                        target-column (get target-columns j)
 
-                        query-string-inputs
-                        (for [e entities]
-                          (process-query
-                            (-> env
-                              (assoc :ast join-child)
-                              (as-> env
-                                (update env (get env ::p/entity-key)
-                                  #(assoc (p/maybe-atom %) source-column (get e source-column)))))))
-
-                        query-strings (map #(emitter/->query-string (:query-string-input %)) query-string-inputs)
-                        all-params    (map :query-params query-string-inputs)
-
-                        join-children-data
-                        (run-query sql-db (batch-query query-strings all-params))]
-                    [join-child (group-by target-column join-children-data)]))))
-
-            entities-with-join-children-data
-            (for [e entities]
-              (let [child-joins
-                    (into {}
-                      (for [join-child join-children]
-                        (let [j             (:dispatch-key join-child)
-                              source-column (get source-columns j)
-                              parent-id     (get e source-column)
-                              children      (get-in join-children-data-by-join-key
-                                              [join-child parent-id])]
-                          [join-child children])))]
-                (merge e child-joins)))
+            full-entities
+            (-> (join-children-data-by-join-key env entities join-children)
+              (entities-with-join-children-data entities source-columns join-children))
 
             one?
             (= :one (get cardinality k))
 
             do-join
-            (if (contains? aggregators k)
+            (if (contains? aggregator-keywords k)
               #(get (first %2) k)
               (if one?
                 #(p/join (first %2) %1)
                 #(p/join-seq %1 %2)))]
-        (if (seq entities-with-join-children-data)
-          (do-join env entities-with-join-children-data)
+        (if (seq full-entities)
+          (do-join env full-entities)
           (when-not one?
             [])))
 
