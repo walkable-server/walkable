@@ -217,6 +217,19 @@
                   [join-child (group-by target-column join-children-data)]))]
         (into {} (map f) join-children)))))
 
+(defn entities-with-join-children-data
+  [join-children-data-by-join-key entities source-columns join-children]
+  (for [e entities]
+    (let [f (fn [join-child]
+              (let [j             (:dispatch-key join-child)
+                    source-column (get source-columns j)
+                    parent-id     (get e source-column)
+                    children      (get-in join-children-data-by-join-key
+                                    [join-child parent-id])]
+                [join-child children]))
+          child-joins (into {} (map f) join-children)]
+      (merge e child-joins))))
+
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
