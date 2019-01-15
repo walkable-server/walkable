@@ -94,7 +94,7 @@
   (when-let [compiled-ident-condition (env/compiled-ident-condition env)]
     (->> compiled-ident-condition
       (expressions/substitute-atomic-variables
-        {:variable-values {`ident-value
+        {:variable-values {`floor-plan/ident-value
                            (expressions/compile-to-string {} (env/ident-value env))}}))))
 
 (defn process-pagination [{::keys [floor-plan] :as env}]
@@ -210,7 +210,7 @@
                             :let [v (get e source-column)]]
                         (->> unbound-sql-query
                           (expressions/substitute-atomic-variables
-                            {:variable-values {`source-column-value (expressions/verbatim-raw-string v)}})))
+                            {:variable-values {`floor-plan/source-column-value (expressions/verbatim-raw-string v)}})))
 
                       join-children-data
                       (run-query sql-db (build-parameterized-sql-query (batch-query queries)))]
