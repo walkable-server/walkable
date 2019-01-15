@@ -9,7 +9,7 @@
             [clojure.core.async :refer [go go-loop <! >! put! promise-chan to-chan]]
             [com.wsscode.pathom.core :as p]))
 
-(defn process-children
+(defn process-children*
   "Infers which columns to include in SQL query from child keys in env ast"
   [{::keys [floor-plan] :keys [ast] ::p/keys [placeholder-prefixes]
     :as    env}]
@@ -61,6 +61,15 @@
                          child-column-keys
                          child-required-keys
                          child-source-columns)}))
+
+(defn process-children
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [aggregator-keywords]} floor-plan
+        k                                         (env/dispatch-key env)]
+    (if (contains? aggregator-keywords k)
+      {:columns-to-query #{k}
+       :join-children    #{}}
+      (process-children* env))))
 
 (defn clean-up-all-conditions
   "Receives all-conditions produced by process-conditions. Only keeps
@@ -137,16 +146,13 @@
 
 (defn process-query
   [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [aggregator-keywords ident-keywords]}
+  (let [{::floor-plan/keys [ident-keywords join-keywords]}
         floor-plan
 
         k (env/dispatch-key env)
 
         {:keys [join-children columns-to-query]}
-        (if (contains? aggregator-keywords k)
-          {:columns-to-query #{k}
-           :join-children    #{}}
-          (process-children env))
+        (process-children env)
 
         {:keys [offset limit order-by order-by-columns]}
         (process-pagination env)
