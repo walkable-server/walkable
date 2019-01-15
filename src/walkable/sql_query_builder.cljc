@@ -188,6 +188,35 @@
                       (let [parent (p/entity env)]
                         (get parent (:ast env))))}))
 
+(defn join-children-data-by-join-key
+  [{::keys [floor-plan sql-db run-query] :as env}
+   entities join-children]
+  (let [{::floor-plan/keys [batch-query
+                            target-columns
+                            source-columns]} floor-plan]
+    (when (and (seq entities) (seq join-children))
+      (let [f (fn [join-child]
+                (let [j             (:dispatch-key join-child)
+                      ;; parent
+                      source-column (get source-columns j)
+                      ;; children
+                      target-column (get target-columns j)
+
+                      unbound-sql-query
+                      (:sql-query (process-query (assoc env :ast join-child)))
+
+                      queries
+                      (for [e    entities
+                            :let [v (get e source-column)]]
+                        (->> unbound-sql-query
+                          (expressions/substitute-atomic-variables
+                            {:variable-values {`source-column-value (expressions/verbatim-raw-string v)}})))
+
+                      join-children-data
+                      (run-query sql-db (build-parameterized-sql-query (batch-query queries)))]
+                  [join-child (group-by target-column join-children-data)]))]
+        (into {} (map f) join-children)))))
+
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
