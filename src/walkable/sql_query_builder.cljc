@@ -174,10 +174,13 @@
 
 (defn top-level
   [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [k                                 (env/dispatch-key env)
+  (let [{::floor-plan/keys [ident-keywords join-keywords]}
+        floor-plan
+
+        k                                 (env/dispatch-key env)
         {:keys [sql-query join-children]} (process-query env)]
     {:join-children join-children
-     :entities      (if sql-query
+     :entities      (if (contains? ident-keywords k)
                       ;; for idents
                       (run-query sql-db (build-parameterized-sql-query sql-query))
                       ;; joins don't have to build a query themselves
