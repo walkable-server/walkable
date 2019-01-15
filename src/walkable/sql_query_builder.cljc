@@ -146,12 +146,7 @@
 
 (defn process-query
   [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [ident-keywords join-keywords]}
-        floor-plan
-
-        k (env/dispatch-key env)
-
-        {:keys [join-children columns-to-query]}
+  (let [{:keys [join-children columns-to-query]}
         (process-children env)
 
         {:keys [offset limit order-by order-by-columns]}
@@ -160,17 +155,16 @@
         columns-to-query (clojure.set/union columns-to-query order-by-columns)
         selection        (process-selection env columns-to-query)
         conditions       (process-conditions env)
-        sql-query        (when (contains? ident-keywords k)
-                           {:raw-string
-                            (emitter/->query-string
-                              {:target-table   (env/target-table env)
-                               :join-statement (env/join-statement env)
-                               :selection      (:raw-string selection)
-                               :conditions     (:raw-string conditions)
-                               :offset         offset
-                               :limit          limit
-                               :order-by       order-by})
-                            :params (combine-params selection conditions)})]
+        sql-query        {:raw-string
+                          (emitter/->query-string
+                            {:target-table   (env/target-table env)
+                             :join-statement (env/join-statement env)
+                             :selection      (:raw-string selection)
+                             :conditions     (:raw-string conditions)
+                             :offset         offset
+                             :limit          limit
+                             :order-by       order-by})
+                          :params (combine-params selection conditions)}]
     {:sql-query     sql-query
      :join-children join-children}))
 
