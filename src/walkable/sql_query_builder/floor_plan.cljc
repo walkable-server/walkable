@@ -297,38 +297,30 @@
       {:unbound (into {} unbound)
        :bound   bound})))
 
-(defn build-dependencies
-  [variable-getters {:keys [bound unbound]}]
-  (let [all-columns    (set (concat (keys bound) (keys unbound)))
-        getter-symbols (set (keys variable-getters))]
+(defn column-dependencies
+  [{:keys [bound unbound]}]
+  (let [all-columns    (set (concat (keys bound) (keys unbound)))]
     (reduce-kv (fn [acc k compiled-expression]
                  (let [p                  (-> compiled-expression :params)
                        all-vars           (set (map :name (filter expressions/atomic-variable? p)))
-                       symbol-vars        (set (filter symbol? all-vars))
                        column-vars        (set (filter keyword? all-vars))
-                       undeclared-symbols (clojure.set/difference symbol-vars getter-symbols)
                        undeclared-columns (clojure.set/difference column-vars all-columns)]
                    (assert (not (contains? column-vars k))
                      (str "Circular dependency: " k " depends on itself"))
-                   (assert (empty? undeclared-symbols)
-                     (str "Missing variable getter for " undeclared-symbols))
                    (assert (empty? undeclared-columns)
-                     (str "Missing definition for columns: " undeclared-columns))
-                   (-> acc
-                     (assoc-in [:symbol-vars k] symbol-vars)
-                     (assoc-in [:column-vars k] column-vars))))
+                     (str "Missing definition for columns: " undeclared-columns
+                       ". You may want to add them to :columns or :pseudo-columns."))
+                   (assoc acc k column-vars)))
       {}
       unbound)))
 
 (comment
-  (= (build-dependencies
-      '{o {:key o :fn identity}}
+  (= (column-dependencies
       (compile-formulas-recursively (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
                   {:x/c [:+ :x/d (expressions/av 'o)]
                    :x/d [:- 100 :x/e]
                    :x/e [:- 100 :x/c]})))
-    '{:symbol-vars #:x{:d #{}, :e #{}, :c #{o}},
-      :column-vars #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}}})
+    #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}})
   )
 
 (defn compile-selection [compiled-formula clojuric-name]
