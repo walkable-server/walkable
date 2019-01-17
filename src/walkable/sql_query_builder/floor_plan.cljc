@@ -370,24 +370,6 @@
   (ga/dag? (g/digraph [1 2] [2 3] [3 1]))
   )
 
-(s/def ::floor-plan
-  (s/keys :req [::column-keywords
-                ::target-columns
-                ::extra-conditions
-                ::pagination-fallbacks
-                ::join-statements
-                ::join-filter-subqueries
-                ::required-columns
-                ::clojuric-names
-                ::column-names
-                ::ident-keywords
-                ::source-columns
-                ::ident-conditions
-                ::cardinality
-                ::emitter
-                ::target-tables
-                ::aggregators
-                ::batch-query]))
 
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
