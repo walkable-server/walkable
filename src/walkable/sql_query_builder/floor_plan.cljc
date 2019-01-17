@@ -352,7 +352,7 @@
   [column-vars])
 
 (comment
-  (= (compile-formulas-recursively (compile-all-formulas (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
+  (= (compile-formulas-recursively (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
                  {:x/c 99
                   :x/d [:- 100 :x/c]}))
     {:unbound {},
