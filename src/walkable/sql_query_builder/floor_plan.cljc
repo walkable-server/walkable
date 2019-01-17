@@ -370,6 +370,16 @@
   (ga/dag? (g/digraph [1 2] [2 3] [3 1]))
   )
 
+(defn compile-formulas
+  [{:keys [true-columns pseudo-columns aggregators emitter] :as env}]
+  (let [compiled-formulas       (-> (compile-true-columns emitter true-columns)
+                                  (compile-formulas-once (merge pseudo-columns aggregators))
+                                  compile-formulas-recursively)
+        _ok?                    (column-dependencies compiled-formulas)
+        {:keys [bound unbound]} compiled-formulas
+        compiled-formulas       (merge bound unbound)]
+    (-> (dissoc env :true-columns :pseudo-columns :aggregators)
+      (assoc :compiled-formulas compiled-formulas))))
 
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
