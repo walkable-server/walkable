@@ -441,6 +441,39 @@
       (assoc :compiled-extra-conditions compiled-extra-conditions)
       (dissoc :extra-conditions))))
 
+(def floor-plan-keys
+  [:aggregator-keywords
+   :batch-query
+   :cardinality
+   :clojuric-names
+   :column-keywords
+   :compiled-extra-conditions
+   :compiled-formulas
+   :compiled-ident-conditions
+   :compiled-join-conditions
+   :compiled-selection
+   :emitter
+   :ident-keywords
+   :join-filter-subqueries
+   :join-keywords
+   :join-statements
+   :pagination-fallbacks
+   :required-columns
+   :reversed-joins
+   :source-columns
+   :target-columns
+   :target-tables])
+
+(defn kmap [ks]
+  (let [this-ns (namespace ::foo)]
+    (zipmap ks (map #(keyword this-ns (name %)) ks))))
+
+(defn internalize-keywords
+  [floor-plan]
+  (-> floor-plan
+    (select-keys floor-plan-keys)
+    (clojure.set/rename-keys (kmap floor-plan-keys))))
+
 (defn columns-in-joins
   [joins]
   (set (apply concat (vals joins))))
