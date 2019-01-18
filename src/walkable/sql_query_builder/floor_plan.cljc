@@ -440,52 +440,6 @@
     (-> floor-plan
       (assoc :compiled-extra-conditions compiled-extra-conditions)
       (dissoc :extra-conditions))))
-(defn compile-floor-plan*
-  "Given a brief user-supplied floor-plan, derives an efficient floor-plan
-  ready for pull-entities to use."
-  [{:keys [true-columns column-keywords clojuric-names
-           stateless-formulas stateful-formulas
-           required-columns
-           ident-keywords
-           emitter
-
-           stateless-formulas stateful-formulas
-           stateless-conditions stateful-conditions
-           pagination-fallbacks
-           reversed-joins joins cardinality
-           aggregator-keywords
-           batch-query
-           unconditional-idents conditional-idents
-           join-statements target-tables
-           join-filter-subqueries
-           target-columns source-columns]
-    :or {emitter              emitter/default-emitter
-         aggregators          {}
-         extra-conditions     {}
-         pagination-fallbacks {}
-         joins                {}
-         cardinality          {}}
-    :as input-floor-plan}]
-  (merge #::{:cardinality            cardinality
-             :emitter                emitter
-             :batch-query            batch-query
-             :target-tables          target-tables
-             :join-filter-subqueries join-filter-subqueries
-             :target-columns         target-columns
-             :source-columns         source-columns
-             :ident-conditions       conditional-idents
-             :required-columns       required-columns
-             :join-statements        join-statements
-             :aggregator-keywords    aggregator-keywords
-             :stateless-formulas     stateless-formulas
-             :stateful-formulas      stateful-formulas
-             :stateless-conditions   stateless-conditions
-             :stateful-conditions    stateful-conditions
-             :column-keywords        column-keywords
-             :true-columns           true-columns
-             :ident-keywords         ident-keywords
-             :clojuric-names         clojuric-names
-             :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)}))
 
 (defn columns-in-joins
   [joins]
