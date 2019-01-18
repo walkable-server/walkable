@@ -474,6 +474,13 @@
     (select-keys floor-plan-keys)
     (clojure.set/rename-keys (kmap floor-plan-keys))))
 
+(def compile-floor-plan*
+  (comp compile-formulas
+    compile-formulas-with-aliases
+    compile-ident-conditions
+    compile-join-conditions
+    compile-extra-conditions))
+
 (defn columns-in-joins
   [joins]
   (set (apply concat (vals joins))))
@@ -563,4 +570,5 @@
 (def compile-floor-plan (comp expand-floor-plan-keys
                           separate-floor-plan-keys
                           precompile-floor-plan
-                          compile-floor-plan*))
+                          compile-floor-plan*
+                          internalize-keywords))
