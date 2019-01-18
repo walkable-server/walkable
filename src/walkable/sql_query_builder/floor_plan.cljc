@@ -389,6 +389,19 @@
           {}
           compiled-formulas)]
     (assoc floor-plan :compiled-selection compiled-selection)))
+
+(defn compile-ident-conditions
+  [{:keys [conditional-idents compiled-formulas] :as floor-plan}]
+  (let [compiled-ident-conditions
+        (reduce-kv (fn [acc k ident-key]
+                     (assoc acc k
+                       (expressions/substitute-atomic-variables
+                         {:variable-values compiled-formulas}
+                         (expressions/compile-to-string {}
+                           [:= ident-key (expressions/av `ident-key-value)]))))
+          {}
+          conditional-idents)]
+    (assoc floor-plan :compiled-ident-conditions compiled-ident-conditions)))
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
