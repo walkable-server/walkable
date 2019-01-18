@@ -381,6 +381,14 @@
     (-> (dissoc env :true-columns :pseudo-columns :aggregators)
       (assoc :compiled-formulas compiled-formulas))))
 
+(defn compile-formulas-with-aliases
+  [{:keys [compiled-formulas clojuric-names] :as env}]
+  (let [compiled-selection
+        (reduce-kv (fn [acc k f]
+                     (assoc acc k (compile-selection f (get clojuric-names k))))
+          {}
+          compiled-formulas)]
+    (assoc env :compiled-selection compiled-selection)))
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
