@@ -232,8 +232,7 @@
     (merge ;; will add `:unconditional-idents` and `:conditional-idents`:
       (separate-idents* idents)
       {:target-columns (joins->target-columns joins)
-       :source-columns (joins->source-columns joins)})
-    (dissoc :idents)))
+       :source-columns (joins->source-columns joins)})))
 
 (defn unbound-expression?
   [compiled-expression]
