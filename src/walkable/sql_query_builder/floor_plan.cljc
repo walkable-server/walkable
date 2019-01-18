@@ -370,6 +370,12 @@
   (ga/dag? (g/digraph [1 2] [2 3] [3 1]))
   )
 
+(defn compile-true-columns
+  "Makes a hash-map of keywords and their equivalent compiled form."
+  [emitter ks]
+  (zipmap ks
+    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
+
 (defn compile-formulas
   [{:keys [true-columns pseudo-columns aggregators emitter] :as floor-plan}]
   (let [compiled-formulas       (-> (compile-true-columns emitter true-columns)
@@ -527,12 +533,6 @@
     polulate-columns-with-joins
     (update :joins #(expand-reversed-joins reversed-joins %))
     (update :required-columns expand-denpendencies)))
-
-(defn compile-true-columns
-  "Makes a hash-map of keywords and their equivalent compiled form."
-  [emitter ks]
-  (zipmap ks
-    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
 
 (defn prepare-keywords
   [{:keys [true-columns aggregators pseudo-columns
