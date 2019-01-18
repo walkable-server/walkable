@@ -420,6 +420,20 @@
     (-> floor-plan
       (assoc :compiled-join-conditions compiled-join-conditions)
       (dissoc :joins))))
+
+(defn compile-extra-conditions
+  [{:keys [extra-conditions compiled-formulas] :as floor-plan}]
+  (let [compiled-extra-conditions
+        (reduce-kv (fn [acc k extra-condition]
+                     (assoc acc k
+                       (expressions/substitute-atomic-variables
+                         {:variable-values compiled-formulas}
+                         (expressions/compile-to-string {} extra-condition))))
+          {}
+          extra-conditions)]
+    (-> floor-plan
+      (assoc :compiled-extra-conditions compiled-extra-conditions)
+      (dissoc :extra-conditions))))
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
