@@ -401,7 +401,9 @@
                            [:= ident-key (expressions/av `ident-key-value)]))))
           {}
           conditional-idents)]
-    (assoc floor-plan :compiled-ident-conditions compiled-ident-conditions)))
+    (-> floor-plan
+      (assoc :compiled-ident-conditions compiled-ident-conditions)
+      (dissoc :conditional-idents :unconditional-idents))))
 
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
@@ -415,7 +417,9 @@
                              [:= target-column (expressions/av `source-column-value)])))))
           {}
           joins)]
-    (assoc floor-plan :compiled-join-conditions compiled-join-conditions)))
+    (-> floor-plan
+      (assoc :compiled-join-conditions compiled-join-conditions)
+      (dissoc :joins))))
 (defn compile-floor-plan*
   "Given a brief user-supplied floor-plan, derives an efficient floor-plan
   ready for pull-entities to use."
