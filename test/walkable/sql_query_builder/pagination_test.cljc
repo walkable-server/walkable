@@ -56,9 +56,12 @@
            [[:x/a :desc :x/b :desc :nils-first]
             [:x/a :desc :x/invalid-key :desc :nils-first]
             nil])
-        [" ORDER BY x.a DESC, x.b DESC NULLS FIRST"
-         " ORDER BY x.a DESC"
-         " ORDER BY x.a ASC, x.b"])))
+        [{:columns #{:x/a :x/b},
+          :string  " ORDER BY x.a DESC, x.b DESC NULLS FIRST"}
+         {:columns #{:x/a},
+          :string  " ORDER BY x.a DESC"}
+         {:columns #{:x/a :x/b},
+          :string  " ORDER BY x.a ASC, x.b"}])))
 (deftest merge-pagination-test
   (let [all-fallbacks     (sut/compile-fallbacks
                             {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
