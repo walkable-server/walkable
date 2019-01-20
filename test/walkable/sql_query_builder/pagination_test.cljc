@@ -41,12 +41,12 @@
         [true true false])))
 
 (deftest offset-fallback-test
-  (is (= (map (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})
+  (is (= (mapv (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})
            (range 8))
-        [2 2 2 3 4 2 2 2]))
+        (mapv #(str " OFFSET " %) [2 2 2 3 4 2 2 2])))
   (is (= (map (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})
            [:invalid 'types])
-        [2 2])))
+        (mapv #(str " OFFSET " %) [2 2]))))
 
 (deftest order-by-fallback-test
   (is (= (map (sut/order-by-fallback {:default  [{:column :x/a, :params [:asc]}]
