@@ -44,8 +44,7 @@
 
 (defn limit-fallback
   [limit]
-  (fallback {:wrap-validate wrap-validate-number
-             :stringify     #(when % (str " LIMIT " %))}
+  (number-fallback {:stringify #(when % (str " LIMIT " %))}
     limit))
 
 (def order-params->string
