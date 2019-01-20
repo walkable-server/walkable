@@ -39,8 +39,7 @@
 
 (defn offset-fallback
   [offset]
-  (fallback {:wrap-validate wrap-validate-number
-             :stringify     #(when % (str " OFFSET " %))}
+  (number-fallback {:stringify #(when % (str " OFFSET " %))}
     offset))
 
 (defn limit-fallback
