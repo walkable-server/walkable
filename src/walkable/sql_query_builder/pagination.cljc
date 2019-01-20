@@ -46,10 +46,17 @@
             (stringify supplied)
             default))))))
 
-(def offset-fallback #(fallback wrap-validate-number %))
-(def limit-fallback offset-fallback)
+(defn offset-fallback
+  [offset]
+  (fallback {:wrap-validate wrap-validate-number
+             :stringify     #(when % (str " OFFSET " %))}
+    offset))
 
-(def order-by-fallback #(fallback wrap-validate-order-by %))
+(defn limit-fallback
+  [limit]
+  (fallback {:wrap-validate wrap-validate-number
+             :stringify     #(when % (str " LIMIT " %))}
+    limit))
 
 (def order-params->string
   {:asc        " ASC"
