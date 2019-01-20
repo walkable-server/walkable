@@ -93,12 +93,10 @@
     (when conditions
       (str " WHERE "
         conditions))
-    (when order-by
-      (str " ORDER BY " order-by))
-    (when limit
-      (str " LIMIT " limit))
-    (when offset
-      (str " OFFSET " offset))))
+
+    offset
+    limit
+    order-by))
 
 (defn emitter->batch-query [emitter]
   (fn [parameterized-queries]
