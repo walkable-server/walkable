@@ -75,6 +75,13 @@
                  (apply str)))))
       (clojure.string/join ", "))))
 
+(defn order-by-fallback
+  [clojuric-names order-by]
+  (fallback {:wrap-validate wrap-validate-order-by
+             :conform       #(conform-order-by clojuric-names %)
+             :stringify     #(when % (str " ORDER BY "
+                                       (->order-by-string clojuric-names %)))}
+    order-by))
 
 (defn add-order-by-columns [{:keys [conformed-order-by] :as m}]
   (assoc m :order-by-columns (into #{} (map :column) conformed-order-by)))
