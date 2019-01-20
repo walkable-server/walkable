@@ -131,3 +131,8 @@
                                         :params     ["bla"]})))
   (is (true? (sut/unbound-expression? {:raw-string "abc AND ?"
                                        :params     [(expressions/av :x/a)]}))))
+
+(deftest rotate-test
+  (is (= (sut/rotate [:a :b :c :d]) [:b :c :d :a]))
+  (is (= (sut/rotate [:a :b]) [:b :a]))
+  (is (= (sut/rotate []) [])))
