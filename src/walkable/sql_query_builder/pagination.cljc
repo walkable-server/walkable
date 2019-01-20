@@ -108,12 +108,12 @@
     (compile-fallbacks* clojuric-names)))
 
 (defn merge-pagination
-  [clojuric-names
+  [default-fallbacks
    {:keys [offset-fallback limit-fallback order-by-fallback]}
    {:keys [offset limit order-by]}]
-  (let [offset-fallback   (or offset-fallback identity)
-        limit-fallback    (or limit-fallback identity)
-        order-by-fallback (or order-by-fallback identity)]
+  (let [offset-fallback   (or offset-fallback (get default-fallbacks :offset-fallback))
+        limit-fallback    (or limit-fallback (get default-fallbacks :limit-fallback))
+        order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))]
     {:offset   (offset-fallback offset)
      :limit    (limit-fallback limit)
      :order-by (order-by-fallback order-by)}))
