@@ -83,14 +83,6 @@
                                        (->order-by-string clojuric-names %)))}
     order-by))
 
-(defn add-order-by-columns [{:keys [conformed-order-by] :as m}]
-  (assoc m :order-by-columns (into #{} (map :column) conformed-order-by)))
-
-(defn stringify-order-by [clojuric-names {:keys [conformed-order-by] :as m}]
-  (-> m
-    (assoc :order-by (->order-by-string clojuric-names conformed-order-by))
-    (dissoc :conformed-order-by)))
-
 (defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
                         {:keys [offset limit conformed-order-by]}]
   (let [offset-fallback   (or offset-fallback identity)
