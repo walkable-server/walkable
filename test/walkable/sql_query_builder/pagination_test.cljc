@@ -77,24 +77,27 @@
              {:offset   4
               :limit    8
               :order-by [{:column :x/b}]})
-          {:offset   " OFFSET 4",
-           :limit    " LIMIT 8",
-           :order-by nil}))
+          {:offset           " OFFSET 4",
+           :limit            " LIMIT 8",
+           :order-by         nil,
+           :order-by-columns nil}))
     (is (= (sut/merge-pagination
              default-fallbacks
              current-fallbacks
              {:offset             4
               :limit              8
               :conformed-order-by [:x/invalid-key]})
-          {:offset   " OFFSET 4",
-           :limit    " LIMIT 10",
-           :order-by " ORDER BY `x/a`"}))
+          {:offset           " OFFSET 4",
+           :limit            " LIMIT 10",
+           :order-by         " ORDER BY `x/a`",
+           :order-by-columns #{:x/a}}))
     (is (= (sut/merge-pagination
              default-fallbacks
              current-fallbacks
              {:offset   4
               :limit    :invalid-type
-              :order-by [:x/a]})
-          {:offset   " OFFSET 4",
-           :limit    " LIMIT 10",
-           :order-by " ORDER BY `x/a`"}))))
+              :order-by [:x/a :x/b]})
+          {:offset           " OFFSET 4",
+           :limit            " LIMIT 10",
+           :order-by         " ORDER BY `x/a`, `x/b`",
+           :order-by-columns #{:x/a :x/b}}))))
