@@ -172,3 +172,11 @@
                :x/d [:- 100 :x/e]
                :x/e [:- 100 :x/c]})))
         #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}})))
+
+(deftest compile-selection-test
+  (is (= (sut/compile-selection
+           {:raw-string "? - `human`.`yob` ?"
+            :params     [(expressions/av 'current-year)]}
+          "`human/age`")
+        {:params     [(expressions/av 'current-year)],
+         :raw-string "(? - `human`.`yob` ?) AS `human/age`"})))
