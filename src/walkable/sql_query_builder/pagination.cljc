@@ -29,23 +29,6 @@
           (every? f (map :column conformed-order-by))))
       identity)))
 
-(defn fallback [{:keys [wrap-validate stringify conform]} {:keys [default validate]}]
-  (let [default
-        (when default
-          (stringify (if (fn? conform)
-                       (conform default)
-                       default)))
-        validate (wrap-validate validate)]
-    (if (fn? conform)
-      (fn [supplied]
-        (let [conformed (conform supplied)]
-          (if (and conformed (validate conformed))
-            (stringify conformed)
-            default)))
-      (fn [supplied]
-        (if (validate supplied)
-          (stringify supplied)
-          default)))))
 
 (defn offset-fallback
   [offset]
