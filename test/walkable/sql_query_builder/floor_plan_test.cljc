@@ -136,3 +136,16 @@
   (is (= (sut/rotate [:a :b :c :d]) [:b :c :d :a]))
   (is (= (sut/rotate [:a :b]) [:b :a]))
   (is (= (sut/rotate []) [])))
+
+(deftest compile-formulas-once-test
+  (is (= (sut/compile-formulas-once
+          (sut/compile-true-columns emitter/postgres-emitter
+            #{:x/a :x/b})
+          {:x/c 99
+           :x/d [:- 100 :x/c]})
+        {:unbound #:x {:d {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name :x/c}],
+                           :raw-string "(100)-(?)"}},
+         :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                       :b {:raw-string "\"x\".\"b\"", :params []},
+                       :c {:raw-string "99", :params []}}})))
+
