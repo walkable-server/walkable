@@ -83,14 +83,16 @@
                                        (->order-by-string clojuric-names %)))}
     order-by))
 
-(defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
-                        {:keys [offset limit conformed-order-by]}]
+(defn merge-pagination
+  [clojuric-names
+   {:keys [offset-fallback limit-fallback order-by-fallback]}
+   {:keys [offset limit order-by]}]
   (let [offset-fallback   (or offset-fallback identity)
         limit-fallback    (or limit-fallback identity)
         order-by-fallback (or order-by-fallback identity)]
-    {:offset             (offset-fallback offset)
-     :limit              (limit-fallback limit)
-     :conformed-order-by (order-by-fallback conformed-order-by)}))
+    {:offset   (offset-fallback offset)
+     :limit    (limit-fallback limit)
+     :order-by (order-by-fallback order-by)}))
 
 (defn process-pagination
   [clojuric-names supplied-pagination pagination-fallbacks]
