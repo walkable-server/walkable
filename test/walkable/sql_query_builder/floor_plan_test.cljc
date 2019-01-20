@@ -180,3 +180,7 @@
           "`human/age`")
         {:params     [(expressions/av 'current-year)],
          :raw-string "(? - `human`.`yob` ?) AS `human/age`"})))
+
+(deftest columns-in-joins-test
+  (is (= (sut/columns-in-joins {:x [:u :v] :y [:m :n]})
+       #{:v :n :m :u})))
