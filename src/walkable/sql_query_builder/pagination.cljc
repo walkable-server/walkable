@@ -29,6 +29,13 @@
           (every? f (map :column conformed-order-by))))
       identity)))
 
+(defn number-fallback [{:keys [stringify]} {:keys [default validate]}]
+  (let [default  (when default (stringify default))
+        validate (wrap-validate-number validate)]
+    (fn [supplied]
+      (if (validate supplied)
+        (stringify supplied)
+        default))))
 
 (defn offset-fallback
   [offset]
