@@ -59,3 +59,42 @@
         [" ORDER BY x.a DESC, x.b DESC NULLS FIRST"
          " ORDER BY x.a DESC"
          " ORDER BY x.a ASC, x.b"])))
+(deftest merge-pagination-test
+  (let [all-fallbacks     (sut/compile-fallbacks
+                            {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
+                            {:people/all
+                             {:offset   {:default  5
+                                         :validate #(<= 2 % 4)}
+                              :limit    {:default  10
+                                         :validate #(<= 12 % 14)}
+                              :order-by {:default  [:x/a]
+                                         :validate #{:x/a :x/b}}}})
+        current-fallbacks (:people/all all-fallbacks)
+        default-fallbacks (get all-fallbacks `sut/default-fallbacks)]
+    (is (= (sut/merge-pagination
+             default-fallbacks
+             nil
+             {:offset   4
+              :limit    8
+              :order-by [{:column :x/b}]})
+          {:offset   " OFFSET 4",
+           :limit    " LIMIT 8",
+           :order-by nil}))
+    (is (= (sut/merge-pagination
+             default-fallbacks
+             current-fallbacks
+             {:offset             4
+              :limit              8
+              :conformed-order-by [:x/invalid-key]})
+          {:offset   " OFFSET 4",
+           :limit    " LIMIT 10",
+           :order-by " ORDER BY `x/a`"}))
+    (is (= (sut/merge-pagination
+             default-fallbacks
+             current-fallbacks
+             {:offset   4
+              :limit    :invalid-type
+              :order-by [:x/a]})
+          {:offset   " OFFSET 4",
+           :limit    " LIMIT 10",
+           :order-by " ORDER BY `x/a`"}))))
