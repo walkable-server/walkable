@@ -194,3 +194,10 @@
 (deftest columns-in-conditional-idents-test
   (is (= (sut/columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
         #{:y/id :x/id})))
+
+(deftest polulate-columns-with-condititional-idents-test
+  (is (= (sut/polulate-columns-with-condititional-idents
+           {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
+            :true-columns       #{:x/id :m/id}})
+        {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
+         :true-columns       #{:m/id :y/id :x/id}})))
