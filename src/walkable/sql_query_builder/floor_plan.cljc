@@ -227,22 +227,8 @@
   [compiled-expression]
   (boolean (some expressions/atomic-variable? (:params compiled-expression))))
 
-(comment
-  (false? (unbound-expression? {:raw-string "abc"
-                                :params []}))
-  (false? (unbound-expression? {:raw-string "abc AND ?"
-                                :params ["bla"]}))
-  (true? (unbound-expression? {:raw-string "abc AND ?"
-                               :params [(expressions/av :x/a)]})))
-
 (defn rotate [coll]
   (take (count coll) (drop 1 (cycle coll))))
-
-(comment
-  (= (rotate [:a :b :c :d]) [:b :c :d :a])
-  (= (rotate [:a :b]) [:b :a])
-  (= (rotate []) [])
-  )
 
 (defn compile-formulas-once [compiled-true-columns formulas]
   (reduce-kv (fn [result k expression]
@@ -253,16 +239,6 @@
     {:unbound {}
      :bound   compiled-true-columns}
     formulas))
-
-(comment
-  (= (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-       {:x/c 99
-        :x/d [:- 100 :x/c]})
-    {:unbound #:x {:d {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name :x/c}],
-                       :raw-string "(100)-(?)"}},
-     :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
-                   :b {:raw-string "\"x\".\"b\"", :params []},
-                   :c {:raw-string "99", :params []}}}))
 
 (defn compile-formulas-recursively [{:keys [unbound bound]}]
   (loop [limit   100
@@ -302,27 +278,11 @@
       {}
       unbound)))
 
-(comment
-  (= (column-dependencies
-      (compile-formulas-recursively (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-                  {:x/c [:+ :x/d (expressions/av 'o)]
-                   :x/d [:- 100 :x/e]
-                   :x/e [:- 100 :x/c]})))
-    #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}})
-  )
-
 (defn compile-selection [compiled-formula clojuric-name]
   (expressions/inline-params {}
     {:raw-string "(?) AS ?"
      :params     [compiled-formula
                   (expressions/verbatim-raw-string clojuric-name)]}))
-(comment
-  (= (compile-selection
-       {:raw-string "? - `human`.`yob` ?"
-        :params     [(expressions/av 'current-year)]}
-       "`human/age`")
-    {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name current-year}],
-     :raw-string "(? - `human`.`yob` ?) AS `human/age`"}))
 
 (defn compile-variable-getters
   [getters]
@@ -338,25 +298,6 @@
 
 (defn check-column-vars
   [column-vars])
-
-(comment
-  (= (compile-formulas-recursively (compile-formulas-once (compile-true-columns emitter/postgres-emitter #{:x/a :x/b})
-                 {:x/c 99
-                  :x/d [:- 100 :x/c]}))
-    {:unbound {},
-     :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
-                   :b {:raw-string "\"x\".\"b\"", :params []},
-                   :c {:raw-string "99", :params []},
-                   :d {:raw-string "(100)-(99)", :params []}}}))
-
-(comment
-  {:variable-getters [{:cached?  true
-                       :key         'abc
-                       :fn          (fn [env] :bla)}]}
-  (require '[loom.graph :as g])
-  (require '[loom.alg :as ga])
-  (ga/dag? (g/digraph [1 2] [2 3] [3 1]))
-  )
 
 (defn compile-true-columns
   "Makes a hash-map of keywords and their equivalent compiled form."
@@ -487,13 +428,6 @@
   (update floor-plan :true-columns
     clojure.set/union (columns-in-joins joins)))
 
-(comment
-  (columns-in-joins {:x [:u :v] :y [:m :n]})
-  (= (polulate-columns-with-joins {:joins       {:x [:u :v] :y [:m :n]}
-                                   :true-columns #{:a :b}})
-    {:joins        {:x [:u :v], :y [:m :n]},
-     :true-columns #{:v :n :m :b :a :u}}))
-
 (defn columns-in-conditional-idents
   [conditional-idents]
   (set (vals conditional-idents)))
@@ -502,13 +436,6 @@
   [{:keys [conditional-idents] :as floor-plan}]
   (update floor-plan :true-columns
     clojure.set/union (columns-in-conditional-idents conditional-idents)))
-
-(comment
-  (columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
-  (= (polulate-columns-with-condititional-idents {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
-                                                  :true-columns       #{:x/id :m/id}})
-    {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
-     :true-columns #{:m/id :y/id :x/id}}))
 
 (defn expand-floor-plan-keys
   [{:keys [reversed-joins aggregators] :as floor-plan}]
