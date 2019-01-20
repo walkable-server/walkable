@@ -83,6 +83,21 @@
                                        (->order-by-string clojuric-names %)))}
     order-by))
 
+(defn compile-fallbacks
+  [clojuric-names pagination-fallbacks]
+  (reduce (fn [acc [k {:keys [offset limit order-by]}]]
+            (let [v {:offset-fallback
+                     (offset-fallback offset)
+
+                     :limit-fallback
+                     (limit-fallback limit)
+
+                     :order-by-fallback
+                     (order-by-fallback clojuric-names order-by)}]
+              (assoc acc k v)))
+    {}
+    pagination-fallbacks))
+
 (defn merge-pagination
   [clojuric-names
    {:keys [offset-fallback limit-fallback order-by-fallback]}
