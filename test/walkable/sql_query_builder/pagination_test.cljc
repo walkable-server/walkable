@@ -65,15 +65,6 @@
          [{:column :x/a, :params [:desc]} {:column :x/any-key, :params [:desc :nils-first]}]
          [{:column :x/a, :params [:asc]}]])))
 
-(deftest add-conformed-order-by-test
-  (is (= (sut/add-conformed-order-by
-           {:x/a "`x/a`" :x/b "`x/b`"}
-           {:order-by [:x/a :asc
-                       :x/b :desc :nils-first]})
-        {:conformed-order-by
-         [{:column :x/a, :params [:asc]}
-          {:column :x/b, :params [:desc :nils-first]}]})))
-
 (deftest add-order-by-columns-test
   (is (= (sut/add-order-by-columns
            {:conformed-order-by
