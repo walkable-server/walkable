@@ -29,12 +29,12 @@
          nil])))
 
 (deftest wrap-validate-order-by-test
-  (is (= (map (sut/wrap-validate-order-by #{:x/a :x/b})
+  (is (= (mapv (sut/wrap-validate-order-by #{:x/a :x/b})
            [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
             [{:column :x/a, :params [:asc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
             nil])
         [true false false]))
-  (is (= (map (sut/wrap-validate-order-by nil)
+  (is (= (mapv (sut/wrap-validate-order-by nil)
            [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
             [{:column :x/a, :params [:asc]} {:column :x/any-key, :params [:desc :nils-first]}]
             nil])
