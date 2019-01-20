@@ -75,10 +75,6 @@
                  (apply str)))))
       (clojure.string/join ", "))))
 
-(defn add-conformed-order-by [clojuric-names {:keys [order-by] :as m}]
-  (-> m
-    (assoc :conformed-order-by (conform-order-by clojuric-names order-by))
-    (dissoc :order-by)))
 
 (defn add-order-by-columns [{:keys [conformed-order-by] :as m}]
   (assoc m :order-by-columns (into #{} (map :column) conformed-order-by)))
