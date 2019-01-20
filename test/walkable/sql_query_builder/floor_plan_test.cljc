@@ -190,3 +190,7 @@
                                            :true-columns #{:a :b}})
         {:joins        {:x [:u :v], :y [:m :n]},
          :true-columns #{:v :n :m :b :a :u}})))
+
+(deftest columns-in-conditional-idents-test
+  (is (= (sut/columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
+        #{:y/id :x/id})))
