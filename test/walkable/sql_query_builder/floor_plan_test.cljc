@@ -2,6 +2,7 @@
   (:require [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as sut]
             [walkable.sql-query-builder.pagination :as pagination]
+            [walkable.sql-query-builder.expressions :as expressions]
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 
@@ -122,3 +123,11 @@
             :pets/all   "public.pet"})
         {:people/all "\"public\".\"person\""
          :pets/all "\"public\".\"pet\""})))
+
+(deftest unbound-expression?-test
+  (is (false? (sut/unbound-expression? {:raw-string "abc"
+                                        :params     []})))
+  (is (false? (sut/unbound-expression? {:raw-string "abc AND ?"
+                                        :params     ["bla"]})))
+  (is (true? (sut/unbound-expression? {:raw-string "abc AND ?"
+                                       :params     [(expressions/av :x/a)]}))))
