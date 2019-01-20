@@ -64,6 +64,11 @@
                  (apply str)))))
       (clojure.string/join ", "))))
 
+(defn columns-and-string
+  [conformed stringify]
+  {:columns (into #{} (map :column) conformed)
+   :string  (stringify conformed)})
+
 (defn order-by-fallback
   [clojuric-names order-by]
   (fallback {:wrap-validate wrap-validate-order-by
