@@ -164,17 +164,6 @@
                     key-set)]
     (into {} keys+vals)))
 
-(defn compile-pagination-fallbacks
-  [clojuric-names pagination-fallbacks]
-  (reduce (fn [result [k {:keys [offset limit order-by]}]]
-            (assoc result
-              k
-              {:offset-fallback   (pagination/offset-fallback offset)
-               :limit-fallback    (pagination/limit-fallback limit)
-               :order-by-fallback (pagination/order-by-fallback
-                                    (pagination/conform-fallback-default clojuric-names order-by))}))
-    {} pagination-fallbacks))
-
 (defn compile-join-statements
   [emitter joins]
   (reduce (fn [result [k join-seq]]
