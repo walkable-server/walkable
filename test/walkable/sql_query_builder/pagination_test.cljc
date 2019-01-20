@@ -49,19 +49,13 @@
         (mapv #(str " OFFSET " %) [2 2]))))
 
 (deftest order-by-fallback-test
-  (is (= (map (sut/order-by-fallback {:default  [{:column :x/a, :params [:asc]}]
-                                      :validate #{:x/a :x/b}})
-           [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:desc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
+  (is (= (mapv (sut/order-by-fallback
+                 {:x/a "x.a" :x/b "x.b"}
+                 {:default  [:x/a :asc :x/b]
+                  :validate #{:x/a :x/b}})
+           [[:x/a :desc :x/b :desc :nils-first]
+            [:x/a :desc :x/invalid-key :desc :nils-first]
             nil])
-        [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
-         [{:column :x/a, :params [:asc]}]
-         [{:column :x/a, :params [:asc]}]]))
-  (is (= (map (sut/order-by-fallback {:default  [{:column :x/a, :params [:asc]}]})
-           [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:desc]} {:column :x/any-key, :params [:desc :nils-first]}]
-            nil])
-        [[{:column :x/a, :params [:desc]} {:column :x/b, :params [:desc :nils-first]}]
-         [{:column :x/a, :params [:desc]} {:column :x/any-key, :params [:desc :nils-first]}]
-         [{:column :x/a, :params [:asc]}]])))
-
+        [" ORDER BY x.a DESC, x.b DESC NULLS FIRST"
+         " ORDER BY x.a DESC"
+         " ORDER BY x.a ASC, x.b"])))
