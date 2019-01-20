@@ -119,10 +119,13 @@
    {:keys [offset limit order-by]}]
   (let [offset-fallback   (or offset-fallback (get default-fallbacks :offset-fallback))
         limit-fallback    (or limit-fallback (get default-fallbacks :limit-fallback))
-        order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))]
-    {:offset   (offset-fallback offset)
-     :limit    (limit-fallback limit)
-     :order-by (order-by-fallback order-by)}))
+        order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))
+
+        {:keys [string columns]} (order-by-fallback order-by)]
+    {:offset           (offset-fallback offset)
+     :limit            (limit-fallback limit)
+     :order-by         string
+     :order-by-columns columns}))
 
 (defn process-pagination
   [clojuric-names supplied-pagination pagination-fallbacks]
