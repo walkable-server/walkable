@@ -107,15 +107,3 @@
                       (mapv #(wrap-select emitter %))
                       (clojure.string/join "\nUNION ALL\n")))
             parameterized-queries)))))
-
-(comment
-  (= ((emitter->batch-query default-emitter)
-      [{:raw-string "x" :params ["a" "b"]}
-       {:raw-string "y" :params ["c" "d"]}])
-    {:params     ["a" "b" "c" "d"],
-     :raw-string "(x)\nUNION ALL\n(y)"})
-  (= ((emitter->batch-query sqlite-emitter)
-      [{:raw-string "x" :params ["a" "b"]}
-       {:raw-string "y" :params ["c" "d"]}])
-    {:params     ["a" "b" "c" "d"],
-     :raw-string "SELECT * FROM (x)\nUNION ALL\nSELECT * FROM (y)"}))
