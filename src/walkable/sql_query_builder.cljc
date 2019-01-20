@@ -100,8 +100,8 @@
 (defn process-pagination [{::keys [floor-plan] :as env}]
   {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) floor-plan)]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
-  (pagination/process-pagination
-    (::floor-plan/clojuric-names floor-plan)
+  (pagination/merge-pagination
+    (env/pagination-default-fallbacks env)
     (supplied-pagination env)
     (env/pagination-fallbacks env)))
 
