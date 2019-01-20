@@ -161,3 +161,14 @@
                        :b {:raw-string "\"x\".\"b\"", :params []},
                        :c {:raw-string "99", :params []},
                        :d {:raw-string "(100)-(99)", :params []}}})))
+
+(deftest column-dependencies-test
+  (is (= (sut/column-dependencies
+          (sut/compile-formulas-recursively
+            (sut/compile-formulas-once
+              (sut/compile-true-columns
+                emitter/postgres-emitter #{:x/a :x/b})
+              {:x/c [:+ :x/d (expressions/av 'o)]
+               :x/d [:- 100 :x/e]
+               :x/e [:- 100 :x/c]})))
+        #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}})))
