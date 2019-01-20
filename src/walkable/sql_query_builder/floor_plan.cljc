@@ -429,6 +429,14 @@
       (assoc :compiled-extra-conditions compiled-extra-conditions)
       (dissoc :extra-conditions))))
 
+(defn compile-pagination-fallbacks
+  [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
+  (let [compiled-pagination-fallbacks
+        (pagination/compile-fallbacks clojuric-names pagination-fallbacks)]
+    (-> floor-plan
+      (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
+      (dissoc :pagination-fallbacks))))
+
 (def floor-plan-keys
   [:aggregator-keywords
    :batch-query
@@ -445,7 +453,7 @@
    :join-filter-subqueries
    :join-keywords
    :join-statements
-   :pagination-fallbacks
+   :compiled-pagination-fallbacks
    :required-columns
    :reversed-joins
    :source-columns
@@ -467,7 +475,8 @@
     compile-formulas-with-aliases
     compile-ident-conditions
     compile-join-conditions
-    compile-extra-conditions))
+    compile-extra-conditions
+    compile-pagination-fallbacks))
 
 (defn columns-in-joins
   [joins]
