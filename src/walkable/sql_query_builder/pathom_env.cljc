@@ -81,6 +81,13 @@
                     :walkable.sql-query-builder.floor-plan/pagination-fallbacks)]
     (get fallbacks (dispatch-key env))))
 
+(defn pagination-default-fallbacks
+  [env]
+  (get-in env
+    [:walkable.sql-query-builder/floor-plan
+     :walkable.sql-query-builder.floor-plan/pagination-fallbacks
+     'walkable.sql-query-builder.pagination/default-fallbacks]))
+
 (defn params [env]
   (get-in env [:ast :params]))
 
