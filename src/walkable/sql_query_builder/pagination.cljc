@@ -126,11 +126,3 @@
      :limit            (limit-fallback limit)
      :order-by         string
      :order-by-columns columns}))
-
-(defn process-pagination
-  [clojuric-names supplied-pagination pagination-fallbacks]
-  (->> supplied-pagination
-    (add-conformed-order-by clojuric-names)
-    (merge-pagination pagination-fallbacks)
-    (add-order-by-columns)
-    (stringify-order-by clojuric-names)))
