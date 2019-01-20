@@ -69,12 +69,25 @@
   {:columns (into #{} (map :column) conformed)
    :string  (stringify conformed)})
 
+(defn order-by-fallback*
+  [{:keys [conform stringify]}
+   {:keys [default validate]}]
+  (let [default  (when default
+                   (let [conformed (conform default)]
+                     (columns-and-string conformed stringify)))
+        validate (wrap-validate-order-by validate)]
+    (fn [supplied]
+      (let [conformed (conform supplied)]
+        (if (and conformed (validate conformed))
+          (columns-and-string conformed stringify)
+          default)))))
+
 (defn order-by-fallback
   [clojuric-names order-by]
-  (fallback {:wrap-validate wrap-validate-order-by
-             :conform       #(conform-order-by clojuric-names %)
-             :stringify     #(when % (str " ORDER BY "
-                                       (->order-by-string clojuric-names %)))}
+  (order-by-fallback*
+    {:conform       #(conform-order-by clojuric-names %)
+     :stringify     #(when % (str " ORDER BY "
+                               (->order-by-string clojuric-names %)))}
     order-by))
 
 (defn compile-fallbacks*
