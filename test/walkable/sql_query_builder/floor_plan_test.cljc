@@ -149,3 +149,15 @@
                        :b {:raw-string "\"x\".\"b\"", :params []},
                        :c {:raw-string "99", :params []}}})))
 
+(deftest compile-formulas-recursively-test
+  (is (= (sut/compile-formulas-recursively
+          (sut/compile-formulas-once
+            (sut/compile-true-columns
+              emitter/postgres-emitter #{:x/a :x/b})
+            {:x/c 99
+             :x/d [:- 100 :x/c]}))
+        {:unbound {},
+         :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                       :b {:raw-string "\"x\".\"b\"", :params []},
+                       :c {:raw-string "99", :params []},
+                       :d {:raw-string "(100)-(99)", :params []}}})))
