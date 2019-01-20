@@ -184,3 +184,9 @@
 (deftest columns-in-joins-test
   (is (= (sut/columns-in-joins {:x [:u :v] :y [:m :n]})
        #{:v :n :m :u})))
+
+(deftest polulate-columns-with-joins-test
+  (is (= (sut/polulate-columns-with-joins {:joins        {:x [:u :v] :y [:m :n]}
+                                           :true-columns #{:a :b}})
+        {:joins        {:x [:u :v], :y [:m :n]},
+         :true-columns #{:v :n :m :b :a :u}})))
