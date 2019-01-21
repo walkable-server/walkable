@@ -129,8 +129,9 @@
              process-supplied-condition
              env/compiled-extra-condition))
           (into [] (remove nil?)))]
-    (expressions/concatenate #(clojure.string/join " AND " %)
-      conditions)))
+    (when (seq conditions)
+      (expressions/concatenate #(clojure.string/join " AND " %)
+        conditions))))
 
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
