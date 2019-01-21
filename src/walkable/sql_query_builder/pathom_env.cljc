@@ -78,14 +78,14 @@
 (defn pagination-fallbacks
   [env]
   (let [fallbacks (-> env :walkable.sql-query-builder/floor-plan
-                    :walkable.sql-query-builder.floor-plan/pagination-fallbacks)]
+                    :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks)]
     (get fallbacks (dispatch-key env))))
 
 (defn pagination-default-fallbacks
   [env]
   (get-in env
     [:walkable.sql-query-builder/floor-plan
-     :walkable.sql-query-builder.floor-plan/pagination-fallbacks
+     :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
      'walkable.sql-query-builder.pagination/default-fallbacks]))
 
 (defn params [env]
