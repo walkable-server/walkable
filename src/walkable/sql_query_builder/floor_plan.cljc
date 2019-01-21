@@ -333,7 +333,7 @@
                        (expressions/substitute-atomic-variables
                          {:variable-values compiled-formulas}
                          (expressions/compile-to-string {}
-                           [:= ident-key (expressions/av `ident-key-value)]))))
+                           [:= ident-key (expressions/av `ident-value)]))))
           {}
           conditional-idents)]
     (-> floor-plan
