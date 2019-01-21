@@ -178,7 +178,7 @@
               (join-filter-subquery emitter join-seq)))
     {} joins))
 
-(defn expand-reversed-joins [reversed-joins joins]
+(defn expand-reversed-joins [joins reversed-joins]
   (let [more (reduce (fn [result [backward forward]]
                        (assoc result backward
                          (reverse (get joins forward))))
@@ -453,7 +453,7 @@
     (update :cardinality flatten-multi-keys)
     (update :joins (fnil flatten-multi-keys {}))
     polulate-columns-with-joins
-    (update :joins #(expand-reversed-joins reversed-joins %))
+    (update :joins expand-reversed-joins reversed-joins)
     (update :required-columns expand-denpendencies)))
 
 (defn prepare-keywords
