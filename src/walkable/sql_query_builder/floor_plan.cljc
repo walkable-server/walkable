@@ -437,6 +437,10 @@
   (update floor-plan :true-columns
     clojure.set/union (columns-in-conditional-idents conditional-idents)))
 
+(defn polulate-cardinality-with-aggregators
+  [{:keys [aggregators] :as floor-plan}]
+  (update floor-plan :cardinality merge (zipmap (keys aggregators) (repeat :one))))
+
 (defn expand-floor-plan-keys
   [{:keys [reversed-joins aggregators] :as floor-plan}]
   (-> floor-plan
