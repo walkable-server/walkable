@@ -135,7 +135,11 @@
 
 (defn process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
-  (let [{::floor-plan/keys [compiled-selection]} floor-plan]
+  (let [{::floor-plan/keys [compiled-selection]} floor-plan
+        compiled-selection                       (env/compiled-join-selection env)
+        columns-to-query (if compiled-selection
+                           (conj columns-to-query compiled-selection)
+                           columns-to-query)]
     (expressions/concatenate  #(clojure.string/join ", " %)
       (mapv compiled-selection columns-to-query))))
 
