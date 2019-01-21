@@ -102,8 +102,8 @@
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
   (pagination/merge-pagination
     (env/pagination-default-fallbacks env)
-    (supplied-pagination env)
-    (env/pagination-fallbacks env)))
+    (env/pagination-fallbacks env)
+    (supplied-pagination env)))
 
 (defn process-supplied-condition
   [{::keys [floor-plan] :as env}]
