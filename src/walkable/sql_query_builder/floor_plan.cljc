@@ -340,6 +340,22 @@
       (assoc :compiled-ident-conditions compiled-ident-conditions)
       (dissoc :conditional-idents :unconditional-idents))))
 
+(defn compile-join-selection
+  [{:keys [joins compiled-formulas source-columns] :as floor-plan}]
+  (let [compiled-join-selection
+        (reduce-kv (fn [acc k join-seq]
+                     (let [source-column (get source-columns k)]
+                       (assoc acc k
+                         (expressions/substitute-atomic-variables
+                           {:variable-values compiled-formulas}
+                           {:raw-string "? AS ?"
+                            :params     [(expressions/av `source-column-value)
+                                         (expressions/av source-column)]}))))
+          {}
+          joins)]
+    (-> floor-plan
+      (assoc :compiled-join-selection compiled-join-selection))))
+
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
   (let [compiled-join-conditions
@@ -388,6 +404,7 @@
    :compiled-formulas
    :compiled-ident-conditions
    :compiled-join-conditions
+   :compiled-join-selection
    :compiled-selection
    :emitter
    :ident-keywords
