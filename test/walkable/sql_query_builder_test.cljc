@@ -6,13 +6,19 @@
 
 (deftest process-children-test
   (is (= (sut/process-children
-           {:ast             {:children (mapv (fn [k] {:dispatch-key k})
-                                          [:pet/age :pet/will-be-ignored :pet/owner])}
-            ::sut/floor-plan {::floor-plan/column-keywords
-                              #{:pet/yob}
-                              ::floor-plan/required-columns
-                              {:pet/age #{:pet/yob}}
-                              ::floor-plan/source-columns
-                              {:pet/owner :person/number}}})
-        {:join-children    #{{:dispatch-key :pet/owner}},
+           {:ast                     (p/query->ast [:pet/age
+                                                    :pet/will-be-ignored
+                                                    :pet/owner
+                                                    :abc/unknown
+                                                    {:> [:pet/age]}])
+            ::p/placeholder-prefixes #{">"}
+            ::sut/floor-plan         {::floor-plan/column-keywords
+                                      #{:pet/yob}
+                                      ::floor-plan/required-columns
+                                      {:pet/age #{:pet/yob}}
+                                      ::floor-plan/source-columns
+                                      {:pet/owner :person/number}}})
+        {:join-children    #{{:type         :prop,
+                              :dispatch-key :pet/owner,
+                              :key          :pet/owner}},
          :columns-to-query #{:pet/yob :person/number}})))
