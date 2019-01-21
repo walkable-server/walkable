@@ -94,9 +94,9 @@
       (str " WHERE "
         conditions))
 
+    order-by
     offset
-    limit
-    order-by))
+    limit))
 
 (defn emitter->batch-query [emitter]
   (fn [parameterized-queries]
