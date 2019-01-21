@@ -80,8 +80,9 @@
         {:a [1, 2] :b [2, 3] :c 4})))
 
 (deftest expand-reversed-joins-test
-  (is (= (sut/expand-reversed-joins {:pet/owner :person/pet}
-           {:person/pet [:a :b :c :d]})
+  (is (= (sut/expand-reversed-joins
+           {:person/pet [:a :b :c :d]}
+           {:pet/owner :person/pet})
         {:person/pet [:a :b :c :d], :pet/owner [:d :c :b :a]})))
 
 (deftest expand-denpendencies*-test
