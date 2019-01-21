@@ -412,12 +412,12 @@
     (clojure.set/rename-keys (kmap floor-plan-keys))))
 
 (def compile-floor-plan*
-  (comp compile-formulas
-    compile-formulas-with-aliases
-    compile-ident-conditions
-    compile-join-conditions
+  (comp compile-pagination-fallbacks
     compile-extra-conditions
-    compile-pagination-fallbacks))
+    compile-join-conditions
+    compile-ident-conditions
+    compile-formulas-with-aliases
+    compile-formulas))
 
 (defn columns-in-joins
   [joins]
