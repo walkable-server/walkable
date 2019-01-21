@@ -495,8 +495,9 @@
                             (joins->target-tables emitter joins)))
     (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))
 
-(def compile-floor-plan (comp expand-floor-plan-keys
-                          separate-floor-plan-keys
-                          precompile-floor-plan
-                          compile-floor-plan*
-                          internalize-keywords))
+(def compile-floor-plan
+  (comp internalize-keywords
+    compile-floor-plan*
+    precompile-floor-plan
+    separate-floor-plan-keys
+    expand-floor-plan-keys))
