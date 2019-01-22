@@ -71,16 +71,6 @@
        :join-children    #{}}
       (process-children* env))))
 
-(defn clean-up-all-conditions
-  "Receives all-conditions produced by process-conditions. Only keeps
-  non-empty conditions."
-  [all-conditions]
-  (let [all-conditions (remove nil? all-conditions)]
-    (case (count all-conditions)
-      0 nil
-      1 (first all-conditions)
-      (vec all-conditions))))
-
 (defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
   om.next query params."
