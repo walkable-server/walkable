@@ -190,6 +190,23 @@
                       (let [parent (p/entity env)]
                         (get parent (:ast env))))}))
 
+(defn top-level-async
+  [{::keys [floor-plan sql-db run-query] :as env}]
+  (let [{::floor-plan/keys [ident-keywords]}
+        floor-plan
+
+        k                                 (env/dispatch-key env)
+        {:keys [sql-query join-children]} (process-query env)]
+    (go
+      {:join-children join-children
+       :entities      (if (contains? ident-keywords k)
+                        ;; for idents
+                        (<! (run-query sql-db (build-parameterized-sql-query sql-query)))
+                        ;; joins don't have to build a query themselves
+                        ;; just look up the key in their parents data
+                        (let [parent (p/entity env)]
+                          (get parent (:ast env))))})))
+
 (defn source-column-variable-values
   [v]
   {:variable-values {`floor-plan/source-column-value
