@@ -176,7 +176,7 @@
 
 (defn top-level
   [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [ident-keywords join-keywords]}
+  (let [{::floor-plan/keys [ident-keywords]}
         floor-plan
 
         k                                 (env/dispatch-key env)
