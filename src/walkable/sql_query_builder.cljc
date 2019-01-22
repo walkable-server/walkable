@@ -6,7 +6,8 @@
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
-            [clojure.core.async :refer [go go-loop <! >! put! promise-chan to-chan]]
+            [clojure.core.async :as async
+             :refer [go go-loop <! >! put! promise-chan to-chan]]
             [com.wsscode.pathom.core :as p]))
 
 (defn process-children*
