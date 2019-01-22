@@ -101,6 +101,14 @@
                        :walkable.sql-query-builder.floor-plan/aggregator-keywords])]
     (contains? aggregators (dispatch-key env))))
 
+(defn cardinality-one?
+  [env]
+  (->> [:walkable.sql-query-builder/floor-plan
+        :walkable.sql-query-builder.floor-plan/cardinality
+        (dispatch-key env)]
+    (get-in env)
+    (= :one)))
+
 (defn params [env]
   (get-in env [:ast :params]))
 
