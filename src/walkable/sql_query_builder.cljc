@@ -189,8 +189,13 @@
                       (let [parent (p/entity env)]
                         (get parent (:ast env))))}))
 
-(defn join-children-data-by-join-key
-  [{::keys [floor-plan sql-db run-query] :as env}
+(defn source-column-variable-values
+  [v]
+  {:variable-values {`floor-plan/source-column-value
+                     (expressions/verbatim-raw-string v)}})
+
+(defn join-children-data
+  [{::keys [floor-plan] :as env}
    entities join-children]
   (let [{::floor-plan/keys [batch-query
                             target-columns
@@ -211,12 +216,20 @@
                             :let [v (get e source-column)]]
                         (->> unbound-sql-query
                           (expressions/substitute-atomic-variables
-                            {:variable-values {`floor-plan/source-column-value (expressions/verbatim-raw-string v)}})))
+                            (source-column-variable-values v))))]
+                  [join-child
+                   {:data-fn #(group-by target-column %)
+                    :query   (build-parameterized-sql-query (batch-query queries))}]))]
+        (mapv f join-children)))))
 
-                      join-children-data
-                      (run-query sql-db (build-parameterized-sql-query (batch-query queries)))]
-                  [join-child (group-by target-column join-children-data)]))]
-        (into {} (map f) join-children)))))
+(defn join-children-data-by-join-key
+  [{::keys [run-query sql-db] :as env} entities join-children]
+  (let [f (fn [[join-child {:keys [data-fn query]}]]
+            (let [data (run-query sql-db query)]
+              [join-child (data-fn data)]))]
+    (into {}
+      (map f)
+      (join-children-data env entities join-children))))
 
 (defn entities-with-join-children-data
   [join-children-data-by-join-key entities source-columns join-children]
