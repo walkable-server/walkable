@@ -431,6 +431,7 @@
   (comp compile-pagination-fallbacks
     compile-extra-conditions
     compile-join-conditions
+    compile-join-selection
     compile-ident-conditions
     compile-formulas-with-aliases
     compile-formulas))
