@@ -341,16 +341,15 @@
       (dissoc :conditional-idents :unconditional-idents))))
 
 (defn compile-join-selection
-  [{:keys [joins compiled-formulas source-columns] :as floor-plan}]
+  [{:keys [joins clojuric-names target-columns] :as floor-plan}]
   (let [compiled-join-selection
         (reduce-kv (fn [acc k join-seq]
-                     (let [source-column (get source-columns k)]
+                     (let [target-column (get target-columns k)]
                        (assoc acc k
-                         (expressions/substitute-atomic-variables
-                           {:variable-values compiled-formulas}
-                           {:raw-string "? AS ?"
-                            :params     [(expressions/av `source-column-value)
-                                         (expressions/av source-column)]}))))
+                         (compile-selection
+                           {:raw-string "?"
+                            :params [(expressions/av `source-column-value)]}
+                           (get clojuric-names target-column)))))
           {}
           joins)]
     (-> floor-plan
