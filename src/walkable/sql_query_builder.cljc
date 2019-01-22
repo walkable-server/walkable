@@ -245,6 +245,9 @@
           child-joins (into {} (map f) join-children)]
       (merge e child-joins))))
 
+(defn join-one [env entities]
+  (p/join (first entities) env))
+
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
