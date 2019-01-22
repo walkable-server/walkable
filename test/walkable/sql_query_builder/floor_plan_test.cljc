@@ -144,7 +144,7 @@
             #{:x/a :x/b})
           {:x/c 99
            :x/d [:- 100 :x/c]})
-        {:unbound #:x {:d {:params     [#walkable.sql_query_builder.expressions.AtomicVariable{:name :x/c}],
+        {:unbound #:x {:d {:params     [(expressions/av :x/c)],
                            :raw-string "(100)-(?)"}},
          :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
                        :b {:raw-string "\"x\".\"b\"", :params []},
