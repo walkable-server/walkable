@@ -94,6 +94,13 @@
      :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
      'walkable.sql-query-builder.pagination/default-fallbacks]))
 
+(defn aggregator?
+  [env]
+  (let [aggregators (get-in env
+                      [:walkable.sql-query-builder/floor-plan
+                       :walkable.sql-query-builder.floor-plan/aggregator-keywords])]
+    (contains? aggregators (dispatch-key env))))
+
 (defn params [env]
   (get-in env [:ast :params]))
 
