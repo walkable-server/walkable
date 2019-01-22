@@ -322,25 +322,24 @@
   (let [{::floor-plan/keys [target-tables source-columns]}
         floor-plan
 
-        k (env/dispatch-key env)]
+        k         (env/dispatch-key env)
+        result-ch (promise-chan)]
     (if (contains? target-tables k)
-      ;; this is an ident or a join, let's go for data
-      (go (let [{:keys [join-children entities]} (<! (top-level-async env))
+      (do
+        (go (let [{:keys [join-children entities]} (<! (top-level-async env))
 
-                full-entities
-                (-> (<! (join-childen-data-by-join-key-async env entities join-children))
-                  (entities-with-join-children-data entities source-columns join-children))
-
-                one?
-                (env/cardinality-one? env)]
-           (if (seq full-entities)
-             (let [xs (<! full-entities)]
-               (if (env/aggregator? env)
-                 (get (first xs) k)
-                 (if one?
-                   (p/join (first xs) env)
-                   (p/join-seq env xs))))
-             (when-not one?
-               []))))
+                  full-entities
+                  (-> (<! (join-childen-data-by-join-key-async env entities join-children))
+                    (entities-with-join-children-data entities source-columns join-children))
+                  one?
+                  (env/cardinality-one? env)]
+              (if (seq full-entities)
+                (if (env/aggregator? env)
+                  (>! result-ch (get (first full-entities) k))
+                  (if one?
+                    (>! result-ch (<! (p/join (first full-entities) env)))
+                    (>! result-ch (<! (p/join-seq env full-entities)))))
+                (>! result-ch (if-not one? [] {})))))
+        result-ch)
 
       ::p/continue)))
