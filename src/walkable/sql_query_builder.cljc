@@ -109,6 +109,10 @@
         (expressions/substitute-atomic-variables
           {:variable-values compiled-formulas})))))
 
+(defn concat-with-and [xs]
+  (clojure.string/join " AND "
+    (mapv (fn [x] (str "(" x ")")) xs)))
+
 (defn process-conditions
   [{::keys [floor-plan] :as env}]
   (let [{::floor-plan/keys [compiled-conditions]} floor-plan
@@ -120,7 +124,7 @@
              env/compiled-extra-condition))
           (into [] (remove nil?)))]
     (when (seq conditions)
-      (expressions/concatenate #(clojure.string/join " AND " %)
+      (expressions/concatenate concat-with-and
         conditions))))
 
 (defn process-selection
