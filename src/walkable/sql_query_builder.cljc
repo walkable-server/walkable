@@ -261,12 +261,11 @@
   - run-query: a function that run an SQL query (optionally with
   params) against the given sql-db. Shares the same signature with
   clojure.java.jdbc/query."
-  [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [target-tables
-                            aggregator-keywords
-                            source-columns
-                            cardinality]} floor-plan
-        k                                 (env/dispatch-key env)]
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [target-tables source-columns]}
+        floor-plan
+
+        k (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
       (let [{:keys [join-children entities]} (top-level env)
@@ -276,14 +275,15 @@
               (entities-with-join-children-data entities source-columns join-children))
 
             one?
-            (= :one (get cardinality k))
+            (env/cardinality-one? env)
 
+            ;; todo: this can be compiled into floor-plan, too
             do-join
-            (if (contains? aggregator-keywords k)
+            (if (env/aggregator? env)
               #(get (first %2) k)
               (if one?
-                #(p/join (first %2) %1)
-                #(p/join-seq %1 %2)))]
+                join-one
+                p/join-seq))]
         (if (seq full-entities)
           (do-join env full-entities)
           (when-not one?
