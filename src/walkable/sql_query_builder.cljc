@@ -249,6 +249,15 @@
       (map f)
       (join-children-data env entities join-children))))
 
+(defn join-childen-data-by-join-key-async
+  [{::keys [run-query sql-db] :as env} entities join-children]
+  (async/into {}
+    (async/merge
+      (map (fn [[join-child {:keys [data-fn query]}]]
+             (go (let [data (<! (run-query sql-db query))]
+                  [join-child (data-fn data)])))
+        (join-children-data env entities join-children)))))
+
 (defn entities-with-join-children-data
   [join-children-data-by-join-key entities source-columns join-children]
   (for [e entities]
