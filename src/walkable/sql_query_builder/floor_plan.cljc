@@ -4,7 +4,9 @@
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.pathom-env :as env]
             [com.wsscode.pathom.core :as p]
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [clojure.core.async :as async
+             :refer [go go-loop <! >! put! promise-chan to-chan]]))
 
 (defn column-names
   "Makes a hash-map of keywords and their equivalent column names"
@@ -411,6 +413,22 @@
           {}
           (keys target-tables))]
     (assoc floor-plan :return-or-join compiled-return-or-join)))
+
+(defn compile-return-or-join-async
+  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
+  (let [compiled-return-or-join-async
+        (reduce (fn [acc k]
+                  (let [aggregator? (contains? aggregator-keywords k)
+                        one?        (= :one (get cardinality k))
+                        f           (if aggregator?
+                                      #(go (get (first %2) k))
+                                      (if one?
+                                        join-one
+                                        p/join-seq))]
+                    (assoc acc k f)))
+          {}
+          (keys target-tables))]
+    (assoc floor-plan :return-or-join-async compiled-return-or-join-async)))
 
 (def floor-plan-keys
   [:aggregator-keywords
