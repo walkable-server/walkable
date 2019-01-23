@@ -4,17 +4,50 @@
             [clojure.test :as t :refer [deftest testing is]]))
 
 (deftest inline-params-tests
-  (is (= (sut/inline-params
-           {:raw-string " ? "
+  (= (sut/inline-params {}
+       {:raw-string "? + 1"
+        :params     [{:raw-string "2018 - `human`.`yob` + ?"
+                      :params     [(sut/av :a/b)]}]})
+    {:raw-string "2018 - `human`.`yob` + ? + 1"
+     :params     [(sut/av :a/b)]})
+  (is (= (sut/inline-params {}
+           {:raw-string "?"
             :params     [{:raw-string "2018 - `human`.`yob`"
                           :params     []}]})
-        {:raw-string " 2018 - `human`.`yob` "
-         :params     []})))
+        {:raw-string "2018 - `human`.`yob`"
+         :params     []}))
+  (is (= (sut/inline-params {}
+           {:raw-string " ?"
+            :params     [{:raw-string "2018 - `human`.`yob`"
+                          :params     []}]})
+        {:raw-string " 2018 - `human`.`yob`",
+         :params     []}))
+  (is (= (sut/inline-params {}
+           {:raw-string "? "
+            :params     [{:raw-string "2018 - `human`.`yob`"
+                          :params     []}]})
+        {:raw-string "2018 - `human`.`yob` ",
+         :params []})))
+
+(deftest concatenate-params-tests
+  (is (= (sut/concatenate #(apply str %)
+           [{:raw-string "? as a"
+             :params     [(sut/av :a/b)]}
+            {:raw-string "? as b"
+             :params     [(sut/av :c/d)]}])
+        {:params     [(sut/av :a/b) (sut/av :c/d)],
+         :raw-string "? as a? as b"}))
+  (is (= (sut/concatenate #(clojure.string/join ", " %)
+           [{:raw-string "? as a"
+             :params     [(sut/av :a/b)]}
+            {:raw-string "? as b"
+             :params     [(sut/av :c/d)]}])
+        {:params [(sut/av :a/b) (sut/av :c/d)],
+         :raw-string "? as a, ? as b"})))
 
 (deftest and-tests
   (is (= (sut/process-operator {} [:and []])
-        {:raw-string "(?)",
-         :params [{:raw-string " ? ", :params [true]}]}))
+        {:raw-string "?", :params [true]}))
   (is (= (sut/process-operator {} [:and [{}]])
         {:raw-string "(?)", :params [{}]}))
   (is (= (sut/process-operator {} [:and [{} {}]])
@@ -24,7 +57,7 @@
 
 (deftest or-tests
   (is (= (sut/process-operator {} [:or []])
-        {:raw-string "NULL", :params []}))
+        {:raw-string "?", :params [false]}))
   (is (= (sut/process-operator {} [:or [{}]])
         {:raw-string "(?)", :params [{}]}))
   (is (= (sut/process-operator {} [:or [{} {}]])
@@ -104,19 +137,20 @@
   (is (= (sut/process-operator {} [:cond [{} {} {} {} {} {}]])
         {:raw-string "CASE WHEN (?) THEN (?) WHEN (?) THEN (?) WHEN (?) THEN (?) END", :params [{} {} {} {} {} {}]})))
 
-(deftest parameterize-tests
-  (is (= (sut/parameterize {:column-names {:a/foo "a.foo"
-                                           :b/bar "b.bar"}
-                            :join-filter-subqueries
-                            {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
-                             :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
+(deftest compile-to-string-tests
+  (is (= (sut/compile-to-string {:join-filter-subqueries
+                                 {:x/a "x.a_id IN (SELECT a.id FROM a WHERE ?)"
+                                  :x/b "x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE ?)"}}
            [:or {:x/a [:= :a/foo "meh"]}
-                {:x/b [:= :b/bar "mere"]}])
-        {:params ["meh" "mere"],
-         :raw-string (str "((x.a_id IN (SELECT a.id FROM a"
-                       " WHERE (a.foo)=( ? ))))"
-                       " OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id"
-                       " WHERE (b.bar)=( ? ))))")})))
+            {:x/b [:= :b/bar "mere"]}])
+        {:params     [(sut/av :a/foo) "meh" (sut/av :b/bar) "mere"]
+         :raw-string "((x.a_id IN (SELECT a.id FROM a WHERE (?)=(?)))) OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE (?)=(?))))"})))
+
+(deftest substitute-atomic-variables-test
+  (is (= (->> (sut/compile-to-string {} [:= :x/a "abc" [:+ 24 [:+ :x/b 2]]])
+           (sut/substitute-atomic-variables {:variable-values {:x/a  {:raw-string "?" :params ["def"]}}})
+           (sut/substitute-atomic-variables {:variable-values {:x/b  (sut/compile-to-string {} [:+ 2018 "713"])}}))
+        {:params ["def" "abc" "abc" "713"], :raw-string "(?)=(?) AND (?)=((24)+(((2018)+(?))+(2)))"})))
 
 #?(:clj
    (deftest operator-sql-names-test

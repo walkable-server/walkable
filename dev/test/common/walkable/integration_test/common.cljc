@@ -2,7 +2,7 @@
   (:require [com.wsscode.pathom.core :as p]))
 
 (def farmer-cow-floor-plan
-  {:columns          [:cow/color
+  {:true-columns     [:cow/color
                       :farmer/number
                       :farmer/name]
    :idents           {:farmer/by-id :farmer/number
@@ -15,7 +15,7 @@
                       :farmer/cow   :one}})
 
 (def kid-toy-floor-plan
-  {:columns          [:kid/name :toy/index :toy/color]
+  {:true-columns     [:kid/name :toy/index :toy/color]
    :idents           {:kid/by-id :kid/number
                       :kids/all  "kid"}
    :extra-conditions {}
@@ -26,7 +26,7 @@
                       :toy/owner :one}})
 
 (def human-follow-floor-plan
-  {:columns          [:human/number :human/name :human/yob]
+  {:true-columns     [:human/number :human/name :human/yob]
    :required-columns {}
    :idents           {:human/by-id :human/number
                       :world/all   "human"}
@@ -39,7 +39,7 @@
                       :human/follow       :many}})
 
 (def person-pet-floor-plan
-  {:columns          [:person/name
+  {:true-columns     [:person/name
                       :person/yob
                       :person/hidden
                       :person-pet/adoption-year

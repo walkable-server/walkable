@@ -2,6 +2,7 @@
   (:require [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as sut]
             [walkable.sql-query-builder.pagination :as pagination]
+            [walkable.sql-query-builder.expressions :as expressions]
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 
@@ -79,8 +80,9 @@
         {:a [1, 2] :b [2, 3] :c 4})))
 
 (deftest expand-reversed-joins-test
-  (is (= (sut/expand-reversed-joins {:pet/owner :person/pet}
-           {:person/pet [:a :b :c :d]})
+  (is (= (sut/expand-reversed-joins
+           {:person/pet [:a :b :c :d]}
+           {:pet/owner :person/pet})
         {:person/pet [:a :b :c :d], :pet/owner [:d :c :b :a]})))
 
 (deftest expand-denpendencies*-test
@@ -95,8 +97,8 @@
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
 
-(deftest separate-idents-test
-  (is (= (sut/separate-idents {:person/by-id  :person/number
+(deftest separate-idents*-test
+  (is (= (sut/separate-idents* {:person/by-id  :person/number
                                :person/by-yob :person/yob
                                :pets/all      "pet"
                                :people/all    "person"})
@@ -123,62 +125,80 @@
         {:people/all "\"public\".\"person\""
          :pets/all "\"public\".\"pet\""})))
 
-(deftest merge-pagination-test
-  (let [all-fallbacks     (sut/compile-pagination-fallbacks
-                            {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
-                            {:people/all
-                             {:offset   {:default  5
-                                         :validate #(<= 2 % 4)}
-                              :limit    {:default  10
-                                         :validate #(<= 12 % 14)}
-                              :order-by {:default  [:x/a]
-                                         :validate #{:x/a :x/b}}}})
-        current-fallbacks (:people/all all-fallbacks)]
-    (is (= (pagination/merge-pagination
-             nil
-             {:offset             4
-              :limit              8
-              :conformed-order-by [{:column :x/b}]})
-          {:offset             4,
-           :limit              8,
-           :conformed-order-by [{:column :x/b}]}))
-    (is (= (pagination/merge-pagination
-             current-fallbacks
-             {:offset             4
-              :limit              8
-              :conformed-order-by [:x/invalid-key]})
-          {:offset             4,
-           :limit              10,
-           :conformed-order-by [{:column :x/a}]}))
-    (is (= (pagination/merge-pagination
-             current-fallbacks
-             {:offset             4
-              :limit              :invalid-type
-              :conformed-order-by [{:column :x/a}]})
-          {:offset             4,
-           :limit              10,
-           :conformed-order-by [{:column :x/a}]}))))
+(deftest unbound-expression?-test
+  (is (false? (sut/unbound-expression? {:raw-string "abc"
+                                        :params     []})))
+  (is (false? (sut/unbound-expression? {:raw-string "abc AND ?"
+                                        :params     ["bla"]})))
+  (is (true? (sut/unbound-expression? {:raw-string "abc AND ?"
+                                       :params     [(expressions/av :x/a)]}))))
 
-(deftest merge-pagination-partially-test
-  (let [all-fallbacks     (sut/compile-pagination-fallbacks
-                            {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
-                            {:people/all
-                             {:offset {:default  5
-                                       :validate #(<= 2 % 4)}}})
-        current-fallbacks (:people/all all-fallbacks)]
-    (is (= (pagination/merge-pagination
-             current-fallbacks
-             {:offset             4
-              :limit              8
-              :conformed-order-by [{:column :x/a}]})
-          {:offset             4
-           :limit              8
-           :conformed-order-by [{:column :x/a}]}))
-    (is (= (pagination/merge-pagination
-             current-fallbacks
-             {:offset             6
-              :limit              8
-              :conformed-order-by [{:column :x/random-key}]})
-          {:offset             5
-           :limit              8
-           :conformed-order-by [{:column :x/random-key}]}))))
+(deftest rotate-test
+  (is (= (sut/rotate [:a :b :c :d]) [:b :c :d :a]))
+  (is (= (sut/rotate [:a :b]) [:b :a]))
+  (is (= (sut/rotate []) [])))
+
+(deftest compile-formulas-once-test
+  (is (= (sut/compile-formulas-once
+          (sut/compile-true-columns emitter/postgres-emitter
+            #{:x/a :x/b})
+          {:x/c 99
+           :x/d [:- 100 :x/c]})
+        {:unbound #:x {:d {:params     [(expressions/av :x/c)],
+                           :raw-string "(100)-(?)"}},
+         :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                       :b {:raw-string "\"x\".\"b\"", :params []},
+                       :c {:raw-string "99", :params []}}})))
+
+(deftest compile-formulas-recursively-test
+  (is (= (sut/compile-formulas-recursively
+          (sut/compile-formulas-once
+            (sut/compile-true-columns
+              emitter/postgres-emitter #{:x/a :x/b})
+            {:x/c 99
+             :x/d [:- 100 :x/c]}))
+        {:unbound {},
+         :bound   #:x {:a {:raw-string "\"x\".\"a\"", :params []},
+                       :b {:raw-string "\"x\".\"b\"", :params []},
+                       :c {:raw-string "99", :params []},
+                       :d {:raw-string "(100)-(99)", :params []}}})))
+
+(deftest column-dependencies-test
+  (is (= (sut/column-dependencies
+          (sut/compile-formulas-recursively
+            (sut/compile-formulas-once
+              (sut/compile-true-columns
+                emitter/postgres-emitter #{:x/a :x/b})
+              {:x/c [:+ :x/d (expressions/av 'o)]
+               :x/d [:- 100 :x/e]
+               :x/e [:- 100 :x/c]})))
+        #:x{:d #{:x/e}, :e #{:x/c}, :c #{:x/d}})))
+
+(deftest compile-selection-test
+  (is (= (sut/compile-selection
+           {:raw-string "? - `human`.`yob` ?"
+            :params     [(expressions/av 'current-year)]}
+          "`human/age`")
+        {:params     [(expressions/av 'current-year)],
+         :raw-string "(? - `human`.`yob` ?) AS `human/age`"})))
+
+(deftest columns-in-joins-test
+  (is (= (sut/columns-in-joins {:x [:u :v] :y [:m :n]})
+       #{:v :n :m :u})))
+
+(deftest polulate-columns-with-joins-test
+  (is (= (sut/polulate-columns-with-joins {:joins        {:x [:u :v] :y [:m :n]}
+                                           :true-columns #{:a :b}})
+        {:joins        {:x [:u :v], :y [:m :n]},
+         :true-columns #{:v :n :m :b :a :u}})))
+
+(deftest columns-in-conditional-idents-test
+  (is (= (sut/columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
+        #{:y/id :x/id})))
+
+(deftest polulate-columns-with-condititional-idents-test
+  (is (= (sut/polulate-columns-with-condititional-idents
+           {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
+            :true-columns       #{:x/id :m/id}})
+        {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
+         :true-columns       #{:m/id :y/id :x/id}})))

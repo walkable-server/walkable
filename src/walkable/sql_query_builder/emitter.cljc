@@ -75,12 +75,12 @@
 
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]
-    :opt-un [::join-statement ::where-conditions
+    :opt-un [::join-statement ::conditions
              ::offset ::limit ::order-by]))
 
 (defn ->query-string
   "Builds the final query string ready for SQL server."
-  [{:keys [selection target-table join-statement where-conditions
+  [{:keys [selection target-table join-statement conditions
            offset limit order-by]
     :as input}]
   {:pre  [(s/valid? ::query-string-input input)]
@@ -90,20 +90,20 @@
 
     join-statement
 
-    (when where-conditions
+    (when conditions
       (str " WHERE "
-        where-conditions))
-    (when order-by
-      (str " ORDER BY " order-by))
-    (when limit
-      (str " LIMIT " limit))
-    (when offset
-      (str " OFFSET " offset))))
+        conditions))
 
-(defn batch-query
-  "Combines multiple SQL queries and their params into a single query
-  using UNION."
-  [query-strings params]
-  (let [union-query (clojure.string/join "\nUNION ALL\n"
-                      query-strings)]
-    (cons union-query (apply concat params))))
+    order-by
+    offset
+    limit))
+
+(defn emitter->batch-query [emitter]
+  (fn [parameterized-queries]
+    (-> (if (= 1 (count parameterized-queries))
+          (first parameterized-queries)
+          (expressions/concatenate
+            (fn [q] (->> q
+                      (mapv #(wrap-select emitter %))
+                      (clojure.string/join "\nUNION ALL\n")))
+            parameterized-queries)))))

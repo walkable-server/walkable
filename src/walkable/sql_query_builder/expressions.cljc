@@ -6,15 +6,22 @@
             [clojure.string :as string]
             [clojure.set :as set]))
 
-(defn inline-params
-  [{:keys [raw-string params]}]
-  {:params     (flatten (map :params params))
-   :raw-string (->> (conj (mapv :raw-string params) nil)
-                 (interleave (string/split (if (= "?" raw-string)
-                                             " ? "
-                                             raw-string)
-                               #"\?"))
-                 (apply str))})
+(defrecord AtomicVariable [name])
+
+(defn av [n]
+  (AtomicVariable. n))
+
+(defn atomic-variable? [x]
+  (instance? AtomicVariable x))
+
+(defn expand-atomic-variables [exprs]
+  (clojure.walk/postwalk
+    (fn [expr] (if (and (symbol? expr) (::variable (meta expr)))
+                 (AtomicVariable. expr)
+                 expr))
+    exprs))
+
+(declare inline-params)
 
 (defn namespaced-keyword?
   [x]
@@ -34,6 +41,7 @@
 
 (s/def ::expression
   (s/or
+    :atomic-variable atomic-variable?
     :nil nil?
     :number number?
     :boolean boolean?
@@ -71,6 +79,14 @@
   {:raw-string "NULL"
    :params     []})
 
+(def conformed-true
+  {:raw-string "TRUE"
+   :params     []})
+
+(def conformed-false
+  {:raw-string "FALSE"
+   :params     []})
+
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
   (fn [type-kw type-params] type-kw))
@@ -103,18 +119,24 @@
       (str "First argument to `cast` is not an invalid expression."))
     (assert type-str
       (str "Invalid type to `cast`. You may want to implement `cast-type` for the given type."))
-    (inline-params
+    (inline-params env
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
 
 (defmethod operator? :and [_operator] true)
 
+(defn verbatim-raw-string [s]
+  {:raw-string s
+   :params     []})
+
+(defn single-raw-string [x]
+  {:raw-string "?"
+   :params     [x]})
+
 (defmethod process-operator :and
   [_env [_operator params]]
   (if (empty? params)
-    {:raw-string "(?)"
-     :params     [{:raw-string " ? "
-                   :params     [true]}]}
+    (single-raw-string true)
     {:raw-string (clojure.string/join " AND "
                    (repeat (count params) "(?)"))
      :params     params}))
@@ -124,7 +146,7 @@
 (defmethod process-operator :or
   [_env [_operator params]]
   (if (empty? params)
-    conformed-nil
+    (single-raw-string false)
     {:raw-string (clojure.string/join " OR "
                    (repeat (count params) "(?)"))
      :params     params}))
@@ -357,7 +379,7 @@
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (inline-params
+  (inline-params env
     (process-operator env
       [operator (mapv #(process-expression env %) params)])))
 
@@ -370,18 +392,22 @@
   (let [subquery (-> env :join-filter-subqueries join-key)]
     (assert subquery
       (str "No join filter found for join key " join-key))
-    (inline-params
+    (inline-params env
       {:raw-string subquery
        :params     [(process-expression env expression)]})))
 
 (defmethod process-expression :join-filters
   [env [_kw join-filters]]
-  (inline-params
+  (inline-params env
     {:raw-string (str "("
                    (clojure.string/join ") AND ("
                      (repeat (count join-filters) \?))
                    ")")
      :params     (mapv #(process-expression env %) join-filters)}))
+
+(defmethod process-expression :atomic-variable
+  [_env [_kw atomic-variable]]
+  (single-raw-string atomic-variable))
 
 (defmethod process-expression :nil
   [_env [_kw number]]
@@ -394,31 +420,17 @@
 
 (defmethod process-expression :boolean
   [_env [_kw value]]
-  {:raw-string (if value "TRUE" "FALSE")
-   :params     []})
+  (if value
+    conformed-true
+    conformed-false))
 
 (defmethod process-expression :string
   [_env [_kw string]]
-  {:raw-string " ? "
-   :params     string})
+  (single-raw-string string))
 
 (defmethod process-expression :column
-  [{:keys [column-names pathom-env] :as env} [_kw column-keyword]]
-  (let [column (get column-names column-keyword)]
-    (assert column
-      (str "Invalid column keyword " column-keyword
-        ". You may want to add it to `:columns` in your floor-plan."))
-    (if (string? column)
-      {:raw-string column
-       :params     []}
-      (let [form (s/conform ::expression (if (fn? column)
-                                           (column pathom-env)
-                                           column))]
-        (assert (not= ::s/invalid form)
-          (str "Invalid pseudo column for " column-keyword ": " column))
-        (inline-params
-          {:raw-string "(?)"
-           :params     [(process-expression env form)]})))))
+  [_env [_kw column-keyword]]
+  (single-raw-string (AtomicVariable. column-keyword)))
 
 (defmethod operator? :case [_operator] true)
 
@@ -475,7 +487,31 @@
       {:raw-string "CASE WHEN (?) THEN (?) END"
        :params     expressions})))
 
-(defn parameterize
+(defn substitute-atomic-variables
+  [{:keys [variable-values] :as env} {:keys [raw-string params]}]
+  (inline-params env
+    {:raw-string raw-string
+     :params     (->> params
+                   (mapv (fn [param]
+                           (or (and (atomic-variable? param)
+                                 (get variable-values (:name param)))
+                             (single-raw-string param)))))}))
+
+(defn inline-params
+  [_env {:keys [raw-string params]}]
+  {:params     (into [] (flatten (map :params params)))
+   :raw-string (->> (conj (mapv :raw-string params) nil)
+                 (interleave (if (= "?" raw-string)
+                               ["" ""]
+                               (string/split raw-string #"\?")))
+                 (apply str))})
+
+(defn concatenate
+  [joiner compiled-expressions]
+  {:params     (vec (apply concat (map :params compiled-expressions)))
+   :raw-string (joiner (map :raw-string compiled-expressions))})
+
+(defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
     (assert (not= ::s/invalid form)

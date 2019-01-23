@@ -25,14 +25,14 @@
   (run-scenario-tests db :postgres common-scenarios))
 
 (def planet-inhabitant-floor-plan
-  {:columns          #{:land.animal/id :land.animal/name
-                       :ocean.animal/id :ocean.animal/name}
-   :idents           {:land.animal/all    "land.animal"
-                      :land.animal/by-id  :land.animal/id
-                      :ocean.animal/all   "ocean.animal"
-                      :ocean.animal/by-id :ocean.animal/id}
-   :cardinality      {:land.animal/by-id  :one
-                      :ocean.animal/by-id :one}})
+  {:true-columns #{:land.animal/id :land.animal/name
+                   :ocean.animal/id :ocean.animal/name}
+   :idents       {:land.animal/all    "land.animal"
+                  :land.animal/by-id  :land.animal/id
+                  :ocean.animal/all   "ocean.animal"
+                  :ocean.animal/by-id :ocean.animal/id}
+   :cardinality  {:land.animal/by-id  :one
+                  :ocean.animal/by-id :one}})
 
 (def postgres-scenarios
   {:planet-species

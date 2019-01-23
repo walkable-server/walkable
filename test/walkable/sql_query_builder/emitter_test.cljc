@@ -32,3 +32,15 @@
          "`foo/bar`"))
   (is (= (sut/clojuric-name sut/postgres-emitter :prefix.foo/bar)
          "\"prefix.foo/bar\"")))
+
+(deftest emitter->batch-query-test
+  (is (= ((sut/emitter->batch-query sut/default-emitter)
+          [{:raw-string "x" :params ["a" "b"]}
+           {:raw-string "y" :params ["c" "d"]}])
+        {:params     ["a" "b" "c" "d"],
+         :raw-string "(x)\nUNION ALL\n(y)"}))
+  (is (= ((sut/emitter->batch-query sut/sqlite-emitter)
+          [{:raw-string "x" :params ["a" "b"]}
+           {:raw-string "y" :params ["c" "d"]}])
+        {:params     ["a" "b" "c" "d"],
+         :raw-string "SELECT * FROM (x)\nUNION ALL\nSELECT * FROM (y)"})))

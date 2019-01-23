@@ -3,7 +3,10 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.pathom-env :as env]
-            [clojure.spec.alpha :as s]))
+            [com.wsscode.pathom.core :as p]
+            [clojure.spec.alpha :as s]
+            [clojure.core.async :as async
+             :refer [go go-loop <! >! put! promise-chan to-chan]]))
 
 (defn column-names
   "Makes a hash-map of keywords and their equivalent column names"
@@ -163,26 +166,6 @@
                     key-set)]
     (into {} keys+vals)))
 
-(defn compile-extra-conditions
-  [extra-conditions]
-  (reduce (fn [result [k v]]
-            (assoc result k
-              (if (fn? v)
-                v
-                (fn [env] v))))
-    {} extra-conditions))
-
-(defn compile-pagination-fallbacks
-  [clojuric-names pagination-fallbacks]
-  (reduce (fn [result [k {:keys [offset limit order-by]}]]
-            (assoc result
-              k
-              {:offset-fallback   (pagination/offset-fallback offset)
-               :limit-fallback    (pagination/limit-fallback limit)
-               :order-by-fallback (pagination/order-by-fallback
-                                    (pagination/conform-fallback-default clojuric-names order-by))}))
-    {} pagination-fallbacks))
-
 (defn compile-join-statements
   [emitter joins]
   (reduce (fn [result [k join-seq]]
@@ -197,7 +180,7 @@
               (join-filter-subquery emitter join-seq)))
     {} joins))
 
-(defn expand-reversed-joins [reversed-joins joins]
+(defn expand-reversed-joins [joins reversed-joins]
   (let [more (reduce (fn [result [backward forward]]
                        (assoc result backward
                          (reverse (get joins forward))))
@@ -221,7 +204,7 @@
       m
       (expand-denpendencies m'))))
 
-(defn separate-idents
+(defn separate-idents*
   "Helper function for compile-floor-plan. Separates all user-supplied
   idents to unconditional idents and conditional idents for further
   processing."
@@ -234,87 +217,345 @@
      :conditional-idents   {}}
     idents))
 
-(s/def ::floor-plan
-  (s/keys :req [::column-keywords
-                ::target-columns
-                ::extra-conditions
-                ::pagination-fallbacks
-                ::join-statements
-                ::join-filter-subqueries
-                ::required-columns
-                ::clojuric-names
-                ::column-names
-                ::ident-keywords
-                ::source-columns
-                ::ident-conditions
-                ::cardinality
-                ::emitter
-                ::target-tables
-                ::aggregators
-                ::batch-query]))
+(defn separate-idents
+  [{:keys [joins idents] :as floor-plan}]
+  (-> floor-plan
+    (merge ;; will add `:unconditional-idents` and `:conditional-idents`:
+      (separate-idents* idents)
+      {:target-columns (joins->target-columns joins)
+       :source-columns (joins->source-columns joins)})))
 
-(defn compile-floor-plan
-  "Given a brief user-supplied floor-plan, derives an efficient floor-plan
-  ready for pull-entities to use."
-  [{:keys [columns pseudo-columns required-columns idents
-           emitter extra-conditions pagination-fallbacks
-           reversed-joins joins cardinality
-           aggregators]
-    :or   {emitter              emitter/default-emitter
-           aggregators          {}
-           extra-conditions     {}
-           pagination-fallbacks {}
-           joins                {}
-           cardinality          {}}
-    :as   input-floor-plan}]
-  {:pre  [(s/valid? (s/keys :req-un [::columns ::idents]
-                      :opt-un [::pseudo-columns ::required-columns
-                               ::extra-conditions ::pagination-fallbacks
-                               ::emitter ::aggregators
-                               ::reversed-joins ::joins ::cardinality])
-            input-floor-plan)]
-   :post [#(s/valid? ::floor-plan %)]}
-  (let [idents (flatten-multi-keys idents)
+(defn unbound-expression?
+  [compiled-expression]
+  (boolean (some expressions/atomic-variable? (:params compiled-expression))))
 
-        {:keys [unconditional-idents conditional-idents]}
-        (separate-idents idents)
+(defn rotate [coll]
+  (take (count coll) (drop 1 (cycle coll))))
 
-        extra-conditions     (flatten-multi-keys extra-conditions)
-        pagination-fallbacks (flatten-multi-keys pagination-fallbacks)
+(defn compile-formulas-once [compiled-true-columns formulas]
+  (reduce-kv (fn [result k expression]
+               (let [compiled (expressions/compile-to-string {} expression)]
+                 (if (unbound-expression? compiled)
+                   (update result :unbound assoc k compiled)
+                   (update result :bound assoc k compiled))))
+    {:unbound {}
+     :bound   compiled-true-columns}
+    formulas))
 
-        joins       (->> (flatten-multi-keys joins)
-                      (expand-reversed-joins reversed-joins))
-        aggregators (flatten-multi-keys aggregators)
-        cardinality (merge (flatten-multi-keys cardinality)
-                      (zipmap (keys aggregators) (repeat :one)))
+(defn compile-formulas-recursively [{:keys [unbound bound]}]
+  (loop [limit   100
+         unbound (seq unbound)
+         bound   bound]
+    (if-let [item (and (pos? limit) (first unbound))]
+      (let [[k compiled-expression] item
 
-        true-columns   (set (apply concat columns (vals joins)))
-        columns        (set (concat true-columns
-                              (keys pseudo-columns)))
-        clojuric-names (clojuric-names emitter (concat columns (keys aggregators)))]
-    #::{:column-keywords  columns
-        :ident-keywords   (set (keys idents))
-        :emitter          emitter
-        :required-columns (expand-denpendencies required-columns)
-        :target-tables    (merge (conditional-idents->target-tables emitter conditional-idents)
+            attempt (expressions/substitute-atomic-variables
+                      {:variable-values bound}
+                      compiled-expression)]
+        (if (unbound-expression? attempt)
+          (recur (dec limit)
+            (rotate unbound)
+            bound)
+          (recur (dec limit)
+            (rest unbound)
+            (assoc bound k attempt))))
+      ;; no more work. Exiting loop...
+      {:unbound (into {} unbound)
+       :bound   bound})))
+
+(defn column-dependencies
+  [{:keys [bound unbound]}]
+  (let [all-columns    (set (concat (keys bound) (keys unbound)))]
+    (reduce-kv (fn [acc k compiled-expression]
+                 (let [p                  (-> compiled-expression :params)
+                       all-vars           (set (map :name (filter expressions/atomic-variable? p)))
+                       column-vars        (set (filter keyword? all-vars))
+                       undeclared-columns (clojure.set/difference column-vars all-columns)]
+                   (assert (not (contains? column-vars k))
+                     (str "Circular dependency: " k " depends on itself"))
+                   (assert (empty? undeclared-columns)
+                     (str "Missing definition for columns: " undeclared-columns
+                       ". You may want to add them to :columns or :pseudo-columns."))
+                   (assoc acc k column-vars)))
+      {}
+      unbound)))
+
+(defn compile-selection [compiled-formula clojuric-name]
+  (expressions/inline-params {}
+    {:raw-string "(?) AS ?"
+     :params     [compiled-formula
+                  (expressions/verbatim-raw-string clojuric-name)]}))
+
+(defn compile-variable-getters
+  [getters]
+  (->> getters
+    (map (fn [{function :fn k :key :keys [cached?]}]
+           [k
+            (if cached?
+              (fn [env]
+                (p/cached env [:walkable/variable-getter k]
+                  (function env)))
+              function)]))
+    (into {})))
+
+(defn check-column-vars
+  [column-vars])
+
+(defn compile-true-columns
+  "Makes a hash-map of keywords and their equivalent compiled form."
+  [emitter ks]
+  (zipmap ks
+    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
+
+(defn compile-formulas
+  [{:keys [true-columns pseudo-columns aggregators emitter] :as floor-plan}]
+  (let [compiled-formulas       (-> (compile-true-columns emitter true-columns)
+                                  (compile-formulas-once (merge pseudo-columns aggregators))
+                                  compile-formulas-recursively)
+        _ok?                    (column-dependencies compiled-formulas)
+        {:keys [bound unbound]} compiled-formulas
+        compiled-formulas       (merge bound unbound)]
+    (-> (dissoc floor-plan :true-columns :pseudo-columns :aggregators)
+      (assoc :compiled-formulas compiled-formulas))))
+
+(defn compile-formulas-with-aliases
+  [{:keys [compiled-formulas clojuric-names] :as floor-plan}]
+  (let [compiled-selection
+        (reduce-kv (fn [acc k f]
+                     (assoc acc k (compile-selection f (get clojuric-names k))))
+          {}
+          compiled-formulas)]
+    (assoc floor-plan :compiled-selection compiled-selection)))
+
+(defn compile-ident-conditions
+  [{:keys [conditional-idents compiled-formulas] :as floor-plan}]
+  (let [compiled-ident-conditions
+        (reduce-kv (fn [acc k ident-key]
+                     (assoc acc k
+                       (expressions/substitute-atomic-variables
+                         {:variable-values compiled-formulas}
+                         (expressions/compile-to-string {}
+                           [:= ident-key (expressions/av `ident-value)]))))
+          {}
+          conditional-idents)]
+    (-> floor-plan
+      (assoc :compiled-ident-conditions compiled-ident-conditions)
+      (dissoc :conditional-idents :unconditional-idents))))
+
+(defn compile-join-selection
+  [{:keys [joins clojuric-names target-columns] :as floor-plan}]
+  (let [compiled-join-selection
+        (reduce-kv (fn [acc k join-seq]
+                     (let [target-column (get target-columns k)]
+                       (assoc acc k
+                         (compile-selection
+                           {:raw-string "?"
+                            :params [(expressions/av `source-column-value)]}
+                           (get clojuric-names target-column)))))
+          {}
+          joins)]
+    (-> floor-plan
+      (assoc :compiled-join-selection compiled-join-selection))))
+
+(defn compile-join-conditions
+  [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
+  (let [compiled-join-conditions
+        (reduce-kv (fn [acc k join-seq]
+                     (let [target-column (get target-columns k)]
+                       (assoc acc k
+                         (expressions/substitute-atomic-variables
+                           {:variable-values compiled-formulas}
+                           (expressions/compile-to-string {}
+                             [:= target-column (expressions/av `source-column-value)])))))
+          {}
+          joins)]
+    (-> floor-plan
+      (assoc :compiled-join-conditions compiled-join-conditions)
+      (dissoc :joins))))
+
+(defn compile-extra-conditions
+  [{:keys [extra-conditions compiled-formulas] :as floor-plan}]
+  (let [compiled-extra-conditions
+        (reduce-kv (fn [acc k extra-condition]
+                     (assoc acc k
+                       (expressions/substitute-atomic-variables
+                         {:variable-values compiled-formulas}
+                         (expressions/compile-to-string {} extra-condition))))
+          {}
+          extra-conditions)]
+    (-> floor-plan
+      (assoc :compiled-extra-conditions compiled-extra-conditions)
+      (dissoc :extra-conditions))))
+
+(defn compile-pagination-fallbacks
+  [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
+  (let [compiled-pagination-fallbacks
+        (pagination/compile-fallbacks clojuric-names pagination-fallbacks)]
+    (-> floor-plan
+      (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
+      (dissoc :pagination-fallbacks))))
+
+(defn join-one [env entities]
+  (p/join (first entities) env))
+
+(defn compile-return-or-join
+  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
+  (let [compiled-return-or-join
+        (reduce (fn [acc k]
+                  (let [aggregator? (contains? aggregator-keywords k)
+                        one?        (= :one (get cardinality k))
+                        f           (if aggregator?
+                                      #(get (first %2) k)
+                                      (if one?
+                                        join-one
+                                        p/join-seq))]
+                    (assoc acc k f)))
+          {}
+          (keys target-tables))]
+    (assoc floor-plan :return-or-join compiled-return-or-join)))
+
+(defn compile-return-or-join-async
+  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
+  (let [compiled-return-or-join-async
+        (reduce (fn [acc k]
+                  (let [aggregator? (contains? aggregator-keywords k)
+                        one?        (= :one (get cardinality k))
+                        f           (if aggregator?
+                                      #(go (get (first %2) k))
+                                      (if one?
+                                        join-one
+                                        p/join-seq))]
+                    (assoc acc k f)))
+          {}
+          (keys target-tables))]
+    (assoc floor-plan :return-or-join-async compiled-return-or-join-async)))
+
+(def floor-plan-keys
+  [:aggregator-keywords
+   :batch-query
+   :cardinality
+   :clojuric-names
+   :column-keywords
+   :compiled-extra-conditions
+   :compiled-formulas
+   :compiled-ident-conditions
+   :compiled-join-conditions
+   :compiled-join-selection
+   :compiled-selection
+   :emitter
+   :ident-keywords
+   :join-filter-subqueries
+   :join-keywords
+   :join-statements
+   :compiled-pagination-fallbacks
+   :required-columns
+   :reversed-joins
+   :return-or-join
+   :return-or-join-async
+   :source-columns
+   :target-columns
+   :target-tables])
+
+(defn kmap [ks]
+  (let [this-ns (namespace ::foo)]
+    (zipmap ks (map #(keyword this-ns (name %)) ks))))
+
+(defn internalize-keywords
+  [floor-plan]
+  (-> floor-plan
+    (select-keys floor-plan-keys)
+    (clojure.set/rename-keys (kmap floor-plan-keys))))
+
+(def compile-floor-plan*
+  (comp compile-pagination-fallbacks
+    compile-return-or-join-async
+    compile-return-or-join
+    compile-extra-conditions
+    compile-join-conditions
+    compile-join-selection
+    compile-ident-conditions
+    compile-formulas-with-aliases
+    compile-formulas))
+
+(defn columns-in-joins
+  [joins]
+  (set (apply concat (vals joins))))
+
+(defn polulate-columns-with-joins
+  [{:keys [joins] :as floor-plan}]
+  (update floor-plan :true-columns
+    clojure.set/union (columns-in-joins joins)))
+
+(defn columns-in-conditional-idents
+  [conditional-idents]
+  (set (vals conditional-idents)))
+
+(defn polulate-columns-with-condititional-idents
+  [{:keys [conditional-idents] :as floor-plan}]
+  (update floor-plan :true-columns
+    clojure.set/union (columns-in-conditional-idents conditional-idents)))
+
+(defn polulate-cardinality-with-aggregators
+  [{:keys [aggregators] :as floor-plan}]
+  (update floor-plan :cardinality merge (zipmap (keys aggregators) (repeat :one))))
+
+(defn expand-floor-plan-keys
+  [{:keys [reversed-joins] :as floor-plan}]
+  (-> floor-plan
+    (update :true-columns set)
+    (update :idents flatten-multi-keys)
+    (update :extra-conditions (fnil flatten-multi-keys {}))
+    (update :pagination-fallbacks (fnil flatten-multi-keys {}))
+    (update :aggregators (fnil flatten-multi-keys {}))
+    polulate-cardinality-with-aggregators
+    (update :cardinality flatten-multi-keys)
+    (update :joins (fnil flatten-multi-keys {}))
+    polulate-columns-with-joins
+    (update :joins expand-reversed-joins reversed-joins)
+    (update :required-columns expand-denpendencies)))
+
+(defn prepare-keywords
+  [{:keys [true-columns aggregators pseudo-columns
+           idents emitter joins] :as floor-plan}]
+  (-> floor-plan
+    (assoc :aggregator-keywords (set (keys aggregators)))
+
+    (assoc :column-keywords
+      (clojure.set/union true-columns
+        (set (keys (merge aggregators pseudo-columns)))))
+
+    (assoc :ident-keywords (set (keys idents)))
+    (assoc :join-keywords (set (keys joins)))
+    (dissoc :idents)))
+
+(defn prepare-clojuric-names
+  [{:keys [emitter column-keywords] :as floor-plan}]
+  (-> floor-plan
+    (assoc :clojuric-names (clojuric-names emitter column-keywords))))
+
+(defn separate-floor-plan-keys
+  [{:keys [joins emitter idents
+           extra-conditions]
+    :as floor-plan}]
+  (-> floor-plan
+    separate-idents
+    polulate-columns-with-condititional-idents
+    prepare-keywords
+    prepare-clojuric-names))
+
+(defn precompile-floor-plan
+  [{:keys [joins emitter idents unconditional-idents conditional-idents] :as floor-plan}]
+  (-> floor-plan
+    (assoc :batch-query (emitter/emitter->batch-query emitter))
+    (assoc :join-statements (compile-join-statements emitter joins))
+    (assoc :target-tables (merge (conditional-idents->target-tables emitter conditional-idents)
                             (unconditional-idents->target-tables emitter unconditional-idents)
-                            (joins->target-tables emitter joins))
-        :target-columns   (joins->target-columns joins)
-        :source-columns   (joins->source-columns joins)
+                            (joins->target-tables emitter joins)))
+    (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))
 
-        :batch-query (fn [query-strings params]
-                       (-> (if (= 1 (count query-strings))
-                             query-strings
-                             (map #(emitter/wrap-select emitter %) query-strings))
-                         (emitter/batch-query params)))
-
-        :cardinality            cardinality
-        :ident-conditions       conditional-idents
-        :extra-conditions       (compile-extra-conditions extra-conditions)
-        :pagination-fallbacks   (compile-pagination-fallbacks clojuric-names pagination-fallbacks)
-        :column-names           (merge (column-names emitter true-columns)
-                                  pseudo-columns aggregators)
-        :clojuric-names         clojuric-names
-        :join-statements        (compile-join-statements emitter joins)
-        :aggregators            (set (keys aggregators))
-        :join-filter-subqueries (compile-join-filter-subqueries emitter joins)}))
+(def compile-floor-plan
+  (comp internalize-keywords
+    compile-floor-plan*
+    precompile-floor-plan
+    separate-floor-plan-keys
+    expand-floor-plan-keys))

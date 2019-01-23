@@ -21,9 +21,6 @@
         (when (seq form)
           (vec form))))))
 
-(defn conform-fallback-default [clojuric-names fallback]
-  (update fallback :default #(conform-order-by clojuric-names %)))
-
 (defn wrap-validate-order-by [f]
   (comp boolean
     (if (ifn? f)
@@ -32,17 +29,23 @@
           (every? f (map :column conformed-order-by))))
       identity)))
 
-(defn fallback [wrap-validate {:keys [default validate]}]
-  (when default
+(defn number-fallback [{:keys [stringify]} {:keys [default validate]}]
+  (let [default  (when default (stringify default))
+        validate (wrap-validate-number validate)]
     (fn [supplied]
-      (if ((wrap-validate validate) supplied)
-        supplied
+      (if (validate supplied)
+        (stringify supplied)
         default))))
 
-(def offset-fallback #(fallback wrap-validate-number %))
-(def limit-fallback offset-fallback)
+(defn offset-fallback
+  [offset]
+  (number-fallback {:stringify #(when % (str " OFFSET " %))}
+    offset))
 
-(def order-by-fallback #(fallback wrap-validate-order-by %))
+(defn limit-fallback
+  [limit]
+  (number-fallback {:stringify #(when % (str " LIMIT " %))}
+    limit))
 
 (def order-params->string
   {:asc        " ASC"
@@ -61,32 +64,65 @@
                  (apply str)))))
       (clojure.string/join ", "))))
 
-(defn add-conformed-order-by [clojuric-names {:keys [order-by] :as m}]
-  (-> m
-    (assoc :conformed-order-by (conform-order-by clojuric-names order-by))
-    (dissoc :order-by)))
+(defn columns-and-string
+  [conformed stringify]
+  {:columns (into #{} (map :column) conformed)
+   :string  (stringify conformed)})
 
-(defn add-order-by-columns [{:keys [conformed-order-by] :as m}]
-  (assoc m :order-by-columns (into #{} (map :column) conformed-order-by)))
+(defn order-by-fallback*
+  [{:keys [conform stringify]}
+   {:keys [default validate]}]
+  (let [default  (when default
+                   (let [conformed (conform default)]
+                     (columns-and-string conformed stringify)))
+        validate (wrap-validate-order-by validate)]
+    (fn [supplied]
+      (let [conformed (conform supplied)]
+        (if (and conformed (validate conformed))
+          (columns-and-string conformed stringify)
+          default)))))
 
-(defn stringify-order-by [clojuric-names {:keys [conformed-order-by] :as m}]
-  (-> m
-    (assoc :order-by (->order-by-string clojuric-names conformed-order-by))
-    (dissoc :conformed-order-by)))
+(defn order-by-fallback
+  [clojuric-names order-by]
+  (order-by-fallback*
+    {:conform       #(conform-order-by clojuric-names %)
+     :stringify     #(when % (str " ORDER BY "
+                               (->order-by-string clojuric-names %)))}
+    order-by))
 
-(defn merge-pagination [{:keys [offset-fallback limit-fallback order-by-fallback]}
-                        {:keys [offset limit conformed-order-by]}]
-  (let [offset-fallback   (or offset-fallback identity)
-        limit-fallback    (or limit-fallback identity)
-        order-by-fallback (or order-by-fallback identity)]
-    {:offset             (offset-fallback offset)
-     :limit              (limit-fallback limit)
-     :conformed-order-by (order-by-fallback conformed-order-by)}))
+(defn compile-fallbacks*
+  [clojuric-names pagination-fallbacks]
+  (reduce (fn [acc [k {:keys [offset limit order-by]}]]
+            (let [v {:offset-fallback
+                     (offset-fallback offset)
 
-(defn process-pagination
-  [clojuric-names supplied-pagination pagination-fallbacks]
-  (->> supplied-pagination
-    (add-conformed-order-by clojuric-names)
-    (merge-pagination pagination-fallbacks)
-    (add-order-by-columns)
-    (stringify-order-by clojuric-names)))
+                     :limit-fallback
+                     (limit-fallback limit)
+
+                     :order-by-fallback
+                     (order-by-fallback clojuric-names order-by)}]
+              (assoc acc k v)))
+    {}
+    pagination-fallbacks))
+
+(defn compile-fallbacks
+  [clojuric-names pagination-fallbacks]
+  (->> (assoc pagination-fallbacks
+         `default-fallbacks {:offset   {}
+                             :limit    {}
+                             :order-by {}})
+    (compile-fallbacks* clojuric-names)))
+
+(defn merge-pagination
+  [default-fallbacks
+   {:keys [offset-fallback limit-fallback order-by-fallback]}
+   {:keys [offset limit order-by]}]
+  (let [offset-fallback   (or offset-fallback (get default-fallbacks :offset-fallback))
+        limit-fallback    (or limit-fallback (get default-fallbacks :limit-fallback))
+        order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))
+
+        {:keys [string columns]} (order-by-fallback order-by)]
+    {:offset           (offset-fallback offset)
+     :limit            (limit-fallback limit)
+     :order-by         string
+     :order-by-columns columns}))
