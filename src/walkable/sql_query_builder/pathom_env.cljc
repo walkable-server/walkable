@@ -101,6 +101,13 @@
      :walkable.sql-query-builder.floor-plan/return-or-join
      (dispatch-key env)]))
 
+(defn return-or-join-async
+  [env]
+  (get-in env
+    [:walkable.sql-query-builder/floor-plan
+     :walkable.sql-query-builder.floor-plan/return-or-join-async
+     (dispatch-key env)]))
+
 (defn aggregator?
   [env]
   (let [aggregators (get-in env
