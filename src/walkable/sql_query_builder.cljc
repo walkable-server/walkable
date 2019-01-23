@@ -7,7 +7,7 @@
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [clojure.core.async :as async
-             :refer [go go-loop <! >! put! promise-chan to-chan]]
+             :refer [go <! >! put!]]
             [com.wsscode.pathom.core :as p]))
 
 (defn process-children*
@@ -271,9 +271,6 @@
           child-joins (into {} (map f) join-children)]
       (merge e child-joins))))
 
-(defn join-one [env entities]
-  (p/join (first entities) env))
-
 (defn pull-entities
   "A Pathom plugin that pulls entities from SQL database and puts
   relevent data to ::p/entity ready for p/map-reader plugin.
@@ -300,20 +297,16 @@
             (-> (join-children-data-by-join-key env entities join-children)
               (entities-with-join-children-data entities source-columns join-children))
 
-            one?
-            (env/cardinality-one? env)
+            return-or-join
+            (env/return-or-join env)
 
-            ;; todo: this can be compiled into floor-plan, too
-            do-join
-            (if (env/aggregator? env)
-              #(get (first %2) k)
-              (if one?
-                join-one
-                p/join-seq))]
+            one?
+            (env/cardinality-one? env)]
         (if (seq full-entities)
-          (do-join env full-entities)
-          (when-not one?
-            [])))
+          (return-or-join env full-entities)
+          (if-not one?
+            []
+            {})))
 
       ::p/continue)))
 
@@ -329,16 +322,14 @@
                 full-entities
                 (-> (<! (join-childen-data-by-join-key-async env entities join-children))
                   (entities-with-join-children-data entities source-columns join-children))
+
+                return-or-join-async
+                (env/return-or-join-async env)
+
                 one?
-                (env/cardinality-one? env)
-                do-join
-                (if (env/aggregator? env)
-                  #(go (get (first %2) k))
-                  (if one?
-                    join-one
-                    p/join-seq))]
+                (env/cardinality-one? env)]
             (if (seq full-entities)
-              (<! (do-join env full-entities))
+              (<! (return-or-join-async env full-entities))
               (if one?
                 {}
                 []))))
