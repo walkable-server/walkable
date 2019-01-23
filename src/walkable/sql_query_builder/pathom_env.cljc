@@ -94,6 +94,13 @@
      :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
      'walkable.sql-query-builder.pagination/default-fallbacks]))
 
+(defn return-or-join
+  [env]
+  (get-in env
+    [:walkable.sql-query-builder/floor-plan
+     :walkable.sql-query-builder.floor-plan/return-or-join
+     (dispatch-key env)]))
+
 (defn aggregator?
   [env]
   (let [aggregators (get-in env
