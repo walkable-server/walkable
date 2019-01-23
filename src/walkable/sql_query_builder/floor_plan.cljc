@@ -396,6 +396,22 @@
 (defn join-one [env entities]
   (p/join (first entities) env))
 
+(defn compile-return-or-join
+  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
+  (let [compiled-return-or-join
+        (reduce (fn [acc k]
+                  (let [aggregator? (contains? aggregator-keywords k)
+                        one?        (= :one (get cardinality k))
+                        f           (if aggregator?
+                                      #(get (first %2) k)
+                                      (if one?
+                                        join-one
+                                        p/join-seq))]
+                    (assoc acc k f)))
+          {}
+          (keys target-tables))]
+    (assoc floor-plan :return-or-join compiled-return-or-join)))
+
 (def floor-plan-keys
   [:aggregator-keywords
    :batch-query
