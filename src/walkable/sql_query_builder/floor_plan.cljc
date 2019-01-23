@@ -450,6 +450,8 @@
    :compiled-pagination-fallbacks
    :required-columns
    :reversed-joins
+   :return-or-join
+   :return-or-join-async
    :source-columns
    :target-columns
    :target-tables])
@@ -466,6 +468,8 @@
 
 (def compile-floor-plan*
   (comp compile-pagination-fallbacks
+    compile-return-or-join-async
+    compile-return-or-join
     compile-extra-conditions
     compile-join-conditions
     compile-join-selection
