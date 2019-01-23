@@ -393,6 +393,9 @@
       (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
       (dissoc :pagination-fallbacks))))
 
+(defn join-one [env entities]
+  (p/join (first entities) env))
+
 (def floor-plan-keys
   [:aggregator-keywords
    :batch-query
