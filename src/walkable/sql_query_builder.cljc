@@ -322,24 +322,25 @@
   (let [{::floor-plan/keys [target-tables source-columns]}
         floor-plan
 
-        k         (env/dispatch-key env)
-        result-ch (promise-chan)]
+        k         (env/dispatch-key env)]
     (if (contains? target-tables k)
-      (do
-        (go (let [{:keys [join-children entities]} (<! (top-level-async env))
+      (go (let [{:keys [join-children entities]} (<! (top-level-async env))
 
-                  full-entities
-                  (-> (<! (join-childen-data-by-join-key-async env entities join-children))
-                    (entities-with-join-children-data entities source-columns join-children))
-                  one?
-                  (env/cardinality-one? env)]
-              (if (seq full-entities)
+                full-entities
+                (-> (<! (join-childen-data-by-join-key-async env entities join-children))
+                  (entities-with-join-children-data entities source-columns join-children))
+                one?
+                (env/cardinality-one? env)
+                do-join
                 (if (env/aggregator? env)
-                  (>! result-ch (get (first full-entities) k))
+                  #(go (get (first %2) k))
                   (if one?
-                    (>! result-ch (<! (p/join (first full-entities) env)))
-                    (>! result-ch (<! (p/join-seq env full-entities)))))
-                (>! result-ch (if-not one? [] {})))))
-        result-ch)
+                    join-one
+                    p/join-seq))]
+            (if (seq full-entities)
+              (<! (do-join env full-entities))
+              (if one?
+                {}
+                []))))
 
       ::p/continue)))
