@@ -524,3 +524,8 @@
     ;;(println "clauses:" clauses)
     ;;(println "form: " form)
     (process-expression env form)))
+
+(defn find-variables [{:keys [params]}]
+  (into #{} (comp (filter atomic-variable?)
+              (map :name))
+    params))
