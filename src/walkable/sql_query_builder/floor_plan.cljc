@@ -336,6 +336,26 @@
     (assoc result variable
       (fn [_env computed-graphs]
         (get-in computed-graphs [graph-index k])))))
+
+(defn compile-variable-getter-graphs
+  [{:keys [variable-getter-graphs] :as env}]
+  (let [compiled-graphs
+        (->> variable-getter-graphs
+          (into {} (map-indexed compile-graph)))
+
+        variable->graph-id
+        (member->graph-id variable-getter-graphs)
+
+        getters
+        (reduce-kv
+          compile-graph-member-getter
+          {}
+          variable->graph-id)]
+    (-> env
+      (assoc :compiled-variable-getter-graphs compiled-graphs)
+      (assoc :variable->graph-index variable->graph-id)
+      (update :compiled-variable-getters merge getters)
+      (dissoc :variable-getter-graphs))))
 (defn check-column-vars
   [column-vars])
 
