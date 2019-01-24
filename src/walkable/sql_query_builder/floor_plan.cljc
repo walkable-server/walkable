@@ -306,6 +306,15 @@
     (-> env
       (assoc :compiled-variable-getters getters)
       (dissoc :variable-getters))))
+
+(defn member->graph-id
+  [graphs]
+  (->> graphs
+    (mapv (comp keys :graph))
+    (map-indexed
+      (fn [index xs]
+        (mapv #(do [(symbol (name %)) index]) xs)))
+    (apply concat)
     (into {})))
 
 (defn check-column-vars
