@@ -510,6 +510,9 @@
    :reversed-joins
    :return-or-join
    :return-or-join-async
+   :compiled-variable-getters
+   :compiled-variable-getter-graphs
+   :variable->graph-index
    :source-columns
    :target-columns
    :target-tables])
