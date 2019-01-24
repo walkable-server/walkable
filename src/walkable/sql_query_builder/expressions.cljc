@@ -47,6 +47,7 @@
     :boolean boolean?
     :string string?
     :column ::namespaced-keyword
+    :symbol symbol?
     :expression
     (s/and vector?
       (s/cat :operator (s/? ::operators)
@@ -431,6 +432,10 @@
 (defmethod process-expression :column
   [_env [_kw column-keyword]]
   (single-raw-string (AtomicVariable. column-keyword)))
+
+(defmethod process-expression :symbol
+  [_env [_kw sym]]
+  (single-raw-string (AtomicVariable. sym)))
 
 (defmethod operator? :case [_operator] true)
 
