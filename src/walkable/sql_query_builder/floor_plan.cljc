@@ -329,6 +329,13 @@
          (p/cached env [:walkable/variable-getter-graph index]
            (function env)))
        function)]))
+
+(defn compile-graph-member-getter
+  [result variable graph-index]
+  (let [k (keyword variable)]
+    (assoc result variable
+      (fn [_env computed-graphs]
+        (get-in computed-graphs [graph-index k])))))
 (defn check-column-vars
   [column-vars])
 
