@@ -180,6 +180,17 @@
         (map #(do [% (graph-index->graph %)]))
         (map (fn [[index graph]] [index (graph env)])))
       variables)))
+
+(defn compute-variables
+  [env computed-graphs variables]
+  (let [getters (select-keys (env/compiled-variable-getters env) variables)]
+    (into {}
+      (map (fn [[k f]]
+             (let [v (f env computed-graphs)]
+               ;; wrap in single-raw-string to feed
+               ;; `expressions/substitute-atomic-variables`
+               [k (expressions/single-raw-string v)])))
+      getters)))
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
