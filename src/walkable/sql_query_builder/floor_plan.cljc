@@ -317,6 +317,18 @@
     (apply concat)
     (into {})))
 
+(defn compile-graph
+  [index {:keys [graph cached? lazy?]}]
+  (let [compiled-graph (if lazy?
+                         (graph/lazy-compile graph)
+                         (graph/compile graph))
+        function       #(compiled-graph {:env %})]
+    [index
+     (if cached?
+       (fn [env]
+         (p/cached env [:walkable/variable-getter-graph index]
+           (function env)))
+       function)]))
 (defn check-column-vars
   [column-vars])
 
