@@ -170,6 +170,16 @@
     {:sql-query     sql-query
      :join-children join-children}))
 
+(defn compute-graphs [env variables]
+  (let [variable->graph-index (env/variable->graph-index env)
+        graph-index->graph    (env/compiled-variable-getter-graphs env)]
+    (into {}
+      (comp (map variable->graph-index)
+        (remove nil?)
+        (distinct)
+        (map #(do [% (graph-index->graph %)]))
+        (map (fn [[index graph]] [index (graph env)])))
+      variables)))
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
