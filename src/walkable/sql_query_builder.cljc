@@ -191,6 +191,12 @@
                ;; `expressions/substitute-atomic-variables`
                [k (expressions/single-raw-string v)])))
       getters)))
+
+(defn process-variables
+  [{::keys [floor-plan] :as env} variables]
+  (let [computed-graphs
+        (compute-graphs env variables)]
+    (compute-variables env computed-graphs variables)))
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
