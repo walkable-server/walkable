@@ -185,19 +185,21 @@
                    #:human{:number 3, :name "peter", :age 30, :follow []}
                    #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
      {:message "variable-getter-graphs should work"
-      :env     {:xs [1 2 3]}
+      ;; choose this sequence so stats values are integers
+      ;; therefore the output string is the same in all sql dbs
+      :env     {:xs [2 4 6 8]}
       :query
       `[{(:world/all {:order-by :human/number})
          [:human/number :human/name :human/stats]}]
       :expected
       #:world{:all [#:human{:number 1, :name "jon",
-                            :stats "stats for xs =[1 2 3], m: 2, v: 2/3"}
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 2, :name "mary",
-                            :stats "stats for xs =[1 2 3], m: 2, v: 2/3"}
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 3, :name "peter",
-                            :stats "stats for xs =[1 2 3], m: 2, v: 2/3"}
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 4, :name "sandra",
-                            :stats "stats for xs =[1 2 3], m: 2, v: 2/3"}]}}]}
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
    :person-pet
    {:core-floor-plan person-pet-floor-plan
     :test-suite
