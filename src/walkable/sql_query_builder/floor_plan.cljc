@@ -319,10 +319,14 @@
 
 (defn compile-graph
   [index {:keys [graph cached? lazy?]}]
-  (let [compiled-graph (if lazy?
-                         (graph/lazy-compile graph)
-                         (graph/compile graph))
-        function       #(compiled-graph {:env %})]
+  (let [compiled-graph
+        #?(:clj
+           (if lazy?
+             (graph/lazy-compile graph)
+             (graph/compile graph))
+           :cljs
+           (graph/compile graph))
+        function #(compiled-graph {:env %})]
     [index
      (if cached?
        (fn [env]
