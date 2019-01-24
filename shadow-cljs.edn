@@ -1,6 +1,7 @@
 {:dependencies
  [[org.clojure/clojurescript "1.10.439"]
   [com.wsscode/pathom "2.1.1" :exclusions [org.clojure/clojurescript]]
+  [prismatic/plumbing "0.5.5"]
   [org.clojure/test.check "0.10.0-alpha3"]
   [org.clojure/spec.alpha "0.2.176"]]
 
