@@ -146,7 +146,7 @@
     (vec (concat (:params selection) (:params conditions)))
     (:params selection)))
 
-(defn process-query
+(defn process-query*
   [{::keys [floor-plan] :as env}]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -197,6 +197,17 @@
   (let [computed-graphs
         (compute-graphs env variables)]
     (compute-variables env computed-graphs variables)))
+
+(defn process-query
+  [env]
+  (let [query           (process-query* env)
+        sql-query       (:sql-query query)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (assoc query :sql-query
+      (expressions/substitute-atomic-variables
+        {:variable-values variable-values} sql-query))))
+
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
