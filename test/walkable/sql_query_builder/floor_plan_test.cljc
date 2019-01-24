@@ -202,3 +202,11 @@
             :true-columns       #{:x/id :m/id}})
         {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
          :true-columns       #{:m/id :y/id :x/id}})))
+
+(deftest member->graph-id-test
+  (is (= (let [graphs [{:graph (zipmap [:xs :n :m :m2 :v]
+                                 (repeat :just-a-function))}
+                       {:graph (zipmap [:p :q]
+                                 (repeat :just-a-function))}]]
+           (sut/member->graph-id graphs))
+        '{xs 0, n 0, m 0, m2 0, v 0, p 1, q 1})))

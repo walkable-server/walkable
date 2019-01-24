@@ -138,3 +138,18 @@
 
 (defn order-by [env]
   (get-in env [:ast :params :order-by]))
+
+(defn variable->graph-index
+  [env]
+  (-> env :walkable.sql-query-builder/floor-plan
+    :walkable.sql-query-builder.floor-plan/variable->graph-index))
+
+(defn compiled-variable-getters
+  [env]
+  (-> env :walkable.sql-query-builder/floor-plan
+    :walkable.sql-query-builder.floor-plan/compiled-variable-getters))
+
+(defn compiled-variable-getter-graphs
+  [env]
+  (get-in env [:walkable.sql-query-builder/floor-plan
+               :walkable.sql-query-builder.floor-plan/compiled-variable-getter-graphs]))

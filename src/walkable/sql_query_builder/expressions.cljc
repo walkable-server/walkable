@@ -47,6 +47,7 @@
     :boolean boolean?
     :string string?
     :column ::namespaced-keyword
+    :symbol symbol?
     :expression
     (s/and vector?
       (s/cat :operator (s/? ::operators)
@@ -432,6 +433,10 @@
   [_env [_kw column-keyword]]
   (single-raw-string (AtomicVariable. column-keyword)))
 
+(defmethod process-expression :symbol
+  [_env [_kw sym]]
+  (single-raw-string (AtomicVariable. sym)))
+
 (defmethod operator? :case [_operator] true)
 
 (defmethod process-operator :case
@@ -519,3 +524,8 @@
     ;;(println "clauses:" clauses)
     ;;(println "form: " form)
     (process-expression env form)))
+
+(defn find-variables [{:keys [params]}]
+  (into #{} (comp (filter atomic-variable?)
+              (map :name))
+    params))

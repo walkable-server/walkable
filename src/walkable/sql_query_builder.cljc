@@ -146,7 +146,7 @@
     (vec (concat (:params selection) (:params conditions)))
     (:params selection)))
 
-(defn process-query
+(defn process-query*
   [{::keys [floor-plan] :as env}]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -169,6 +169,44 @@
                           :params (combine-params selection conditions)}]
     {:sql-query     sql-query
      :join-children join-children}))
+
+(defn compute-graphs [env variables]
+  (let [variable->graph-index (env/variable->graph-index env)
+        graph-index->graph    (env/compiled-variable-getter-graphs env)]
+    (into {}
+      (comp (map variable->graph-index)
+        (remove nil?)
+        (distinct)
+        (map #(do [% (graph-index->graph %)]))
+        (map (fn [[index graph]] [index (graph env)])))
+      variables)))
+
+(defn compute-variables
+  [env computed-graphs variables]
+  (let [getters (select-keys (env/compiled-variable-getters env) variables)]
+    (into {}
+      (map (fn [[k f]]
+             (let [v (f env computed-graphs)]
+               ;; wrap in single-raw-string to feed
+               ;; `expressions/substitute-atomic-variables`
+               [k (expressions/single-raw-string v)])))
+      getters)))
+
+(defn process-variables
+  [{::keys [floor-plan] :as env} variables]
+  (let [computed-graphs
+        (compute-graphs env variables)]
+    (compute-variables env computed-graphs variables)))
+
+(defn process-query
+  [env]
+  (let [query           (process-query* env)
+        sql-query       (:sql-query query)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (assoc query :sql-query
+      (expressions/substitute-atomic-variables
+        {:variable-values variable-values} sql-query))))
 
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]

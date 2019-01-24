@@ -1,5 +1,6 @@
 (ns walkable.integration-test.common
-  (:require [com.wsscode.pathom.core :as p]))
+  (:require [com.wsscode.pathom.core :as p]
+            [plumbing.core :refer [fnk defnk sum]]))
 
 (def farmer-cow-floor-plan
   {:true-columns     [:cow/color
@@ -145,7 +146,60 @@
                                     #:human{:number 3, :name "peter", :yob 1989}]}
                    #:human{:number 3, :name "peter", :follow []}
                    #:human{:number 4, :name "sandra", :follow []}]}}]}
-
+   :human-follow-variable-getters
+   {:core-floor-plan (merge human-follow-floor-plan
+                       {:pseudo-columns
+                        {:human/age   [:- 'current-year :human/yob]
+                         :human/stats [:str 'stats-header
+                                       ", m: " 'm
+                                       ", v: " 'v]}}
+                       {:variable-getters
+                        [{:key 'current-year
+                          :fn  (fn [env] (:current-year env))}]
+                        :variable-getter-graphs
+                        [{:graph
+                          {:xs           (fnk [env] (get-in env [:xs]))
+                           :n            (fnk [xs] (count xs))
+                           :m            (fnk [xs n] (/ (sum identity xs) n))
+                           :m2           (fnk [xs n] (/ (sum #(* % %) xs) n))
+                           :v            (fnk [m m2] (str (- m2 (* m m))))
+                           :stats-header (fnk [xs] (str "stats for xs =" (pr-str xs)))}}]})
+    :test-suite
+    [{:message "variable-getters should work"
+      :env     {:current-year 2019}
+      :query
+      `[{(:world/all {:order-by :human/number})
+         [:human/number :human/name :human/age
+          {(:human/follow {:order-by :human/number})
+           [:human/number
+            :human/name
+            :human/age]}]}]
+      :expected
+      {:world/all [#:human{:number 1, :name "jon", :age 39,
+                           :follow [#:human{:number 2, :name "mary", :age 27}
+                                    #:human{:number 3, :name "peter", :age 30}
+                                    #:human{:number 4, :name "sandra", :age 49}]}
+                   #:human{:number 2, :name "mary", :age 27,
+                           :follow [#:human{:number 1, :name "jon", :age 39}
+                                    #:human{:number 3, :name "peter", :age 30}]}
+                   #:human{:number 3, :name "peter", :age 30, :follow []}
+                   #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
+     {:message "variable-getter-graphs should work"
+      ;; choose this sequence so stats values are integers
+      ;; therefore the output string is the same in all sql dbs
+      :env     {:xs [2 4 6 8]}
+      :query
+      `[{(:world/all {:order-by :human/number})
+         [:human/number :human/name :human/stats]}]
+      :expected
+      #:world{:all [#:human{:number 1, :name "jon",
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                    #:human{:number 2, :name "mary",
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                    #:human{:number 3, :name "peter",
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                    #:human{:number 4, :name "sandra",
+                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
    :person-pet
    {:core-floor-plan person-pet-floor-plan
     :test-suite
