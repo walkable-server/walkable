@@ -5,6 +5,7 @@
             [walkable.sql-query-builder.pathom-env :as env]
             [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]
+            [plumbing.graph :as graph]
             [clojure.core.async :as async
              :refer [go go-loop <! >! put! promise-chan to-chan]]))
 
@@ -287,16 +288,24 @@
      :params     [compiled-formula
                   (expressions/verbatim-raw-string clojuric-name)]}))
 
+
+(defn compile-getter
+  [{function :fn k :key :keys [cached?]}]
+  (let [f (if cached?
+            (fn haha [env _computed-graphs]
+              (p/cached env [:walkable/variable-getter k]
+                (function env)))
+            (fn hihi [env _computed-graphs]
+              (function env)))]
+    [k f]))
+
 (defn compile-variable-getters
-  [getters]
-  (->> getters
-    (map (fn [{function :fn k :key :keys [cached?]}]
-           [k
-            (if cached?
-              (fn [env]
-                (p/cached env [:walkable/variable-getter k]
-                  (function env)))
-              function)]))
+  [{:keys [variable-getters] :as env}]
+  (let [getters
+        (into {} (map compile-getter) variable-getters)]
+    (-> env
+      (assoc :compiled-variable-getters getters)
+      (dissoc :variable-getters))))
     (into {})))
 
 (defn check-column-vars
