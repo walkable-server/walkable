@@ -144,3 +144,8 @@
   (-> env :walkable.sql-query-builder/floor-plan
     :walkable.sql-query-builder.floor-plan/variable->graph-index))
 
+(defn compiled-variable-getters
+  [env]
+  (-> env :walkable.sql-query-builder/floor-plan
+    :walkable.sql-query-builder.floor-plan/compiled-variable-getters))
+
