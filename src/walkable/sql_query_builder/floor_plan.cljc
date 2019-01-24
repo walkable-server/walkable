@@ -249,12 +249,13 @@
     (if-let [item (and (pos? limit) (first unbound))]
       (let [[k compiled-expression] item
 
-            attempt (expressions/substitute-atomic-variables
-                      {:variable-values bound}
-                      compiled-expression)]
+            attempt  (expressions/substitute-atomic-variables
+                       {:variable-values bound}
+                       compiled-expression)
+            new-item [k attempt]]
         (if (unbound-expression? attempt)
           (recur (dec limit)
-            (rotate unbound)
+            (rotate (cons new-item (rest unbound)))
             bound)
           (recur (dec limit)
             (rest unbound)
