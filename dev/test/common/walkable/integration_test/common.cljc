@@ -145,7 +145,35 @@
                                     #:human{:number 3, :name "peter", :yob 1989}]}
                    #:human{:number 3, :name "peter", :follow []}
                    #:human{:number 4, :name "sandra", :follow []}]}}]}
-
+   :human-follow-variable-getters
+   {:core-floor-plan (merge human-follow-floor-plan
+                       {:pseudo-columns
+                        {:human/age [:- 'current-year :human/yob]}}
+                       {:variable-getters
+                        [{:key 'current-year
+                          :fn  (fn [env] (:current-year env))}]
+                        :variable-getter-graphs
+                        []})
+    :test-suite
+    [{:message "variable-getters should work"
+      :env     {:current-year 2019}
+      :query
+      `[{(:world/all {:order-by :human/number})
+         [:human/number :human/name :human/age
+          {(:human/follow {:order-by :human/number})
+           [:human/number
+            :human/name
+            :human/age]}]}]
+      :expected
+      {:world/all [#:human{:number 1, :name "jon", :age 39,
+                           :follow [#:human{:number 2, :name "mary", :age 27}
+                                    #:human{:number 3, :name "peter", :age 30}
+                                    #:human{:number 4, :name "sandra", :age 49}]}
+                   #:human{:number 2, :name "mary", :age 27,
+                           :follow [#:human{:number 1, :name "jon", :age 39}
+                                    #:human{:number 3, :name "peter", :age 30}]}
+                   #:human{:number 3, :name "peter", :age 30, :follow []}
+                   #:human{:number 4, :name "sandra", :age 49, :follow []}]}}]}
    :person-pet
    {:core-floor-plan person-pet-floor-plan
     :test-suite
