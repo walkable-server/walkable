@@ -6,6 +6,7 @@
                  [org.clojure/clojurescript "1.10.339" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.176"]
                  [com.wsscode/pathom "2.2.0"]
+                 [prismatic/plumbing "0.5.5"]
                  [org.clojure/core.async "0.4.474" :scope "provided"]]
   :resource-paths ["resources"]
   :test-selectors {:default     (complement :integration)
