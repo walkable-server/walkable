@@ -529,6 +529,8 @@
 
 (def compile-floor-plan*
   (comp compile-pagination-fallbacks
+    compile-variable-getter-graphs
+    compile-variable-getters
     compile-return-or-join-async
     compile-return-or-join
     compile-extra-conditions
