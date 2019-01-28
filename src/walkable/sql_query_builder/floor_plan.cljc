@@ -436,13 +436,15 @@
       (dissoc :joins))))
 
 (defn compile-extra-conditions
-  [{:keys [extra-conditions compiled-formulas] :as floor-plan}]
+  [{:keys [extra-conditions compiled-formulas join-filter-subqueries] :as floor-plan}]
   (let [compiled-extra-conditions
         (reduce-kv (fn [acc k extra-condition]
                      (assoc acc k
-                       (expressions/substitute-atomic-variables
-                         {:variable-values compiled-formulas}
-                         (expressions/compile-to-string {} extra-condition))))
+                       (->> extra-condition
+                         (expressions/compile-to-string
+                           {:join-filter-subqueries join-filter-subqueries})
+                         (expressions/substitute-atomic-variables
+                           {:variable-values compiled-formulas}))))
           {}
           extra-conditions)]
     (-> floor-plan
