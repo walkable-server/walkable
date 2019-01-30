@@ -32,16 +32,13 @@
                        :test-paths     ["dev/test/postgres" "dev/test/common"]
                        :resource-paths ["dev/resources/common" "dev/resources/postgres"]
                        :dependencies   [[org.postgresql/postgresql "42.2.4"]]}
-   :project/common    {:plugins      [[duct/lein-duct "0.10.6"]]
-                       :dependencies [[duct/core "0.6.2"]
-                                      [duct/module.logging "0.3.1"]
-                                      [duct/logger.timbre "0.4.1"]
+   :project/common    {:plugins      [[duct/lein-duct "0.11.2"]]
+                       :dependencies [[duct/core "0.7.0"]
+                                      [duct/module.logging "0.4.0"]
+                                      [duct/module.sql "0.5.0"]
                                       [org.clojure/test.check "0.10.0-alpha3"]
                                       [cheshire "5.8.0"]
 
-                                      [duct/module.sql "0.4.2"]
-                                      [duct/database.sql.hikaricp "0.3.3"]
-
                                       [integrant/repl "0.3.1"]
-                                      [eftest "0.5.2"]
+                                      [eftest "0.5.4"]
                                       [kerodon "0.9.0"]]}})

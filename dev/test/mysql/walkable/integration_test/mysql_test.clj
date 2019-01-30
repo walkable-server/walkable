@@ -14,7 +14,7 @@
 
 (def system
   (-> (duct/read-config (io/resource "config-mysql.edn"))
-    (duct/prep)
+    (duct/prep-config)
     (ig/init)))
 
 (def db

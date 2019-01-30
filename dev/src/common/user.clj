@@ -22,6 +22,9 @@
         (clojure.string/replace #"true" "1")
         (clojure.string/replace #"false" "0")))))
 
+(comment
+  (patch-common-edn-files)
+)
 (defn dev
   "Load and switch to the 'dev' namespace."
   []
