@@ -15,7 +15,7 @@
 
 (def system
   (-> (duct/read-config (io/resource "config-sqlite.edn"))
-    (duct/prep)
+    (duct/prep-config)
     (ig/init)))
 
 (def db

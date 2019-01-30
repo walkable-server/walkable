@@ -1,7 +1,4 @@
-{:duct.core/project-ns walkable-dev
- :duct.module/logging  {}
-
- ;; scenario 1 migrations
+{;; scenario 1 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-cow-table]
  {:up   ["CREATE TABLE `cow` (`index` SERIAL PRIMARY KEY, `color` TEXT)"
          "INSERT INTO `cow` (`index`, `color`) VALUES (10, 'black'), (20, 'brown')"]

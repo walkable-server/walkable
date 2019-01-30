@@ -26,12 +26,15 @@
 
 (duct/load-hierarchy)
 
+(def profiles
+  [:duct.profile/dev :duct.profile/local])
+
 (defn config-by-db [db]
   (io/resource (str"config-" (name db) ".edn")))
 
 (defn prepare-system [db]
   (-> (duct/read-config (config-by-db db))
-    (duct/prep)))
+    (duct/prep-config profiles)))
 
 (defn test []
   (eftest/run-tests (eftest/find-tests "test")))
