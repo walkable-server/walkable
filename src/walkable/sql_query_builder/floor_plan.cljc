@@ -456,6 +456,15 @@
     {:raw-string "HAVING (?)"
      :params     [compiled-having]}))
 
+(defn compile-having
+  [{:keys [compiled-formulas join-filter-subqueries]} having-condition]
+  (->> having-condition
+    (expressions/compile-to-string
+      {:join-filter-subqueries join-filter-subqueries})
+    (expressions/substitute-atomic-variables
+      {:variable-values compiled-formulas})
+    prefix-having))
+
 (defn compile-pagination-fallbacks
   [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
