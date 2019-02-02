@@ -474,6 +474,24 @@
     (str "GROUP BY ")))
 
 (defn compile-grouping
+  [{:keys [grouping compiled-formulas] :as floor-plan}]
+  (let [compiled-grouping
+        (reduce-kv (fn [acc k {group-by-keys :group-by having-condition :having}]
+                     (let [compiled-group-by
+                           (compile-group-by compiled-formulas group-by-keys)
+                           compiled-having
+                           (when having-condition
+                             (compile-having floor-plan having-condition))]
+                       (-> acc
+                         (assoc-in [:compiled-group-by k] compiled-group-by)
+                         (assoc-in [:compiled-having k] compiled-having))))
+          {:compiled-group-by {}
+           :compiled-having   {}}
+          grouping)]
+    (-> floor-plan
+      (merge compiled-grouping)
+      (dissoc :grouping))))
+
 (defn compile-pagination-fallbacks
   [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
