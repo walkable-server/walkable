@@ -543,6 +543,8 @@
    :column-keywords
    :compiled-extra-conditions
    :compiled-formulas
+   :compiled-group-by
+   :compiled-having
    :compiled-ident-conditions
    :compiled-join-conditions
    :compiled-join-selection
