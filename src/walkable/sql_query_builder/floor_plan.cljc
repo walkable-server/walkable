@@ -451,6 +451,11 @@
       (assoc :compiled-extra-conditions compiled-extra-conditions)
       (dissoc :extra-conditions))))
 
+(defn prefix-having [compiled-having]
+  (expressions/inline-params {}
+    {:raw-string "HAVING (?)"
+     :params     [compiled-having]}))
+
 (defn compile-pagination-fallbacks
   [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
