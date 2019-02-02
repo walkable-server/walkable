@@ -577,7 +577,8 @@
     (clojure.set/rename-keys (kmap floor-plan-keys))))
 
 (def compile-floor-plan*
-  (comp compile-pagination-fallbacks
+  (comp compile-grouping
+    compile-pagination-fallbacks
     compile-variable-getter-graphs
     compile-variable-getters
     compile-return-or-join-async
