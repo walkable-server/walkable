@@ -87,6 +87,12 @@
                     :walkable.sql-query-builder.floor-plan/compiled-group-by)]
     (get group-bys (dispatch-key env))))
 
+(defn compiled-having
+  [env]
+  (let [havings (-> env :walkable.sql-query-builder/floor-plan
+                  :walkable.sql-query-builder.floor-plan/compiled-having)]
+    (get havings (dispatch-key env))))
+
 (defn pagination-fallbacks
   [env]
   (let [fallbacks (-> env :walkable.sql-query-builder/floor-plan
