@@ -157,16 +157,19 @@
         columns-to-query (clojure.set/union columns-to-query order-by-columns)
         selection        (process-selection env columns-to-query)
         conditions       (process-conditions env)
+        having           (env/compiled-having env)
         sql-query        {:raw-string
                           (emitter/->query-string
                             {:target-table   (env/target-table env)
                              :join-statement (env/join-statement env)
                              :selection      (:raw-string selection)
                              :conditions     (:raw-string conditions)
+                             :group-by       (env/compiled-group-by env)
+                             :having         (:raw-string having)
                              :offset         offset
                              :limit          limit
                              :order-by       order-by})
-                          :params (combine-params selection conditions)}]
+                          :params (combine-params selection conditions having)}]
     {:sql-query     sql-query
      :join-children join-children}))
 
