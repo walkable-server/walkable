@@ -465,6 +465,15 @@
       {:variable-values compiled-formulas})
     prefix-having))
 
+(defn compile-group-by
+  [compiled-formulas group-by-keys]
+  (->> group-by-keys
+    (map compiled-formulas)
+    (map :raw-string)
+    (clojure.string/join ", ")
+    (str "GROUP BY ")))
+
+(defn compile-grouping
 (defn compile-pagination-fallbacks
   [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
