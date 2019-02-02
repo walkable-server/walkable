@@ -141,10 +141,9 @@
       all-compiled-selection)))
 
 (defn combine-params
-  [selection conditions]
-  (if conditions
-    (vec (concat (:params selection) (:params conditions)))
-    (:params selection)))
+  [& compiled-exprs]
+  (into [] (comp (map :params) cat)
+    compiled-exprs))
 
 (defn process-query*
   [{::keys [floor-plan] :as env}]
