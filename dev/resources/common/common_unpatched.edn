@@ -28,7 +28,15 @@
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-pet-table]
  {:up   ["CREATE TABLE `pet` (`index` SERIAL PRIMARY KEY, `color` TEXT, `yob` INTEGER, `private` TEXT)"
-         "INSERT INTO `pet` (`index`, `color`, `yob`, `private`) VALUES (10, 'yellow', 2015, 'you bastard'), (20, 'green', 2016, 'idk')"]
+         "INSERT INTO `pet` (`index`, `color`, `yob`, `private`)
+            VALUES
+            (10, 'yellow', 2015, 'you bastard'),
+            (11, 'green', 2012, 'hey'),
+            (12, 'yellow', 2017, 'secret'),
+            (13, 'green', 2016, 'nothing'),
+            (20, 'orange', 2014, 'very important'),
+            (21, 'orange', 2015, 'shhh'),
+            (22, 'green', 2016, 'idk')"]
   :down ["DROP TABLE `pet`"]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-person_pet-table]
