@@ -350,7 +350,7 @@
 
      {:message "grouping should work"
       :query
-      `[{(:pets/by-color {:order-by :pet/color})
+      `[{(:pets/by-color {:order-by [:pet/color :desc]})
          [:pet/color]}]
       :expected
       #:pets   {:by-color
@@ -359,12 +359,12 @@
 
      {:message "grouping with count should work"
       :query
-      `[{(:pets/by-color {:order-by :pet/color})
+      `[{(:pets/by-color {:order-by [:pet/color :asc]})
          [:color/pet-count :pet/color]}]
       :expected
       #:pets{:by-color
-             [{:color/pet-count 2, :pet/color "yellow"}
-              {:color/pet-count 4, :pet/color "green"}]}}
+             [{:color/pet-count 4, :pet/color "green"}
+              {:color/pet-count 2, :pet/color "yellow"}]}}
 
      {:message "pseudo-columns should work"
       :query
