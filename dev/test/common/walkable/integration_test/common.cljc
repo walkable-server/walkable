@@ -219,11 +219,27 @@
        #:person {:number 1,
                  :name   "jon",
                  :yob    1980,
-                 :pet    [{:pet/index                10,
-                           :pet/yob                  2015,
-                           :pet/color                "yellow",
-                           :person-pet/adoption-year 2015,
-                           :pet/owner                [#:person{:name "jon"}]}]}}}
+                 :pet
+                 [{:pet/index                10,
+                   :pet/yob                  2015,
+                   :pet/color                "yellow",
+                   :person-pet/adoption-year 2015,
+                   :pet/owner                [#:person{:name "jon"}]}
+                  {:pet/index                11,
+                   :pet/yob                  2012,
+                   :pet/color                "green",
+                   :person-pet/adoption-year 2013,
+                   :pet/owner                [#:person{:name "jon"}]}
+                  {:pet/index                12,
+                   :pet/yob                  2017,
+                   :pet/color                "yellow",
+                   :person-pet/adoption-year 2018,
+                   :pet/owner                [#:person{:name "jon"}]}
+                  {:pet/index                13,
+                   :pet/yob                  2016,
+                   :pet/color                "green",
+                   :person-pet/adoption-year 2016,
+                   :pet/owner                [#:person{:name "jon"}]}]}}}
 
      {:message "aggregate should work"
       :query
@@ -247,13 +263,27 @@
                         :person-pet/adoption-year
                         :pet/color]}]}]
       :expected
-      #:people {:all [#:person{:number    1,
-                               :name      "jon",
-                               :pet-count 1,
-                               :pet       [{:pet/index                10,
-                                            :pet/yob                  2015,
-                                            :person-pet/adoption-year 2015,
-                                            :pet/color                "yellow"}]}]}}
+      #:people{:all
+               [#:person{:number    1,
+                         :name      "jon",
+                         :pet-count 4,
+                         :pet
+                         [{:pet/index                10,
+                           :pet/yob                  2015,
+                           :person-pet/adoption-year 2015,
+                           :pet/color                "yellow"}
+                          {:pet/index                11,
+                           :pet/yob                  2012,
+                           :person-pet/adoption-year 2013,
+                           :pet/color                "green"}
+                          {:pet/index                12,
+                           :pet/yob                  2017,
+                           :person-pet/adoption-year 2018,
+                           :pet/color                "yellow"}
+                          {:pet/index                13,
+                           :pet/yob                  2016,
+                           :person-pet/adoption-year 2016,
+                           :pet/color                "green"}]}]}}
 
      {:message "placeholders should work"
       :env     {::p/placeholder-prefixes #{"ph" "placeholder"}}
@@ -267,23 +297,47 @@
                                                                     :pet/yob
                                                                     :pet/color]}]}]}]}]}]
       :expected
-      {:people/all
-       [{:placeholder/info #:person {:yob 1980, :name "jon"},
-         :person/pet       [#:pet{:index 10, :yob 2015, :color "yellow"}],
-         :ph/deep
-         {:ph/nested
-          {:placeholder/play
-           {:person/pet [#:pet{:index 10,
-                               :yob   2015,
-                               :color "yellow"}]}}}}
-        {:placeholder/info #:person {:yob 1992, :name "mary"},
-         :person/pet       [#:pet{:index 20, :yob 2016, :color "green"}],
-         :ph/deep
-         {:ph/nested
-          {:placeholder/play
-           {:person/pet [#:pet{:index 20,
-                               :yob   2016,
-                               :color "green"}]}}}}]}}
+      #:people{:all
+               [{:placeholder/info #:person {:yob 1980, :name "jon"},
+                 :person/pet
+                 [#:pet{:index 10, :yob 2015, :color "yellow"}
+                  #:pet{:index 11, :yob 2012, :color "green"}
+                  #:pet{:index 12, :yob 2017, :color "yellow"}
+                  #:pet{:index 13, :yob 2016, :color "green"}],
+                 :ph/deep
+                 #:ph              {:nested
+                                    #:placeholder {:play
+                                                   #:person {:pet
+                                                             [#:pet{:index 10,
+                                                                    :yob   2015,
+                                                                    :color "yellow"}
+                                                              #:pet{:index 11,
+                                                                    :yob   2012,
+                                                                    :color "green"}
+                                                              #:pet{:index 12,
+                                                                    :yob   2017,
+                                                                    :color "yellow"}
+                                                              #:pet{:index 13,
+                                                                    :yob   2016,
+                                                                    :color "green"}]}}}}
+                {:placeholder/info #:person {:yob 1992, :name "mary"},
+                 :person/pet
+                 [#:pet{:index 20, :yob 2014, :color "orange"}
+                  #:pet{:index 21, :yob 2015, :color "orange"}
+                  #:pet{:index 22, :yob 2016, :color "green"}],
+                 :ph/deep
+                 #:ph              {:nested
+                                    #:placeholder {:play
+                                                   #:person {:pet
+                                                             [#:pet{:index 20,
+                                                                    :yob   2014,
+                                                                    :color "orange"}
+                                                              #:pet{:index 21,
+                                                                    :yob   2015,
+                                                                    :color "orange"}
+                                                              #:pet{:index 22,
+                                                                    :yob   2016,
+                                                                    :color "green"}]}}}}]}}
 
      {:message "pseudo-columns should work"
       :query
