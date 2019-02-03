@@ -53,6 +53,7 @@
    :required-columns {:pet/age    #{:pet/yob}
                       :person/age #{:person/yob}}
    :idents           {:person/by-id               :person/number
+                      :pets/by-color              "pet"
                       [:people/all :people/count] "person"}
    :extra-conditions {[:person/by-id :people/all :people/count]
                       [:or [:= :person/hidden true]
@@ -61,9 +62,13 @@
                       [:person/number :person-pet/person-number
                        :person-pet/pet-index :pet/index]}
    :reversed-joins   {:pet/owner :person/pet}
-   :pseudo-columns   {:person/age [:- 2018 :person/yob]}
+   :pseudo-columns   {:person/age [:- 2018 :person/yob]
+                      :color/pet-count [:count :pet/index]}
    :aggregators      {[:people/count :person/pet-count]
                       [:count-*]}
+   :grouping         {:pets/by-color
+                      {:group-by [:pet/color]
+                       :having   [:< 1 [:count-* ]]}}
    :cardinality      {:person/by-id :one
                       :person/pet   :many}})
 
