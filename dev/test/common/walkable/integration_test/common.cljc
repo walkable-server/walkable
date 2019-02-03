@@ -70,11 +70,7 @@
                       {:group-by [:pet/color]
                        :having   [:< 1 [:color/pet-count]]}}
    :cardinality      {:person/by-id :one
-                      :person/pet   :many}
-
-   :pagination-fallbacks
-   {:pets/by-color {:order-by {:default  :pet/color
-                               :validate #{:pet/color}}}}})
+                      :person/pet   :many}})
 
 (def common-scenarios
   {:farmer-cow
