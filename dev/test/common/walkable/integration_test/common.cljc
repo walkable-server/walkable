@@ -346,6 +346,14 @@
 
      {:message "grouping should work"
       :query
+      `[{:pets/by-color [:pet/color]}]
+      :expected
+      #:pets   {:by-color
+                [{:pet/color "yellow"}
+                 {:pet/color "green"}]}}
+
+     {:message "grouping with count should work"
+      :query
       `[{:pets/by-color
          [:color/pet-count :pet/color]}]
       :expected
