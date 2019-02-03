@@ -290,13 +290,13 @@
                      [_env# [_operator# params#]]
                      (assert (= 1 (count params#))
                        ~(str "There must exactly one argument to " operator))
-                     {:raw-string ~(str sql-name " (?)")
+                     {:raw-string ~(str sql-name "(?)")
                       :params     params#})
                   ;; default
                   `(defmethod process-operator ~operator
                      [_env# [_operator# params#]]
                      (let [n# (count params#)]
-                       {:raw-string (str ~(str sql-name " (")
+                       {:raw-string (str ~(str sql-name "(")
                                       (clojure.string/join ", "
                                         (repeat n# \?))
                                       ")")

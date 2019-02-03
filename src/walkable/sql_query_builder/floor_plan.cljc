@@ -451,6 +451,47 @@
       (assoc :compiled-extra-conditions compiled-extra-conditions)
       (dissoc :extra-conditions))))
 
+(defn prefix-having [compiled-having]
+  (expressions/inline-params {}
+    {:raw-string " HAVING (?)"
+     :params     [compiled-having]}))
+
+(defn compile-having
+  [{:keys [compiled-formulas join-filter-subqueries]} having-condition]
+  (->> having-condition
+    (expressions/compile-to-string
+      {:join-filter-subqueries join-filter-subqueries})
+    (expressions/substitute-atomic-variables
+      {:variable-values compiled-formulas})
+    prefix-having))
+
+(defn compile-group-by
+  [compiled-formulas group-by-keys]
+  (->> group-by-keys
+    (map compiled-formulas)
+    (map :raw-string)
+    (clojure.string/join ", ")
+    (str " GROUP BY ")))
+
+(defn compile-grouping
+  [{:keys [grouping compiled-formulas] :as floor-plan}]
+  (let [compiled-grouping
+        (reduce-kv (fn [acc k {group-by-keys :group-by having-condition :having}]
+                     (let [compiled-group-by
+                           (compile-group-by compiled-formulas group-by-keys)
+                           compiled-having
+                           (when having-condition
+                             (compile-having floor-plan having-condition))]
+                       (-> acc
+                         (assoc-in [:compiled-group-by k] compiled-group-by)
+                         (assoc-in [:compiled-having k] compiled-having))))
+          {:compiled-group-by {}
+           :compiled-having   {}}
+          grouping)]
+    (-> floor-plan
+      (merge compiled-grouping)
+      (dissoc :grouping))))
+
 (defn compile-pagination-fallbacks
   [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
@@ -502,6 +543,8 @@
    :column-keywords
    :compiled-extra-conditions
    :compiled-formulas
+   :compiled-group-by
+   :compiled-having
    :compiled-ident-conditions
    :compiled-join-conditions
    :compiled-join-selection
@@ -534,7 +577,8 @@
     (clojure.set/rename-keys (kmap floor-plan-keys))))
 
 (def compile-floor-plan*
-  (comp compile-pagination-fallbacks
+  (comp compile-grouping
+    compile-pagination-fallbacks
     compile-variable-getter-graphs
     compile-variable-getters
     compile-return-or-join-async

@@ -2,7 +2,8 @@
  {:duct.core/project-ns walkable-dev
 
   :duct.migrator/ragtime
-  {:migrations [;; common scenarios (starting from 1)
+  {:strategy   :rebase
+   :migrations [;; common scenarios (starting from 1)
                 #ig/ref :walkable-demo.migration.scenario-1/create-cow-table
                 #ig/ref :walkable-demo.migration.scenario-1/create-farmer-table
                 #ig/ref :walkable-demo.migration.scenario-2/create-kid-table

@@ -77,7 +77,7 @@
 
 (deftest not-tests
   (is (= (sut/process-operator {} [:not [{}]])
-        {:raw-string "NOT (?)", :params [{}]})))
+        {:raw-string "NOT(?)", :params [{}]})))
 
 (deftest =-tests
   ;; the same to >, >=, <, <=

@@ -78,8 +78,20 @@
 (defn compiled-join-selection
   [env]
   (let [join-selection (-> env :walkable.sql-query-builder/floor-plan
-                          :walkable.sql-query-builder.floor-plan/compiled-join-selection)]
+                         :walkable.sql-query-builder.floor-plan/compiled-join-selection)]
     (get join-selection (dispatch-key env))))
+
+(defn compiled-group-by
+  [env]
+  (let [group-bys (-> env :walkable.sql-query-builder/floor-plan
+                    :walkable.sql-query-builder.floor-plan/compiled-group-by)]
+    (get group-bys (dispatch-key env))))
+
+(defn compiled-having
+  [env]
+  (let [havings (-> env :walkable.sql-query-builder/floor-plan
+                  :walkable.sql-query-builder.floor-plan/compiled-having)]
+    (get havings (dispatch-key env))))
 
 (defn pagination-fallbacks
   [env]

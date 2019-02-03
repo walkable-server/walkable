@@ -81,6 +81,7 @@
 (defn ->query-string
   "Builds the final query string ready for SQL server."
   [{:keys [selection target-table join-statement conditions
+           group-by having
            offset limit order-by]
     :as input}]
   {:pre  [(s/valid? ::query-string-input input)]
@@ -93,7 +94,8 @@
     (when conditions
       (str " WHERE "
         conditions))
-
+    group-by
+    having
     order-by
     offset
     limit))
