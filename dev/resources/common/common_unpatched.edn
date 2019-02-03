@@ -41,7 +41,14 @@
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-3/create-person_pet-table]
  {:up   ["CREATE TABLE `person_pet` (`id` SERIAL PRIMARY KEY, `person_number` INTEGER REFERENCES `person`(`number`), `pet_index` INTEGER REFERENCES `pet`(`index`), `adoption_year` INTEGER)"
-         "INSERT INTO `person_pet` (`person_number`, `pet_index`, `adoption_year`) VALUES (1, 10, 2015), (2, 20, 2017)"]
+         "INSERT INTO `person_pet` (`person_number`, `pet_index`, `adoption_year`) VALUES
+            (1, 10, 2015),
+            (1, 11, 2013),
+            (1, 12, 2018),
+            (1, 13, 2016),
+            (2, 20, 2014),
+            (2, 21, 2016),
+            (2, 22, 2017)"]
   :down ["DROP TABLE `person_pet`"]}
 
  ;; scenario 4 migrations
