@@ -62,7 +62,7 @@
                       [:person/number :person-pet/person-number
                        :person-pet/pet-index :pet/index]}
    :reversed-joins   {:pet/owner :person/pet}
-   :pseudo-columns   {:person/age [:- 2018 :person/yob]
+   :pseudo-columns   {:person/age      [:- 2018 :person/yob]
                       :color/pet-count [:count :pet/index]}
    :aggregators      {[:people/count :person/pet-count]
                       [:count-*]}
