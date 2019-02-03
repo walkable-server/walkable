@@ -453,7 +453,7 @@
 
 (defn prefix-having [compiled-having]
   (expressions/inline-params {}
-    {:raw-string "HAVING (?)"
+    {:raw-string " HAVING (?)"
      :params     [compiled-having]}))
 
 (defn compile-having
@@ -471,7 +471,7 @@
     (map compiled-formulas)
     (map :raw-string)
     (clojure.string/join ", ")
-    (str "GROUP BY ")))
+    (str " GROUP BY ")))
 
 (defn compile-grouping
   [{:keys [grouping compiled-formulas] :as floor-plan}]
