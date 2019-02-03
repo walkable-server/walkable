@@ -344,6 +344,15 @@
                                                                     :yob   2016,
                                                                     :color "green"}]}}}}]}}
 
+     {:message "grouping should work"
+      :query
+      `[{:pets/by-color
+         [:color/pet-count :pet/color]}]
+      :expected
+      #:pets{:by-color
+             [{:color/pet-count 2, :pet/color "yellow"}
+              {:color/pet-count 4, :pet/color "green"}]}}
+
      {:message "pseudo-columns should work"
       :query
       `[{:people/all [:person/number
