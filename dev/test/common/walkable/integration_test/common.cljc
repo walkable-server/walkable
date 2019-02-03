@@ -328,7 +328,7 @@
                 {:placeholder/info #:person {:yob 1992, :name "mary"},
                  :person/pet
                  [#:pet{:index 20, :yob 2014, :color "orange"}
-                  #:pet{:index 21, :yob 2015, :color "orange"}
+                  #:pet{:index 21, :yob 2015, :color "green"}
                   #:pet{:index 22, :yob 2016, :color "green"}],
                  :ph/deep
                  #:ph              {:nested
@@ -339,7 +339,7 @@
                                                                     :color "orange"}
                                                               #:pet{:index 21,
                                                                     :yob   2015,
-                                                                    :color "orange"}
+                                                                    :color "green"}
                                                               #:pet{:index 22,
                                                                     :yob   2016,
                                                                     :color "green"}]}}}}]}}
