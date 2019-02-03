@@ -35,7 +35,7 @@
             (12, 'yellow', 2017, 'secret'),
             (13, 'green', 2016, 'nothing'),
             (20, 'orange', 2014, 'very important'),
-            (21, 'orange', 2015, 'shhh'),
+            (21, 'green', 2015, 'shhh'),
             (22, 'green', 2016, 'idk')"]
   :down ["DROP TABLE `pet`"]}
 
