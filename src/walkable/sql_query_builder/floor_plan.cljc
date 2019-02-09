@@ -310,10 +310,10 @@
 (defn member->graph-id
   [graphs]
   (->> graphs
-    (mapv (comp keys :graph))
     (map-indexed
-      (fn [index xs]
-        (mapv #(do [(symbol (name %)) index]) xs)))
+      (fn [index {:keys [graph namespace]}]
+        (let [xs (keys graph)]
+          (mapv #(do [(symbol namespace (name %)) index]) xs))))
     (apply concat)
     (into {})))
 
