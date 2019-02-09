@@ -360,8 +360,6 @@
       (assoc :variable->graph-index variable->graph-id)
       (update :compiled-variable-getters merge getters)
       (dissoc :variable-getter-graphs))))
-(defn check-column-vars
-  [column-vars])
 
 (defn compile-true-columns
   "Makes a hash-map of keywords and their equivalent compiled form."
