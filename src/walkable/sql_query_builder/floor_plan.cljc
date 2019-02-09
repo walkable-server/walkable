@@ -336,7 +336,7 @@
 
 (defn compile-graph-member-getter
   [result variable graph-index]
-  (let [k (keyword variable)]
+  (let [k (keyword (name variable))]
     (assoc result variable
       (fn [_env computed-graphs]
         (get-in computed-graphs [graph-index k])))))
