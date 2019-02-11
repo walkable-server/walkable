@@ -2,7 +2,7 @@
   (:require [walkable.sql-query-builder.expressions :as expressions]))
 
 (extend-protocol expressions/EmittableAtom
-  Boolean
+  #?(:clj Boolean :cljs boolean)
   (emit [boolean-val]
     (expressions/single-raw-string boolean-val)))
 
