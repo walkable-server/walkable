@@ -55,15 +55,28 @@
 (def conformed-false
   (verbatim-raw-string "FALSE"))
 
+(extend-protocol EmittableAtom
+  Boolean
+  (emit [boolean-val]
+    (if boolean-val conformed-true conformed-false))
+  Number
+  (emit [number]
+    (verbatim-raw-string (str number)))
+  String
+  (emit [string]
+    (single-raw-string string))
+  nil
+  (emit [a-nil] conformed-nil))
+
 (s/def ::expression
   (s/or
     :atomic-variable atomic-variable?
-    :nil nil?
-    :number number?
-    :boolean boolean?
-    :string string?
-    :column ::namespaced-keyword
     :symbol symbol?
+
+    :emittable-atom emittable-atom?
+
+    :column ::namespaced-keyword
+
     :expression
     (s/and vector?
       (s/cat :operator (s/? ::operators)
@@ -92,6 +105,9 @@
 (defmulti process-expression
   (fn dispatcher [_env [kw _expression]] kw))
 
+(defmethod process-expression :emittable-atom
+  [_env [_kw val]]
+  (emit val))
 
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
@@ -406,25 +422,6 @@
 (defmethod process-expression :atomic-variable
   [_env [_kw atomic-variable]]
   (single-raw-string atomic-variable))
-
-(defmethod process-expression :nil
-  [_env [_kw number]]
-  conformed-nil)
-
-(defmethod process-expression :number
-  [_env [_kw number]]
-  {:raw-string (str number)
-   :params     []})
-
-(defmethod process-expression :boolean
-  [_env [_kw value]]
-  (if value
-    conformed-true
-    conformed-false))
-
-(defmethod process-expression :string
-  [_env [_kw string]]
-  (single-raw-string string))
 
 (defmethod process-expression :column
   [_env [_kw column-keyword]]
