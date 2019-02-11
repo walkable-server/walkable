@@ -456,7 +456,6 @@
       "`cond` requires an even number of arguments")
     (assert (not= n 0)
       "`cond` must have at least two arguments")
-    (process-expression {} [:boolean true])
     {:raw-string (str "CASE"
                    (apply str (repeat (/ n 2) " WHEN (?) THEN (?)"))
                    " END")
