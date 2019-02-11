@@ -32,6 +32,12 @@
 
 (s/def ::unsafe-expression unsafe-expression?)
 
+(defprotocol EmittableAtom
+  (emit [this]))
+
+(defn emittable-atom? [x]
+  (satisfies? EmittableAtom x))
+
 (s/def ::expression
   (s/or
     :atomic-variable atomic-variable?
