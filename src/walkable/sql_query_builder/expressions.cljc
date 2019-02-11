@@ -56,13 +56,13 @@
   (verbatim-raw-string "FALSE"))
 
 (extend-protocol EmittableAtom
-  Boolean
+  #?(:clj Boolean :cljs boolean)
   (emit [boolean-val]
     (if boolean-val conformed-true conformed-false))
-  Number
+  #?(:clj Number :cljs number)
   (emit [number]
     (verbatim-raw-string (str number)))
-  String
+  #?(:clj String :cljs string)
   (emit [string]
     (single-raw-string string))
   nil
