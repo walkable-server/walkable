@@ -14,13 +14,6 @@
 (defn atomic-variable? [x]
   (instance? AtomicVariable x))
 
-(defn expand-atomic-variables [exprs]
-  (clojure.walk/postwalk
-    (fn [expr] (if (and (symbol? expr) (::variable (meta expr)))
-                 (AtomicVariable. expr)
-                 expr))
-    exprs))
-
 (declare inline-params)
 
 (defn namespaced-keyword?
