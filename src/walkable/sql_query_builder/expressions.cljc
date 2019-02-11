@@ -317,7 +317,7 @@
 
 (import-functions {:arity       1
                    :upper-case? true}
-  [sum count not min max avg])
+  [sum count not avg])
 
 (import-functions {:arity 1 }
   {bit-not "~"})
@@ -326,7 +326,7 @@
   [now])
 
 (import-functions {}
-  [format])
+  [format min max])
 
 (import-functions {}
   {str "CONCAT"})
