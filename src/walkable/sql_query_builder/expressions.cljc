@@ -38,6 +38,23 @@
 (defn emittable-atom? [x]
   (satisfies? EmittableAtom x))
 
+(defn verbatim-raw-string [s]
+  {:raw-string s
+   :params     []})
+
+(defn single-raw-string [x]
+  {:raw-string "?"
+   :params     [x]})
+
+(def conformed-nil
+  (verbatim-raw-string "NULL"))
+
+(def conformed-true
+  (verbatim-raw-string "TRUE"))
+
+(def conformed-false
+  (verbatim-raw-string "FALSE"))
+
 (s/def ::expression
   (s/or
     :atomic-variable atomic-variable?
@@ -75,17 +92,6 @@
 (defmulti process-expression
   (fn dispatcher [_env [kw _expression]] kw))
 
-(def conformed-nil
-  {:raw-string "NULL"
-   :params     []})
-
-(def conformed-true
-  {:raw-string "TRUE"
-   :params     []})
-
-(def conformed-false
-  {:raw-string "FALSE"
-   :params     []})
 
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
@@ -124,14 +130,6 @@
        :params     [(process-expression env expression)]})))
 
 (defmethod operator? :and [_operator] true)
-
-(defn verbatim-raw-string [s]
-  {:raw-string s
-   :params     []})
-
-(defn single-raw-string [x]
-  {:raw-string "?"
-   :params     [x]})
 
 (defmethod process-operator :and
   [_env [_operator params]]
