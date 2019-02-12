@@ -14,13 +14,6 @@
 (defn atomic-variable? [x]
   (instance? AtomicVariable x))
 
-(defn expand-atomic-variables [exprs]
-  (clojure.walk/postwalk
-    (fn [expr] (if (and (symbol? expr) (::variable (meta expr)))
-                 (AtomicVariable. expr)
-                 expr))
-    exprs))
-
 (declare inline-params)
 
 (defn namespaced-keyword?
@@ -39,15 +32,51 @@
 
 (s/def ::unsafe-expression unsafe-expression?)
 
+(defprotocol EmittableAtom
+  (emit [this]))
+
+(defn emittable-atom? [x]
+  (satisfies? EmittableAtom x))
+
+(defn verbatim-raw-string [s]
+  {:raw-string s
+   :params     []})
+
+(defn single-raw-string [x]
+  {:raw-string "?"
+   :params     [x]})
+
+(def conformed-nil
+  (verbatim-raw-string "NULL"))
+
+(def conformed-true
+  (verbatim-raw-string "TRUE"))
+
+(def conformed-false
+  (verbatim-raw-string "FALSE"))
+
+(extend-protocol EmittableAtom
+  #?(:clj Boolean :cljs boolean)
+  (emit [boolean-val]
+    (if boolean-val conformed-true conformed-false))
+  #?(:clj Number :cljs number)
+  (emit [number]
+    (verbatim-raw-string (str number)))
+  #?(:clj String :cljs string)
+  (emit [string]
+    (single-raw-string string))
+  nil
+  (emit [a-nil] conformed-nil))
+
 (s/def ::expression
   (s/or
     :atomic-variable atomic-variable?
-    :nil nil?
-    :number number?
-    :boolean boolean?
-    :string string?
-    :column ::namespaced-keyword
     :symbol symbol?
+
+    :emittable-atom emittable-atom?
+
+    :column ::namespaced-keyword
+
     :expression
     (s/and vector?
       (s/cat :operator (s/? ::operators)
@@ -76,17 +105,9 @@
 (defmulti process-expression
   (fn dispatcher [_env [kw _expression]] kw))
 
-(def conformed-nil
-  {:raw-string "NULL"
-   :params     []})
-
-(def conformed-true
-  {:raw-string "TRUE"
-   :params     []})
-
-(def conformed-false
-  {:raw-string "FALSE"
-   :params     []})
+(defmethod process-expression :emittable-atom
+  [_env [_kw val]]
+  (emit val))
 
 (defmulti cast-type
   "Registers a valid type for for :cast-type."
@@ -125,14 +146,6 @@
        :params     [(process-expression env expression)]})))
 
 (defmethod operator? :and [_operator] true)
-
-(defn verbatim-raw-string [s]
-  {:raw-string s
-   :params     []})
-
-(defn single-raw-string [x]
-  {:raw-string "?"
-   :params     [x]})
 
 (defmethod process-operator :and
   [_env [_operator params]]
@@ -304,7 +317,7 @@
 
 (import-functions {:arity       1
                    :upper-case? true}
-  [sum count not min max avg])
+  [sum count not avg])
 
 (import-functions {:arity 1 }
   {bit-not "~"})
@@ -313,7 +326,7 @@
   [now])
 
 (import-functions {}
-  [format])
+  [format min max])
 
 (import-functions {}
   {str "CONCAT"})
@@ -410,25 +423,6 @@
   [_env [_kw atomic-variable]]
   (single-raw-string atomic-variable))
 
-(defmethod process-expression :nil
-  [_env [_kw number]]
-  conformed-nil)
-
-(defmethod process-expression :number
-  [_env [_kw number]]
-  {:raw-string (str number)
-   :params     []})
-
-(defmethod process-expression :boolean
-  [_env [_kw value]]
-  (if value
-    conformed-true
-    conformed-false))
-
-(defmethod process-expression :string
-  [_env [_kw string]]
-  (single-raw-string string))
-
 (defmethod process-expression :column
   [_env [_kw column-keyword]]
   (single-raw-string (AtomicVariable. column-keyword)))
@@ -462,7 +456,6 @@
       "`cond` requires an even number of arguments")
     (assert (not= n 0)
       "`cond` must have at least two arguments")
-    (process-expression {} [:boolean true])
     {:raw-string (str "CASE"
                    (apply str (repeat (/ n 2) " WHEN (?) THEN (?)"))
                    " END")
