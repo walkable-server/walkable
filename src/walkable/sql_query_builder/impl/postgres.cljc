@@ -2,6 +2,11 @@
   (:require #?(:clj [cheshire.core :refer [generate-string]])
             [walkable.sql-query-builder.expressions :as expressions]))
 
+(extend-protocol expressions/EmittableAtom
+  #?(:clj java.util.UUID :cljs UUID)
+  (emit [uuid]
+    (expressions/single-raw-string uuid)))
+
 ;; https://www.postgresql.org/docs/current/static/functions-array.html
 
 (defmethod expressions/operator? :array [_operator] true)
