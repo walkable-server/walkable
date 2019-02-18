@@ -55,12 +55,20 @@
 
 (def default-emitter
   {:quote-marks           quotation-marks
+
    :transform-table-name  dash-to-underscore
    :transform-column-name dash-to-underscore
    :rename-tables         {}
    :rename-columns        {}
    :rename-keywords       {}
-   :wrap-select-strings   ["(" ")"]})
+
+   :wrap-select-strings   ["(" ")"]
+
+   :conform-offset        identity
+   :stringify-offset      #(str " OFFSET " %)
+
+   :conform-limit         identity
+   :stringify-limit       #(str " LIMIT " %)})
 
 (def sqlite-emitter
   (merge default-emitter
