@@ -99,13 +99,13 @@
     order-by))
 
 (defn compile-fallbacks*
-  [clojuric-names pagination-fallbacks]
+  [emitter clojuric-names pagination-fallbacks]
   (reduce (fn [acc [k {:keys [offset limit order-by]}]]
             (let [v {:offset-fallback
-                     (offset-fallback offset)
+                     ((emitter->offset-fallback emitter) offset)
 
                      :limit-fallback
-                     (limit-fallback limit)
+                     ((emitter->limit-fallback emitter) limit)
 
                      :order-by-fallback
                      (order-by-fallback clojuric-names order-by)}]
