@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder.pagination-test
   (:require [walkable.sql-query-builder.pagination :as sut]
+            [walkable.sql-query-builder.emitter :as emitter]
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 
@@ -40,13 +41,14 @@
             nil])
         [true true false])))
 
-(deftest offset-fallback-test
-  (is (= (mapv (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})
-           (range 8))
-        (mapv #(str " OFFSET " %) [2 2 2 3 4 2 2 2])))
-  (is (= (map (sut/offset-fallback {:default 2 :validate #(<= 2 % 4)})
-           [:invalid 'types])
-        (mapv #(str " OFFSET " %) [2 2]))))
+(deftest emitter->offset-fallback-test
+  (let [offset-fallback (sut/emitter->offset-fallback emitter/default-emitter)]
+    (is (= (mapv (offset-fallback {:default 2 :validate #(<= 2 % 4)})
+             (range 8))
+          (mapv #(str " OFFSET " %) [2 2 2 3 4 2 2 2])))
+    (is (= (map (offset-fallback {:default 2 :validate #(<= 2 % 4)})
+             [:invalid 'types])
+          (mapv #(str " OFFSET " %) [2 2])))))
 
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
@@ -62,8 +64,10 @@
           :string  " ORDER BY x.a DESC"}
          {:columns #{:x/a :x/b},
           :string  " ORDER BY x.a ASC, x.b"}])))
+
 (deftest merge-pagination-test
   (let [all-fallbacks     (sut/compile-fallbacks
+                            emitter/default-emitter
                             {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
                             {:people/all
                              {:offset   {:default  5

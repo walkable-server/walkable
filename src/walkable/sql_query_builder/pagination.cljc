@@ -29,23 +29,31 @@
           (every? f (map :column conformed-order-by))))
       identity)))
 
-(defn number-fallback [{:keys [stringify]} {:keys [default validate]}]
+(defn number-fallback
+  [{:keys [stringify conform]}
+   {:keys [default validate]}]
   (let [default  (when default (stringify default))
         validate (wrap-validate-number validate)]
     (fn [supplied]
-      (if (validate supplied)
-        (stringify supplied)
-        default))))
+      (let [conformed (conform supplied)
+            v?        (validate conformed)]
+        (if v?
+          (stringify conformed)
+          default)))))
 
-(defn offset-fallback
-  [offset]
-  (number-fallback {:stringify #(when % (str " OFFSET " %))}
-    offset))
+(defn emitter->offset-fallback
+  [emitter]
+  (fn [offset]
+    (number-fallback {:stringify (:stringify-offset emitter)
+                      :conform   (:conform-offset emitter)}
+      offset)))
 
-(defn limit-fallback
-  [limit]
-  (number-fallback {:stringify #(when % (str " LIMIT " %))}
-    limit))
+(defn emitter->limit-fallback
+  [emitter]
+  (fn [limit]
+    (number-fallback {:stringify (:stringify-limit emitter)
+                      :conform   (:conform-limit emitter)}
+      limit)))
 
 (def order-params->string
   {:asc        " ASC"
@@ -91,13 +99,13 @@
     order-by))
 
 (defn compile-fallbacks*
-  [clojuric-names pagination-fallbacks]
+  [emitter clojuric-names pagination-fallbacks]
   (reduce (fn [acc [k {:keys [offset limit order-by]}]]
             (let [v {:offset-fallback
-                     (offset-fallback offset)
+                     ((emitter->offset-fallback emitter) offset)
 
                      :limit-fallback
-                     (limit-fallback limit)
+                     ((emitter->limit-fallback emitter) limit)
 
                      :order-by-fallback
                      (order-by-fallback clojuric-names order-by)}]
@@ -106,12 +114,12 @@
     pagination-fallbacks))
 
 (defn compile-fallbacks
-  [clojuric-names pagination-fallbacks]
-  (->> (assoc pagination-fallbacks
-         `default-fallbacks {:offset   {}
-                             :limit    {}
-                             :order-by {}})
-    (compile-fallbacks* clojuric-names)))
+  [emitter clojuric-names pagination-fallbacks]
+  (->> (merge {`default-fallbacks {:offset   {}
+                                   :limit    {}
+                                   :order-by {}}}
+         pagination-fallbacks)
+    (compile-fallbacks* emitter clojuric-names)))
 
 (defn merge-pagination
   [default-fallbacks

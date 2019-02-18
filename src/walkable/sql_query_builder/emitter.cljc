@@ -55,12 +55,20 @@
 
 (def default-emitter
   {:quote-marks           quotation-marks
+
    :transform-table-name  dash-to-underscore
    :transform-column-name dash-to-underscore
    :rename-tables         {}
    :rename-columns        {}
    :rename-keywords       {}
-   :wrap-select-strings   ["(" ")"]})
+
+   :wrap-select-strings   ["(" ")"]
+
+   :conform-offset        identity
+   :stringify-offset      #(str " OFFSET " %)
+
+   :conform-limit         identity
+   :stringify-limit       #(str " LIMIT " %)})
 
 (def sqlite-emitter
   (merge default-emitter
@@ -72,6 +80,11 @@
 (def mysql-emitter
   (merge default-emitter
     {:quote-marks backticks}))
+
+(def oracle-emitter
+  (merge default-emitter
+    {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
+     :stringify-offset #(str " OFFSET " % " ROWS ")}))
 
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]

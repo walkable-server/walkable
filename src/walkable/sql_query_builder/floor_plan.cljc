@@ -491,9 +491,9 @@
       (dissoc :grouping))))
 
 (defn compile-pagination-fallbacks
-  [{:keys [clojuric-names pagination-fallbacks] :as floor-plan}]
+  [{:keys [emitter clojuric-names pagination-fallbacks] :as floor-plan}]
   (let [compiled-pagination-fallbacks
-        (pagination/compile-fallbacks clojuric-names pagination-fallbacks)]
+        (pagination/compile-fallbacks emitter clojuric-names pagination-fallbacks)]
     (-> floor-plan
       (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
       (dissoc :pagination-fallbacks))))
