@@ -41,10 +41,12 @@
           (stringify conformed)
           default)))))
 
-(defn offset-fallback
-  [offset]
-  (number-fallback {:stringify #(when % (str " OFFSET " %))}
-    offset))
+(defn emitter->offset-fallback
+  [emitter]
+  (fn [offset]
+    (number-fallback {:stringify (:stringify-offset emitter)
+                      :conform   (:conform-offset emitter)}
+      offset)))
 
 (defn limit-fallback
   [limit]
