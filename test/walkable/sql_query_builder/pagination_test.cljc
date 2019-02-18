@@ -67,6 +67,7 @@
 
 (deftest merge-pagination-test
   (let [all-fallbacks     (sut/compile-fallbacks
+                            emitter/default-emitter
                             {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
                             {:people/all
                              {:offset   {:default  5
