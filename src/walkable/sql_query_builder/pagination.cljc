@@ -114,12 +114,12 @@
     pagination-fallbacks))
 
 (defn compile-fallbacks
-  [clojuric-names pagination-fallbacks]
-  (->> (assoc pagination-fallbacks
-         `default-fallbacks {:offset   {}
-                             :limit    {}
-                             :order-by {}})
-    (compile-fallbacks* clojuric-names)))
+  [emitter clojuric-names pagination-fallbacks]
+  (->> (merge {`default-fallbacks {:offset   {}
+                                   :limit    {}
+                                   :order-by {}}}
+         pagination-fallbacks)
+    (compile-fallbacks* emitter clojuric-names)))
 
 (defn merge-pagination
   [default-fallbacks
