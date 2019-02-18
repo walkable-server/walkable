@@ -81,6 +81,11 @@
   (merge default-emitter
     {:quote-marks backticks}))
 
+(def oracle-emitter
+  (merge default-emitter
+    {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
+     :stringify-offset #(str " OFFSET " % " ROWS ")}))
+
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]
     :opt-un [::join-statement ::conditions
