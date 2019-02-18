@@ -48,10 +48,12 @@
                       :conform   (:conform-offset emitter)}
       offset)))
 
-(defn limit-fallback
-  [limit]
-  (number-fallback {:stringify #(when % (str " LIMIT " %))}
-    limit))
+(defn emitter->limit-fallback
+  [emitter]
+  (fn [limit]
+    (number-fallback {:stringify (:stringify-limit emitter)
+                      :conform   (:conform-limit emitter)}
+      limit)))
 
 (def order-params->string
   {:asc        " ASC"
