@@ -2,7 +2,7 @@
   (:require [walkable.sql-query-builder.pagination :as sut]
             [walkable.sql-query-builder.emitter :as emitter]
             [clojure.spec.alpha :as s]
-            [clojure.test :as t :refer [deftest testing is]]))
+            [clojure.test :as t :refer [deftest testing is are]]))
 
 (deftest ->stringify-order-by-tests
   (is (= ((sut/->stringify-order-by
@@ -28,16 +28,29 @@
   (is (= (->> [:invalid 'types] (map (sut/wrap-validate-number #(<= 2 % 4))))
         [false false])))
 
-(deftest conform-order-by-test
-  (is (= (map #(sut/conform-order-by {:x/a "`x/a`" :x/b "`x/b`"} %)
-           [[:x/a :asc :x/b :desc :nils-first :x/invalid-key]
-            [:x/a :asc :x/b :desc :nils-first 'invalid-type]
-            [:x/a :asc :x/b :desc :nils-first]
-            :invalid-type])
-        [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-         nil
-         [{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-         nil])))
+(deftest ->conform-order-by-test
+  (are [order-by conformed]
+      (= ((sut/->conform-order-by #{:asc :desc :nils-first :nils-last})
+          order-by)
+        conformed)
+
+    :x/a
+    [{:column :x/a}]
+
+    [:x/a :asc :x/b :desc :nils-first :x/c]
+    [{:column :x/a, :params [:asc]}
+     {:column :x/b, :params [:desc :nils-first]}
+     {:column :x/c}]
+
+    [:x/a :asc :x/b :desc :nils-first 'invalid-type]
+    ::s/invalid
+
+    [:x/a :asc :x/b :desc :nils-first]
+    [{:column :x/a, :params [:asc]}
+     {:column :x/b, :params [:desc :nils-first]}]
+
+    :invalid-type
+    ::s/invalid))
 
 (deftest wrap-validate-order-by-test
   (is (= (mapv (sut/wrap-validate-order-by #{:x/a :x/b})
