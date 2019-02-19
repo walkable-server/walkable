@@ -137,8 +137,8 @@
   [env [_operator [expression type-kw type-params]]]
   (let [expression (s/conform ::expression expression)
         type-str   (cast-type type-kw type-params)]
-    (assert (not= expression ::s/invalid)
-      (str "First argument to `cast` is not an invalid expression."))
+    (assert (not (s/invalid? expression))
+      (str "First argument to `cast` is not a valid expression."))
     (assert type-str
       (str "Invalid type to `cast`. You may want to implement `cast-type` for the given type."))
     (inline-params env
@@ -512,7 +512,7 @@
 (defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
-    (assert (not= ::s/invalid form)
+    (assert (not (s/invalid? form))
       (str "Invalid expression: " clauses))
     ;;(println "clauses:" clauses)
     ;;(println "form: " form)
