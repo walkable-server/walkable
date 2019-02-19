@@ -89,12 +89,13 @@
           default)))))
 
 (defn order-by-fallback
-  [clojuric-names order-by]
+  [{:keys [conform-order-by stringify-order-by] :as emitter}
+   clojuric-names order-by-config]
   (order-by-fallback*
-    {:conform       #(conform-order-by clojuric-names %)
-     :stringify     #(when % (str " ORDER BY "
-                               (->order-by-string clojuric-names %)))}
-    order-by))
+    {:conform   conform-order-by
+     :stringify #(stringify-order-by clojuric-names %)}
+    order-by-config))
+
 
 (defn compile-fallbacks*
   [emitter clojuric-names pagination-fallbacks]
