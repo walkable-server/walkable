@@ -54,6 +54,8 @@
   (let [[wrap-open wrap-close] (:wrap-select-strings this)]
     (str wrap-open s wrap-close)))
 
+(def conform-integer #(s/conform integer? %))
+
 (def default-emitter
   {:quote-marks quotation-marks
 
@@ -65,11 +67,12 @@
 
    :wrap-select-strings ["(" ")"]
 
-   :conform-offset        identity
-   :stringify-offset      #(str " OFFSET " %)
+   :conform-offset   conform-integer
+   :stringify-offset #(str " OFFSET " %)
 
-   :conform-limit         identity
-   :stringify-limit       #(str " LIMIT " %)})
+   :conform-limit   conform-integer
+   :stringify-limit #(str " LIMIT " %)
+
 
 (def sqlite-emitter
   (merge default-emitter
