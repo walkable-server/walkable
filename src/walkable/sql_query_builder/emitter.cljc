@@ -55,7 +55,7 @@
     (str wrap-open s wrap-close)))
 
 (def default-emitter
-  {:quote-marks           quotation-marks
+  {:quote-marks quotation-marks
 
    :transform-table-name  dash-to-underscore
    :transform-column-name dash-to-underscore
@@ -63,7 +63,7 @@
    :rename-columns        {}
    :rename-keywords       {}
 
-   :wrap-select-strings   ["(" ")"]
+   :wrap-select-strings ["(" ")"]
 
    :conform-offset        identity
    :stringify-offset      #(str " OFFSET " %)
