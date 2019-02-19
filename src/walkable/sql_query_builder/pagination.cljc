@@ -49,17 +49,6 @@
           (every? f (map :column conformed-order-by))))
       identity)))
 
-(defn number-fallback
-  [{:keys [stringify conform]}
-   {:keys [default validate]}]
-  (let [default  (when default (stringify default))
-        validate (wrap-validate-number validate)]
-    (fn [supplied]
-      (let [conformed (conform supplied)
-            v?        (validate conformed)]
-        (if v?
-          (stringify conformed)
-          default)))))
 (defn order-by-fallback*
   [{:keys [conform stringify]}
    {:keys [default validate]}]
@@ -82,6 +71,18 @@
      :stringify #(stringify-order-by clojuric-names %)}
     order-by-config))
 
+(defn number-fallback
+  [{:keys [stringify conform]}
+   {:keys [default validate]}]
+  (let [default  (when default (stringify default))
+        validate (wrap-validate-number validate)]
+    (fn [supplied]
+      (let [conformed (conform supplied)
+            valid?    (and (not (s/invalid? conformed))
+                        (validate conformed))]
+        (if valid?
+          (stringify conformed)
+          default)))))
 
 (defn offset-fallback
   [emitter offset-config]
