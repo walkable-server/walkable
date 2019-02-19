@@ -103,6 +103,13 @@
                  :percent (s/? #(= :percent %))
                  :with-ties (s/? #(= :with-ties %))))))
 
+(defn oracle-stringify-limit
+  [{:keys [limit percent with-ties] :as conformed-limit}]
+  (str " FETCH FIRST " limit
+    (when percent " PERCENT")
+    " ROWS"
+    (if with-ties " WITH TIES" " ONLY")))
+
 (def oracle-emitter
   (merge default-emitter
     {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
