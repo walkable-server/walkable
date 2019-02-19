@@ -4,13 +4,23 @@
             [clojure.spec.alpha :as s]
             [clojure.test :as t :refer [deftest testing is]]))
 
-(deftest ->order-by-string-tests
-  (is (= (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
-           [{:column :person/name} {:column :person/age, :params [:desc :nils-last]}])
-        "`p`.`n`, `p`.`a` DESC NULLS LAST"))
+(deftest ->stringify-order-by-tests
+  (is (= ((sut/->stringify-order-by
+            {:asc        " ASC"
+             :desc       " DESC"
+             :nils-first " NULLS FIRST"
+             :nils-last  " NULLS LAST"})
+          {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+          [{:column :person/name} {:column :person/age, :params [:desc :nils-last]}])
+        " ORDER BY `p`.`n`, `p`.`a` DESC NULLS LAST"))
 
-  (is (nil? (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
-              nil))))
+  (is (nil? ((sut/->stringify-order-by
+               {:asc        " ASC"
+                :desc       " DESC"
+                :nils-first " NULLS FIRST"
+                :nils-last  " NULLS LAST"})
+             {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+             nil))))
 
 (deftest wrap-validate-number-test
   (is (= (->> (range 8) (map (sut/wrap-validate-number #(<= 2 % 4))))
