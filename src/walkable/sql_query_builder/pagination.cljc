@@ -98,15 +98,17 @@
 
 (defn compile-fallbacks*
   [emitter clojuric-names pagination-fallbacks]
-  (reduce (fn [acc [k {:keys [offset limit order-by]}]]
+  (reduce (fn [acc [k {offset-config   :offset
+                       limit-config    :limit
+                       order-by-config :order-by}]]
             (let [v {:offset-fallback
-                     ((emitter->offset-fallback emitter) offset)
+                     (offset-fallback emitter offset-config)
 
                      :limit-fallback
-                     ((emitter->limit-fallback emitter) limit)
+                     (limit-fallback emitter limit-config)
 
                      :order-by-fallback
-                     (order-by-fallback clojuric-names order-by)}]
+                     (order-by-fallback emitter clojuric-names order-by-config)}]
               (assoc acc k v)))
     {}
     pagination-fallbacks))
