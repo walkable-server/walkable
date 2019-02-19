@@ -53,16 +53,19 @@
     ::s/invalid))
 
 (deftest wrap-validate-order-by-test
-  (is (= (mapv (sut/wrap-validate-order-by #{:x/a :x/b})
-           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:asc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
-            nil])
-        [true false false]))
-  (is (= (mapv (sut/wrap-validate-order-by nil)
-           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:asc]} {:column :x/any-key, :params [:desc :nils-first]}]
-            nil])
-        [true true false])))
+  (let [simple-validate  (sut/wrap-validate-order-by #{:x/a :x/b})
+        default-validate (sut/wrap-validate-order-by nil)]
+    (are [validate conformed-order-by valid?]
+        (= (validate conformed-order-by) valid?)
+
+      simple-validate
+      [{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+      true
+
+      simple-validate
+      [{:column :x/a, :params [:asc]}
+       {:column :x/invalid-key, :params [:desc :nils-first]}]
+      false
 
 (deftest emitter->offset-fallback-test
   (let [offset-fallback (sut/emitter->offset-fallback emitter/default-emitter)]
