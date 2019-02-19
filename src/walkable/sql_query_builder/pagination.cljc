@@ -74,13 +74,6 @@
     (number-fallback {:stringify (:stringify-limit emitter)
                       :conform   (:conform-limit emitter)}
       limit)))
-
-(def order-params->string
-  {:asc        " ASC"
-   :desc       " DESC"
-   :nils-first " NULLS FIRST"
-   :nils-last  " NULLS LAST"})
-
 (defn order-by-fallback*
   [{:keys [conform stringify]}
    {:keys [default validate]}]
