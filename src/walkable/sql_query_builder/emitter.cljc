@@ -1,6 +1,7 @@
 (ns walkable.sql-query-builder.emitter
   (:require [clojure.spec.alpha :as s]
-            [walkable.sql-query-builder.expressions :as expressions]))
+            [walkable.sql-query-builder.expressions :as expressions]
+            [walkable.sql-query-builder.pagination :as pagination]))
 
 (def backticks
   (repeat 2 "`"))
