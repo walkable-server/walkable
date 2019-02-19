@@ -79,6 +79,7 @@
    {:keys [default validate]}]
   (let [default  (when default
                    (let [conformed (conform default)]
+                     (assert (not (s/invalid? conformed)))
                      (columns-and-string conformed stringify)))
         validate (wrap-validate-order-by validate)]
     (fn [supplied]
