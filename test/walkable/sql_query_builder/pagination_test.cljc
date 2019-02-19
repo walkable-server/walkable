@@ -89,6 +89,7 @@
 
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
+                 emitter/default-emitter
                  {:x/a "x.a" :x/b "x.b"}
                  {:default  [:x/a :asc :x/b]
                   :validate #{:x/a :x/b}})
@@ -97,8 +98,8 @@
             nil])
         [{:columns #{:x/a :x/b},
           :string  " ORDER BY x.a DESC, x.b DESC NULLS FIRST"}
-         {:columns #{:x/a},
-          :string  " ORDER BY x.a DESC"}
+         {:columns #{:x/a :x/b},
+          :string  " ORDER BY x.a ASC, x.b"}
          {:columns #{:x/a :x/b},
           :string  " ORDER BY x.a ASC, x.b"}])))
 
