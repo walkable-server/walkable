@@ -82,7 +82,12 @@
 
 (def sqlite-emitter
   (merge default-emitter
-    {:wrap-select-strings ["SELECT * FROM (" ")"]}))
+    {:wrap-select-strings ["SELECT * FROM (" ")"]
+
+     :conform-order-by   (pagination/->conform-order-by #{:asc :desc})
+     :stringify-order-by (pagination/->stringify-order-by
+                           {:asc        " ASC"
+                            :desc       " DESC"})}))
 
 (def postgres-emitter
   default-emitter)
