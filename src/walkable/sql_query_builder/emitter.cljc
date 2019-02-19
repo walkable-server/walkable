@@ -73,6 +73,12 @@
    :conform-limit   conform-integer
    :stringify-limit #(str " LIMIT " %)
 
+   :conform-order-by   (pagination/->conform-order-by #{:asc :desc :nils-first :nils-last})
+   :stringify-order-by (pagination/->stringify-order-by
+                         {:asc        " ASC"
+                          :desc       " DESC"
+                          :nils-first " NULLS FIRST"
+                          :nils-last  " NULLS LAST"})})
 
 (def sqlite-emitter
   (merge default-emitter
