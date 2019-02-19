@@ -36,6 +36,10 @@
         (clojure.string/join ", ")
         (str " ORDER BY ")))))
 
+(defn columns-and-string
+  [conformed stringify]
+  {:columns (into #{} (map :column) conformed)
+   :string  (stringify conformed)})
 
 (defn wrap-validate-order-by [f]
   (comp boolean
@@ -76,11 +80,6 @@
    :desc       " DESC"
    :nils-first " NULLS FIRST"
    :nils-last  " NULLS LAST"})
-
-(defn columns-and-string
-  [conformed stringify]
-  {:columns (into #{} (map :column) conformed)
-   :string  (stringify conformed)})
 
 (defn order-by-fallback*
   [{:keys [conform stringify]}
