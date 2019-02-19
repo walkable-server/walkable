@@ -96,6 +96,13 @@
   (merge default-emitter
     {:quote-marks backticks}))
 
+(defn oracle-conform-limit
+  [limit]
+  (->> (if (sequential? limit) limit [limit])
+    (s/conform (s/cat :limit integer?
+                 :percent (s/? #(= :percent %))
+                 :with-ties (s/? #(= :with-ties %))))))
+
 (def oracle-emitter
   (merge default-emitter
     {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
