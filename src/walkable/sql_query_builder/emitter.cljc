@@ -112,8 +112,10 @@
 
 (def oracle-emitter
   (merge default-emitter
-    {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
-     :stringify-offset #(str " OFFSET " % " ROWS ")}))
+    {:conform-limit   oracle-conform-limit
+     :stringify-limit oracle-stringify-limit
+
+     :stringify-offset #(str " OFFSET " % " ROWS")}))
 
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]
