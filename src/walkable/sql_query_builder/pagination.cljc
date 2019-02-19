@@ -16,13 +16,13 @@
       :column ::expressions/namespaced-keyword
       :params (s/* allowed-keys))))
 
+(defn ->conform-order-by
+  [allowed-keys]
+  (fn [order-by]
+    (let [order-by (if (sequential? order-by) order-by [order-by])]
+      (s/conform (column+order-params-spec allowed-keys) order-by))))
 
-(defn conform-order-by [clojuric-names order-by]
-  (let [form (s/conform (s/+ ::column+order-params) order-by)]
-    (when-not (= ::s/invalid form)
-      (let [form (filter #(contains? clojuric-names (:column %)) form)]
-        (when (seq form)
-          (vec form))))))
+
 
 (defn wrap-validate-order-by [f]
   (comp boolean
