@@ -22,6 +22,19 @@
     (let [order-by (if (sequential? order-by) order-by [order-by])]
       (s/conform (column+order-params-spec allowed-keys) order-by))))
 
+(defn ->stringify-order-by
+  [order-params->string]
+  (fn stringify-order-by [clojuric-names conformed-order-by]
+    (when conformed-order-by
+      (->> conformed-order-by
+        (map (fn [{:keys [column params]}]
+               (str
+                 (get clojuric-names column)
+                 (->> params
+                   (map order-params->string)
+                   (apply str)))))
+        (clojure.string/join ", ")
+        (str " ORDER BY ")))))
 
 
 (defn wrap-validate-order-by [f]
@@ -63,17 +76,6 @@
    :desc       " DESC"
    :nils-first " NULLS FIRST"
    :nils-last  " NULLS LAST"})
-
-(defn ->order-by-string [clojuric-names conformed-order-by]
-  (when conformed-order-by
-    (->> conformed-order-by
-      (map (fn [{:keys [column params]}]
-             (str
-               (get clojuric-names column)
-               (->> params
-                 (map order-params->string)
-                 (apply str)))))
-      (clojure.string/join ", "))))
 
 (defn columns-and-string
   [conformed stringify]
