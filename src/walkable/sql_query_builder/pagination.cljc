@@ -45,7 +45,7 @@
   (comp boolean
     (if (ifn? f)
       (fn [conformed-order-by]
-        (when conformed-order-by
+        (when-not (s/invalid? conformed-order-by)
           (every? f (map :column conformed-order-by))))
       identity)))
 
@@ -84,7 +84,7 @@
         validate (wrap-validate-order-by validate)]
     (fn [supplied]
       (let [conformed (conform supplied)]
-        (if (and conformed (validate conformed))
+        (if (and (not (s/invalid? conformed)) (validate conformed))
           (columns-and-string conformed stringify)
           default)))))
 
