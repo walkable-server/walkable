@@ -9,6 +9,13 @@
     #(and (number? %) (f %))
     #(number? %)))
 
+(defn column+order-params-spec
+  [allowed-keys]
+  (s/+
+    (s/cat
+      :column ::expressions/namespaced-keyword
+      :params (s/* allowed-keys))))
+
 
 (defn conform-order-by [clojuric-names order-by]
   (let [form (s/conform (s/+ ::column+order-params) order-by)]
