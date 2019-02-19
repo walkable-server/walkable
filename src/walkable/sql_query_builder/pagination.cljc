@@ -60,20 +60,6 @@
         (if v?
           (stringify conformed)
           default)))))
-
-(defn emitter->offset-fallback
-  [emitter]
-  (fn [offset]
-    (number-fallback {:stringify (:stringify-offset emitter)
-                      :conform   (:conform-offset emitter)}
-      offset)))
-
-(defn emitter->limit-fallback
-  [emitter]
-  (fn [limit]
-    (number-fallback {:stringify (:stringify-limit emitter)
-                      :conform   (:conform-limit emitter)}
-      limit)))
 (defn order-by-fallback*
   [{:keys [conform stringify]}
    {:keys [default validate]}]
@@ -96,6 +82,18 @@
      :stringify #(stringify-order-by clojuric-names %)}
     order-by-config))
 
+
+(defn offset-fallback
+  [emitter offset-config]
+  (number-fallback {:stringify (:stringify-offset emitter)
+                    :conform   (:conform-offset emitter)}
+    offset-config))
+
+(defn limit-fallback
+  [emitter limit-config]
+  (number-fallback {:stringify (:stringify-limit emitter)
+                    :conform   (:conform-limit emitter)}
+    limit-config))
 
 (defn compile-fallbacks*
   [emitter clojuric-names pagination-fallbacks]
