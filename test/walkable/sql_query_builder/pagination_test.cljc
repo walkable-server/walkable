@@ -81,6 +81,16 @@
            [:invalid 'types])
         (mapv #(str " OFFSET " %) [99 99]))))
 
+(deftest limit-fallback-with-default-emitter-test
+  (is (= (mapv (sut/limit-fallback emitter/default-emitter
+                 {:default 99 :validate #(<= 2 % 4)})
+           (range 8))
+        (mapv #(str " LIMIT " %) [99 99 2 3 4 99 99 99])))
+  (is (= (map (sut/limit-fallback emitter/default-emitter
+                {:default 99 :validate #(<= 2 % 4)})
+           [:invalid 'types])
+        (mapv #(str " LIMIT " %) [99 99]))))
+
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
                  emitter/default-emitter
