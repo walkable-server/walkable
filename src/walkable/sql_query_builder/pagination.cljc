@@ -4,11 +4,6 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [clojure.set :as set]))
 
-(defn wrap-validate-number [f]
-  (if (ifn? f)
-    #(and (number? %) (f %))
-    #(number? %)))
-
 (defn column+order-params-spec
   [allowed-keys]
   (s/+
