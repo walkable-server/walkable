@@ -67,8 +67,9 @@
 
    :wrap-select-strings ["(" ")"]
 
-   :conform-offset   conform-integer
-   :stringify-offset #(str " OFFSET " %)
+   :conform-offset       conform-integer
+   :wrap-validate-offset identity
+   :stringify-offset     #(str " OFFSET " %)
 
    :conform-limit   conform-integer
    :stringify-limit #(str " LIMIT " %)
