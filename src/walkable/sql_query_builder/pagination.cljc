@@ -78,7 +78,12 @@
 (defn number-fallback
   [{:keys [stringify conform wrap-validate]}
    {:keys [default validate throw?] :or {validate (constantly true)}}]
-  (let [default  (when default (stringify default))
+  (let [default
+        (when default
+          (let [conformed (conform default)]
+            (assert (not (s/invalid? conformed))
+              "Malformed default value")
+            (stringify conformed)))
         validate (wrap-validate validate)]
     (if throw?
       (fn aggressive-fallback [supplied]
