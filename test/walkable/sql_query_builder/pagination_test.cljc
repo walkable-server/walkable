@@ -111,7 +111,19 @@
   (is (= (map (sut/limit-fallback emitter/oracle-emitter
                 {:default 99 :validate #(<= 2 % 4)})
            [:invalid 'types])
-        (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99]))))
+        (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99])))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Malformed"
+        ((sut/limit-fallback emitter/oracle-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         :abc)))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Invalid"
+        ((sut/limit-fallback emitter/oracle-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         1))))
 
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
