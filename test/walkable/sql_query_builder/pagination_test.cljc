@@ -89,7 +89,19 @@
   (is (= (map (sut/limit-fallback emitter/default-emitter
                 {:default 99 :validate #(<= 2 % 4)})
            [:invalid 'types])
-        (mapv #(str " LIMIT " %) [99 99]))))
+        (mapv #(str " LIMIT " %) [99 99])))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Malformed"
+        ((sut/limit-fallback emitter/default-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         :abc)))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Invalid"
+        ((sut/limit-fallback emitter/default-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         1))))
 
 (deftest limit-fallback-with-oracle-emitter-test
   (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
