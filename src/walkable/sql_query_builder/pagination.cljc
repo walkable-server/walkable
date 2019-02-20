@@ -75,17 +75,25 @@
     order-by-config))
 
 (defn number-fallback
-  [{:keys [stringify conform]}
-   {:keys [default validate]}]
+  [{:keys [stringify conform wrap-validate]}
+   {:keys [default validate throw?] :or {validate (constantly true)}}]
   (let [default  (when default (stringify default))
-        validate (wrap-validate-number validate)]
-    (fn [supplied]
-      (let [conformed (conform supplied)
-            valid?    (and (not (s/invalid? conformed))
-                        (validate conformed))]
-        (if valid?
-          (stringify conformed)
-          default)))))
+        validate (wrap-validate validate)]
+    (if throw?
+      (fn aggressive-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (s/invalid? conformed)
+            (throw "Malformed!")
+            (if (validate conformed)
+              (stringify conformed)
+              (throw "Invalid!")))))
+      (fn silent-fallback [supplied]
+        (let [conformed (conform supplied)
+              valid?    (and (not (s/invalid? conformed))
+                          (validate conformed))]
+          (if valid?
+            (stringify conformed)
+            default))))))
 
 (defn offset-fallback
   [emitter offset-config]
