@@ -108,6 +108,43 @@
                  {:default 99 :validate #(<= 2 % 4)})
            (range 8))
         (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99 2 3 4 99 99 99])))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent] :validate #(<= 2 % 4)})
+           (mapv #(do [% :percent]) (range 8)))
+        [" FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 2 PERCENT ROWS ONLY"
+         " FETCH FIRST 3 PERCENT ROWS ONLY"
+         " FETCH FIRST 4 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent] :validate #(<= 2 % 4)})
+           (mapv #(do [% :percent :with-ties]) (range 8)))
+        [" FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 2 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 3 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 4 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent]})
+           (mapv #(do [% :percent :with-ties]) (range 8)))
+        [" FETCH FIRST 0 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 1 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 2 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 3 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 4 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 5 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 6 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 7 PERCENT ROWS WITH TIES"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent]})
+           (mapv #(do [% :percent :with-ties-typo]) (range 8)))
+        (repeat 8 " FETCH FIRST 99 PERCENT ROWS ONLY")))
   (is (= (map (sut/limit-fallback emitter/oracle-emitter
                 {:default 99 :validate #(<= 2 % 4)})
            [:invalid 'types])
