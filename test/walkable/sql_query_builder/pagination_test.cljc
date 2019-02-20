@@ -71,15 +71,15 @@
        {:column :x/any-key, :params [:desc :nils-first]}]
       true)))
 
-(deftest offset-fallback-test
+(deftest offset-fallback-with-default-emitter-test
   (is (= (mapv (sut/offset-fallback emitter/default-emitter
-                 {:default 2 :validate #(<= 2 % 4)})
+                 {:default 99 :validate #(<= 2 % 4)})
            (range 8))
-        (mapv #(str " OFFSET " %) [2 2 2 3 4 2 2 2])))
+        (mapv #(str " OFFSET " %) [99 99 2 3 4 99 99 99])))
   (is (= (map (sut/offset-fallback emitter/default-emitter
-                {:default 2 :validate #(<= 2 % 4)})
+                {:default 99 :validate #(<= 2 % 4)})
            [:invalid 'types])
-        (mapv #(str " OFFSET " %) [2 2]))))
+        (mapv #(str " OFFSET " %) [99 99]))))
 
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
