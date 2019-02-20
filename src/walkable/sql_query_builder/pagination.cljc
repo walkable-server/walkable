@@ -97,14 +97,16 @@
 
 (defn offset-fallback
   [emitter offset-config]
-  (number-fallback {:stringify (:stringify-offset emitter)
-                    :conform   (:conform-offset emitter)}
+  (number-fallback {:stringify     (:stringify-offset emitter)
+                    :conform       (:conform-offset emitter)
+                    :wrap-validate (:wrap-validate-offset emitter)}
     offset-config))
 
 (defn limit-fallback
   [emitter limit-config]
-  (number-fallback {:stringify (:stringify-limit emitter)
-                    :conform   (:conform-limit emitter)}
+  (number-fallback {:stringify     (:stringify-limit emitter)
+                    :conform       (:conform-limit emitter)
+                    :wrap-validate (:wrap-validate-limit emitter)}
     limit-config))
 
 (defn compile-fallbacks*
