@@ -112,6 +112,10 @@
     " ROWS"
     (if with-ties " WITH TIES" " ONLY")))
 
+(defn oracle-wrap-validate-limit
+  [f]
+  #(f (:limit %)))
+
 (def oracle-emitter
   (merge default-emitter
     {:conform-limit   oracle-conform-limit
