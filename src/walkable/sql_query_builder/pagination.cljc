@@ -46,17 +46,25 @@
 
 (defn order-by-fallback*
   [{:keys [conform stringify]}
-   {:keys [default validate]}]
+   {:keys [default validate throw?]}]
   (let [default  (when default
                    (let [conformed (conform default)]
                      (assert (not (s/invalid? conformed)))
                      (columns-and-string conformed stringify)))
         validate (wrap-validate-order-by validate)]
-    (fn [supplied]
-      (let [conformed (conform supplied)]
-        (if (and (not (s/invalid? conformed)) (validate conformed))
-          (columns-and-string conformed stringify)
-          default)))))
+    (if throw?
+      (fn aggressive-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (s/invalid? conformed)
+            (throw "Malformed!")
+            (if (validate conformed)
+              (columns-and-string conformed stringify)
+              (throw "Invalid!")))))
+      (fn silent-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (and (not (s/invalid? conformed)) (validate conformed))
+            (columns-and-string conformed stringify)
+            default))))))
 
 (defn order-by-fallback
   [{:keys [conform-order-by stringify-order-by] :as emitter}
