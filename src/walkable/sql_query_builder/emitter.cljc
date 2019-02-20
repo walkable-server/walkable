@@ -118,8 +118,9 @@
 
 (def oracle-emitter
   (merge default-emitter
-    {:conform-limit   oracle-conform-limit
-     :stringify-limit oracle-stringify-limit
+    {:conform-limit       oracle-conform-limit
+     :stringify-limit     oracle-stringify-limit
+     :wrap-validate-limit oracle-wrap-validate-limit
 
      :stringify-offset #(str " OFFSET " % " ROWS")}))
 
