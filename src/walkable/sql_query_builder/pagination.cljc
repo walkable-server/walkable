@@ -56,10 +56,10 @@
       (fn aggressive-fallback [supplied]
         (let [conformed (conform supplied)]
           (if (s/invalid? conformed)
-            (throw "Malformed!")
+            (throw (ex-info "Malformed!" {}))
             (if (validate conformed)
               (columns-and-string conformed stringify)
-              (throw "Invalid!")))))
+              (throw (ex-info "Invalid!" {}))))))
       (fn silent-fallback [supplied]
         (let [conformed (conform supplied)]
           (if (and (not (s/invalid? conformed)) (validate conformed))
@@ -83,10 +83,10 @@
       (fn aggressive-fallback [supplied]
         (let [conformed (conform supplied)]
           (if (s/invalid? conformed)
-            (throw "Malformed!")
+            (throw (ex-info "Malformed!" {}))
             (if (validate conformed)
               (stringify conformed)
-              (throw "Invalid!")))))
+              (throw (ex-info "Invalid!" {}))))))
       (fn silent-fallback [supplied]
         (let [conformed (conform supplied)
               valid?    (and (not (s/invalid? conformed))
