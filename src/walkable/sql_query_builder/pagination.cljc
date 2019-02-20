@@ -39,7 +39,7 @@
 (defn wrap-validate-order-by [f]
   (comp boolean
     (if (ifn? f)
-      (fn [conformed-order-by]
+      (fn wrapped-validate-order-by [conformed-order-by]
         (when-not (s/invalid? conformed-order-by)
           (every? f (map :column conformed-order-by))))
       identity)))
