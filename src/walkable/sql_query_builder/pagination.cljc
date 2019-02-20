@@ -49,7 +49,8 @@
    {:keys [default validate throw?]}]
   (let [default  (when default
                    (let [conformed (conform default)]
-                     (assert (not (s/invalid? conformed)))
+                     (assert (not (s/invalid? conformed))
+                       "Malformed default value")
                      (columns-and-string conformed stringify)))
         validate (wrap-validate-order-by validate)]
     (if throw?
