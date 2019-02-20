@@ -13,7 +13,7 @@
 
 (defn ->conform-order-by
   [allowed-keys]
-  (fn [order-by]
+  (fn conform-order-by [order-by]
     (let [order-by (if (sequential? order-by) order-by [order-by])]
       (s/conform (column+order-params-spec allowed-keys) order-by))))
 
