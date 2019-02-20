@@ -71,8 +71,9 @@
    :wrap-validate-offset identity
    :stringify-offset     #(str " OFFSET " %)
 
-   :conform-limit   conform-integer
-   :stringify-limit #(str " LIMIT " %)
+   :conform-limit       conform-integer
+   :wrap-validate-limit identity
+   :stringify-limit     #(str " LIMIT " %)
 
    :conform-order-by   (pagination/->conform-order-by #{:asc :desc :nils-first :nils-last})
    :stringify-order-by (pagination/->stringify-order-by
