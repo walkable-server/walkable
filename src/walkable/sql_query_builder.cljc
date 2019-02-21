@@ -195,7 +195,7 @@
 
 (defn child-join-process-query*
   [{::keys [floor-plan] :as env}]
-  (let [{:keys [join-children columns-to-query]}
+  (let [{:keys [columns-to-query]}
         (process-children env)
 
         {:keys [offset limit order-by order-by-columns]}
@@ -217,8 +217,7 @@
                              :limit          limit
                              :order-by       order-by})
                           :params (combine-params selection conditions having)}]
-    {:sql-query     sql-query
-     :join-children join-children}))
+    sql-query))
 
 (defn compute-graphs [env variables]
   (let [variable->graph-index (env/variable->graph-index env)
@@ -260,13 +259,11 @@
 
 (defn child-join-process-query
   [env]
-  (let [query           (child-join-process-query* env)
-        sql-query       (:sql-query query)
+  (let [sql-query       (child-join-process-individual-query* env)
         variable-values (process-variables env
                           (expressions/find-variables sql-query))]
-    (assoc query :sql-query
-      (expressions/substitute-atomic-variables
-        {:variable-values variable-values} sql-query))))
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
 
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
