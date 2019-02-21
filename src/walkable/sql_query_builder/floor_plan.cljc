@@ -418,15 +418,16 @@
       (assoc :compiled-join-selection compiled-join-selection))))
 
 (defn compile-join-conditions
-  [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
+  [{:keys [joins compiled-formulas target-columns clojuric-names] :as floor-plan}]
   (let [compiled-join-conditions
         (reduce-kv (fn [acc k join-seq]
-                     (let [target-column (get target-columns k)]
+                     (let [target-column (get target-columns k)
+                           clojuric-name (get clojuric-names target-column)]
                        (assoc acc k
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}
-                           (expressions/compile-to-string {}
-                             [:= target-column (expressions/av `source-column-value)])))))
+                           {:raw-string (str clojuric-name "= ?")
+                            :params     [(expressions/av `source-column-value)]}))))
           {}
           joins)]
     (-> floor-plan
