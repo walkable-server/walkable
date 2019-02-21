@@ -147,17 +147,6 @@
     (expressions/concatenate  #(clojure.string/join ", " %)
       compiled-normal-selection)))
 
-(defn child-join-process-selection
-  [{::keys [floor-plan] :as env} columns-to-query]
-  (let [{::floor-plan/keys [compiled-selection]} floor-plan
-
-        compiled-join-selection   (env/compiled-join-selection env)
-        compiled-normal-selection (mapv compiled-selection columns-to-query)
-        all-compiled-selection    (if compiled-join-selection
-                                    (conj compiled-normal-selection compiled-join-selection)
-                                    compiled-normal-selection)]
-    (expressions/concatenate  #(clojure.string/join ", " %)
-      all-compiled-selection)))
 
 (defn combine-params
   [& compiled-exprs]
