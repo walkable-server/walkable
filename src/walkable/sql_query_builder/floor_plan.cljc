@@ -449,7 +449,7 @@
                        (assoc acc k
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}
-                           {:raw-string (str clojuric-name "= ?")
+                           {:raw-string (str clojuric-name "=?")
                             :params     [(expressions/av `source-column-value)]}))))
           {}
           joins)]
