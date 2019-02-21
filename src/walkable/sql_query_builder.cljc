@@ -193,7 +193,7 @@
     {:sql-query     sql-query
      :join-children join-children}))
 
-(defn child-join-process-query*
+(defn child-join-process-individual-query*
   [{::keys [floor-plan] :as env}]
   (let [{:keys [columns-to-query]}
         (process-children env)
@@ -257,7 +257,7 @@
       (expressions/substitute-atomic-variables
         {:variable-values variable-values} sql-query))))
 
-(defn child-join-process-query
+(defn child-join-process-individual-query
   [env]
   (let [sql-query       (child-join-process-individual-query* env)
         variable-values (process-variables env
