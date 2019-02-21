@@ -224,6 +224,19 @@
                           :params (combine-params selection conditions having)}]
     sql-query))
 
+(defn child-join-process-individual-aggregator-query*
+  [{::keys [floor-plan] :as env}]
+  (let [selection  (env/compiled-aggregator-selection env)
+        conditions (env/compiled-join-condition env)
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table "walkable_common_join_children"
+                      :selection    (:raw-string selection)
+                      :conditions   (:raw-string conditions)})
+                   :params (combine-params selection conditions)}]
+    sql-query))
+
 (defn child-join-process-individual-query*
   [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
   (let [selection  select-all
