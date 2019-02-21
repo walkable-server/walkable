@@ -1,6 +1,10 @@
 (defproject walkable "1.2.0-SNAPSHOT"
-  :description "A serious way to fetch data from SQL using Clojure: Datomic pull syntax, Clojure flavored filtering and more."
-  :url "https://github.com/walkable-server/walkable"
+  :description "A Clojure(script) SQL library for building APIs"
+  :url "https://walkable.gitlab.io"
+  :license {:name         "Eclipse Public License - v 1.0"
+            :url          "http://www.eclipse.org/legal/epl-v10.html"
+            :distribution :repo
+            :comments     "same as Clojure"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]
                  [org.clojure/clojurescript "1.10.339" :scope "provided"]
