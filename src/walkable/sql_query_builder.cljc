@@ -158,7 +158,7 @@
   (into [] (comp (map :params) cat)
     compiled-exprs))
 
-(defn process-query*
+(defn top-level-process-query*
   [{::keys [floor-plan] :as env}]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -168,7 +168,34 @@
 
         columns-to-query (clojure.set/union columns-to-query order-by-columns)
         selection        (process-selection env columns-to-query)
-        conditions       (process-conditions env)
+        conditions       (top-level-process-conditions env)
+        having           (env/compiled-having env)
+        sql-query        {:raw-string
+                          (emitter/->query-string
+                            {:target-table   (env/target-table env)
+                             :join-statement (env/join-statement env)
+                             :selection      (:raw-string selection)
+                             :conditions     (:raw-string conditions)
+                             :group-by       (env/compiled-group-by env)
+                             :having         (:raw-string having)
+                             :offset         offset
+                             :limit          limit
+                             :order-by       order-by})
+                          :params (combine-params selection conditions having)}]
+    {:sql-query     sql-query
+     :join-children join-children}))
+
+(defn child-join-process-query*
+  [{::keys [floor-plan] :as env}]
+  (let [{:keys [join-children columns-to-query]}
+        (process-children env)
+
+        {:keys [offset limit order-by order-by-columns]}
+        (process-pagination env)
+
+        columns-to-query (clojure.set/union columns-to-query order-by-columns)
+        selection        (process-selection env columns-to-query)
+        conditions       (child-join-process-conditions env)
         having           (env/compiled-having env)
         sql-query        {:raw-string
                           (emitter/->query-string
