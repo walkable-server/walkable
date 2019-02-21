@@ -147,6 +147,7 @@
     (expressions/concatenate  #(clojure.string/join ", " %)
       compiled-normal-selection)))
 
+(def select-all {:raw-string "*" :params []})
 
 (defn combine-params
   [& compiled-exprs]
