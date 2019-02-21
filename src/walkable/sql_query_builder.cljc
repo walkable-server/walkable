@@ -371,11 +371,14 @@
   [{::keys [floor-plan] :as env}
    entities join-children]
   (let [{::floor-plan/keys [batch-query
+                            aggregator-keywords
                             target-columns
                             source-columns]} floor-plan]
     (when (and (seq entities) (seq join-children))
       (let [f (fn [join-child]
-                (let [j             (:dispatch-key join-child)
+                (let [j (:dispatch-key join-child)
+
+                      aggregator?   (contains? aggregator-keywords j)
                       ;; parent
                       source-column (get source-columns j)
                       ;; children
@@ -383,13 +386,19 @@
 
                       child-env (assoc env :ast join-child)
 
-                      pagination (process-pagination child-env)
+                      pagination (if aggregator?
+                                   {}
+                                   (process-pagination child-env))
 
                       shared-query
-                      (child-join-process-shared-query child-env pagination)
+                      (if aggregator?
+                        (child-join-process-shared-aggregator-query child-env)
+                        (child-join-process-shared-query child-env pagination))
 
                       unbound-individual-query
-                      (child-join-process-individual-query child-env pagination)
+                      (if aggregator?
+                        (child-join-process-individual-aggregator-query child-env)
+                        (child-join-process-individual-query child-env pagination))
 
                       individual-queries
                       (for [e    entities
