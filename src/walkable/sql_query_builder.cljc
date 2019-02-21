@@ -127,14 +127,12 @@
       (expressions/concatenate concat-with-and
         conditions))))
 
-(defn child-join-process-conditions
+(defn child-join-process-shared-conditions
   [{::keys [floor-plan] :as env}]
   (let [{::floor-plan/keys [compiled-conditions]} floor-plan
         conditions
         (->> env
-          ((juxt
-             env/compiled-join-condition
-             process-supplied-condition
+          ((juxt process-supplied-condition
              env/compiled-extra-condition))
           (into [] (remove nil?)))]
     (when (seq conditions)
