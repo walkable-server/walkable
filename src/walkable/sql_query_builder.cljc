@@ -322,7 +322,7 @@
                       target-column (get target-columns j)
 
                       unbound-sql-query
-                      (:sql-query (child-join-process-query (assoc env :ast join-child)))
+                      (child-join-process-individual-query (assoc env :ast join-child))
 
                       queries
                       (for [e    entities
