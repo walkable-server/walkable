@@ -202,7 +202,7 @@
         (process-pagination env)
 
         columns-to-query (clojure.set/union columns-to-query order-by-columns)
-        selection        (process-selection env columns-to-query)
+        selection        (child-join-process-selection env columns-to-query)
         conditions       (child-join-process-conditions env)
         having           (env/compiled-having env)
         sql-query        {:raw-string
