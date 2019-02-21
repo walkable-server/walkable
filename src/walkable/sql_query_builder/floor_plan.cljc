@@ -608,6 +608,7 @@
     compile-return-or-join
     compile-extra-conditions
     compile-join-conditions
+    compile-aggregator-selection
     compile-join-selection
     compile-ident-conditions
     compile-formulas-with-aliases
