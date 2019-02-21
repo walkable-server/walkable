@@ -103,16 +103,22 @@
             :throw?  true})
          1))))
 
+(defn oracle-validate-limit
+  [{:keys [limit percent with-ties]}]
+  (if percent
+    (< 0 limit 5)
+    (<= 2 limit 4)))
+
 (deftest limit-fallback-with-oracle-emitter-test
   (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
-                 {:default 99 :validate #(<= 2 % 4)})
+                 {:default 99 :validate oracle-validate-limit})
            (range 8))
         (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99 2 3 4 99 99 99])))
   (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
-                 {:default [99 :percent] :validate #(<= 2 % 4)})
+                 {:default [99 :percent] :validate oracle-validate-limit})
            (mapv #(do [% :percent]) (range 8)))
         [" FETCH FIRST 99 PERCENT ROWS ONLY"
-         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 1 PERCENT ROWS ONLY"
          " FETCH FIRST 2 PERCENT ROWS ONLY"
          " FETCH FIRST 3 PERCENT ROWS ONLY"
          " FETCH FIRST 4 PERCENT ROWS ONLY"
@@ -120,10 +126,10 @@
          " FETCH FIRST 99 PERCENT ROWS ONLY"
          " FETCH FIRST 99 PERCENT ROWS ONLY"]))
   (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
-                 {:default [99 :percent] :validate #(<= 2 % 4)})
+                 {:default [99 :percent] :validate oracle-validate-limit})
            (mapv #(do [% :percent :with-ties]) (range 8)))
         [" FETCH FIRST 99 PERCENT ROWS ONLY"
-         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 1 PERCENT ROWS WITH TIES"
          " FETCH FIRST 2 PERCENT ROWS WITH TIES"
          " FETCH FIRST 3 PERCENT ROWS WITH TIES"
          " FETCH FIRST 4 PERCENT ROWS WITH TIES"
@@ -152,13 +158,13 @@
   (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
         #"Malformed"
         ((sut/limit-fallback emitter/oracle-emitter
-           {:default 99 :validate #(<= 2 % 4)
+           {:default 99 :validate oracle-validate-limit
             :throw?  true})
          :abc)))
   (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
         #"Invalid"
         ((sut/limit-fallback emitter/oracle-emitter
-           {:default 99 :validate #(<= 2 % 4)
+           {:default 99 :validate oracle-validate-limit
             :throw?  true})
          1))))
 
