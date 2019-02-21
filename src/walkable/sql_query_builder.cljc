@@ -204,6 +204,26 @@
                           :params (combine-params selection conditions having)}]
     sql-query))
 
+(defn child-join-process-shared-aggregator-query*
+  [{::keys [floor-plan] :as env}]
+  (let [target-column    (env/target-column env)
+        columns-to-query #{target-column}
+        selection        (top-level-process-selection env columns-to-query)
+        conditions       (child-join-process-shared-conditions env)
+        having           (env/compiled-having env)
+        sql-query        {:raw-string
+                          (str "WITH walkable_common_join_children AS ("
+                            (emitter/->query-string
+                              {:target-table   (env/target-table env)
+                               :join-statement (env/join-statement env)
+                               :selection      (:raw-string selection)
+                               :conditions     (:raw-string conditions)
+                               :group-by       (env/compiled-group-by env)
+                               :having         (:raw-string having)})
+                            ")\n")
+                          :params (combine-params selection conditions having)}]
+    sql-query))
+
 (defn child-join-process-individual-query*
   [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
   (let [selection  select-all
