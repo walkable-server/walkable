@@ -270,7 +270,7 @@
         floor-plan
 
         k                                 (env/dispatch-key env)
-        {:keys [sql-query join-children]} (process-query env)]
+        {:keys [sql-query join-children]} (top-level-process-query env)]
     {:join-children join-children
      :entities      (if (contains? ident-keywords k)
                       ;; for idents
@@ -286,7 +286,7 @@
         floor-plan
 
         k                                 (env/dispatch-key env)
-        {:keys [sql-query join-children]} (process-query env)]
+        {:keys [sql-query join-children]} (top-level-process-query env)]
     (go
       {:join-children join-children
        :entities      (if (contains? ident-keywords k)
