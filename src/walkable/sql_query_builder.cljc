@@ -240,9 +240,19 @@
         (compute-graphs env variables)]
     (compute-variables env computed-graphs variables)))
 
-(defn process-query
+(defn top-level-process-query
   [env]
-  (let [query           (process-query* env)
+  (let [query           (top-level-process-query* env)
+        sql-query       (:sql-query query)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (assoc query :sql-query
+      (expressions/substitute-atomic-variables
+        {:variable-values variable-values} sql-query))))
+
+(defn child-join-process-query
+  [env]
+  (let [query           (child-join-process-query* env)
         sql-query       (:sql-query query)
         variable-values (process-variables env
                           (expressions/find-variables sql-query))]
