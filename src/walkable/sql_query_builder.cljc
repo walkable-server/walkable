@@ -317,6 +317,14 @@
     (expressions/substitute-atomic-variables
       {:variable-values variable-values} sql-query)))
 
+(defn child-join-process-individual-aggregator-query
+  [env]
+  (let [sql-query       (child-join-process-individual-aggregator-query* env)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
