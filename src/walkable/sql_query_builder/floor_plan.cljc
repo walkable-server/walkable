@@ -417,6 +417,29 @@
     (-> floor-plan
       (assoc :compiled-join-selection compiled-join-selection))))
 
+(defn compile-aggregator-selection
+  [{:keys [aggregator-keywords compiled-selection clojuric-names target-columns] :as floor-plan}]
+  (let [compiled-aggregator-selection
+        (reduce (fn [acc k]
+                  (let [target-column
+                        (get target-columns k)
+
+                        aggregator-selection
+                        (get compiled-selection k)
+
+                        source-column-selection
+                        (compile-selection
+                          {:raw-string "?"
+                           :params     [(expressions/av `source-column-value)]}
+                          (get clojuric-names target-column))]
+                    (assoc acc k
+                      (expressions/concatenate #(clojure.string/join ", " %)
+                        [source-column-selection aggregator-selection]))))
+          {}
+          aggregator-keywords)]
+    (-> floor-plan
+      (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
+
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns clojuric-names] :as floor-plan}]
   (let [compiled-join-conditions
