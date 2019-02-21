@@ -332,18 +332,30 @@
                       ;; children
                       target-column (get target-columns j)
 
-                      unbound-sql-query
-                      (child-join-process-individual-query (assoc env :ast join-child))
+                      child-env (assoc env :ast join-child)
 
-                      queries
+                      pagination (process-pagination child-env)
+
+                      shared-query
+                      (child-join-process-shared-query child-env pagination)
+
+                      unbound-individual-query
+                      (child-join-process-individual-query child-env pagination)
+
+                      individual-queries
                       (for [e    entities
                             :let [v (get e source-column)]]
-                        (->> unbound-sql-query
+                        (->> unbound-individual-query
                           (expressions/substitute-atomic-variables
-                            (source-column-variable-values v))))]
+                            (source-column-variable-values v))))
+
+                      batched-individuals (batch-query individual-queries)
+
+                      final-query (expressions/concatenate #(apply str %)
+                                    [shared-query batched-individuals])]
                   [join-child
                    {:data-fn #(group-by target-column %)
-                    :query   (build-parameterized-sql-query (batch-query queries))}]))]
+                    :query   (build-parameterized-sql-query final-query)}]))]
         (mapv f join-children)))))
 
 (defn join-children-data-by-join-key
