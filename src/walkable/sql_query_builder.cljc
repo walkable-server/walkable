@@ -301,6 +301,14 @@
     (expressions/substitute-atomic-variables
       {:variable-values variable-values} sql-query)))
 
+(defn child-join-process-shared-aggregator-query
+  [env]
+  (let [sql-query       (child-join-process-shared-aggregator-query* env)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
 (defn child-join-process-individual-query
   [env pagination]
   (let [sql-query       (child-join-process-individual-query* env pagination)
