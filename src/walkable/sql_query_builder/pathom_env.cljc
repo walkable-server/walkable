@@ -81,6 +81,12 @@
                          :walkable.sql-query-builder.floor-plan/compiled-join-selection)]
     (get join-selection (dispatch-key env))))
 
+(defn compiled-aggregator-selection
+  [env]
+  (let [aggregator-selection (-> env :walkable.sql-query-builder/floor-plan
+                               :walkable.sql-query-builder.floor-plan/compiled-aggregator-selection)]
+    (get aggregator-selection (dispatch-key env))))
+
 (defn compiled-group-by
   [env]
   (let [group-bys (-> env :walkable.sql-query-builder/floor-plan
