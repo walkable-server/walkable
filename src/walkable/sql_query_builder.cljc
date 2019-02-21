@@ -114,12 +114,25 @@
   (clojure.string/join " AND "
     (mapv (fn [x] (str "(" x ")")) xs)))
 
-(defn process-conditions
+(defn top-level-process-conditions
   [{::keys [floor-plan] :as env}]
   (let [{::floor-plan/keys [compiled-conditions]} floor-plan
         conditions
         (->> env
           ((juxt process-ident-condition
+             process-supplied-condition
+             env/compiled-extra-condition))
+          (into [] (remove nil?)))]
+    (when (seq conditions)
+      (expressions/concatenate concat-with-and
+        conditions))))
+
+(defn child-join-process-conditions
+  [{::keys [floor-plan] :as env}]
+  (let [{::floor-plan/keys [compiled-conditions]} floor-plan
+        conditions
+        (->> env
+          ((juxt
              env/compiled-join-condition
              process-supplied-condition
              env/compiled-extra-condition))
