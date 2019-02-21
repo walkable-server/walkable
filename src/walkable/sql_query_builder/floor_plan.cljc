@@ -570,6 +570,7 @@
    :compiled-ident-conditions
    :compiled-join-conditions
    :compiled-join-selection
+   :compiled-aggregator-selection
    :compiled-selection
    :emitter
    :ident-keywords
