@@ -141,7 +141,15 @@
       (expressions/concatenate concat-with-and
         conditions))))
 
-(defn process-selection
+(defn top-level-process-selection
+  [{::keys [floor-plan] :as env} columns-to-query]
+  (let [{::floor-plan/keys [compiled-selection]} floor-plan
+
+        compiled-normal-selection (mapv compiled-selection columns-to-query)]
+    (expressions/concatenate  #(clojure.string/join ", " %)
+      compiled-normal-selection)))
+
+(defn child-join-process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
   (let [{::floor-plan/keys [compiled-selection]} floor-plan
 
