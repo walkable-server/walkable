@@ -269,8 +269,8 @@
       {:variable-values variable-values} sql-query)))
 
 (defn child-join-process-individual-query
-  [env]
-  (let [sql-query       (child-join-process-individual-query* env)
+  [env pagination]
+  (let [sql-query       (child-join-process-individual-query* env pagination)
         variable-values (process-variables env
                           (expressions/find-variables sql-query))]
     (expressions/substitute-atomic-variables
