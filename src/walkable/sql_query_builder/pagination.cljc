@@ -4,111 +4,130 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [clojure.set :as set]))
 
-(defn wrap-validate-number [f]
-  (if (ifn? f)
-    #(and (number? %) (f %))
-    #(number? %)))
+(defn column+order-params-spec
+  [allowed-keys]
+  (s/+
+    (s/cat
+      :column ::expressions/namespaced-keyword
+      :params (s/* allowed-keys))))
 
-(s/def ::column+order-params
-  (s/cat
-    :column ::expressions/namespaced-keyword
-    :params (s/* #{:asc :desc :nils-first :nils-last})))
+(defn ->conform-order-by
+  [allowed-keys]
+  (fn conform-order-by [order-by]
+    (let [order-by (if (sequential? order-by) order-by [order-by])]
+      (s/conform (column+order-params-spec allowed-keys) order-by))))
 
-(defn conform-order-by [clojuric-names order-by]
-  (let [form (s/conform (s/+ ::column+order-params) order-by)]
-    (when-not (= ::s/invalid form)
-      (let [form (filter #(contains? clojuric-names (:column %)) form)]
-        (when (seq form)
-          (vec form))))))
-
-(defn wrap-validate-order-by [f]
-  (comp boolean
-    (if (ifn? f)
-      (fn [conformed-order-by]
-        (when conformed-order-by
-          (every? f (map :column conformed-order-by))))
-      identity)))
-
-(defn number-fallback
-  [{:keys [stringify conform]}
-   {:keys [default validate]}]
-  (let [default  (when default (stringify default))
-        validate (wrap-validate-number validate)]
-    (fn [supplied]
-      (let [conformed (conform supplied)
-            v?        (validate conformed)]
-        (if v?
-          (stringify conformed)
-          default)))))
-
-(defn emitter->offset-fallback
-  [emitter]
-  (fn [offset]
-    (number-fallback {:stringify (:stringify-offset emitter)
-                      :conform   (:conform-offset emitter)}
-      offset)))
-
-(defn emitter->limit-fallback
-  [emitter]
-  (fn [limit]
-    (number-fallback {:stringify (:stringify-limit emitter)
-                      :conform   (:conform-limit emitter)}
-      limit)))
-
-(def order-params->string
-  {:asc        " ASC"
-   :desc       " DESC"
-   :nils-first " NULLS FIRST"
-   :nils-last  " NULLS LAST"})
-
-(defn ->order-by-string [clojuric-names conformed-order-by]
-  (when conformed-order-by
-    (->> conformed-order-by
-      (map (fn [{:keys [column params]}]
-             (str
-               (get clojuric-names column)
-               (->> params
-                 (map order-params->string)
-                 (apply str)))))
-      (clojure.string/join ", "))))
+(defn ->stringify-order-by
+  [order-params->string]
+  (fn stringify-order-by [clojuric-names conformed-order-by]
+    (when conformed-order-by
+      (->> conformed-order-by
+        (map (fn [{:keys [column params]}]
+               (str
+                 (get clojuric-names column)
+                 (->> params
+                   (map order-params->string)
+                   (apply str)))))
+        (clojure.string/join ", ")
+        (str " ORDER BY ")))))
 
 (defn columns-and-string
   [conformed stringify]
   {:columns (into #{} (map :column) conformed)
    :string  (stringify conformed)})
 
+(defn wrap-validate-order-by [f]
+  (comp boolean
+    (if (ifn? f)
+      (fn wrapped-validate-order-by [conformed-order-by]
+        (when-not (s/invalid? conformed-order-by)
+          (every? f (map :column conformed-order-by))))
+      identity)))
+
 (defn order-by-fallback*
   [{:keys [conform stringify]}
-   {:keys [default validate]}]
+   {:keys [default validate throw?]}]
   (let [default  (when default
                    (let [conformed (conform default)]
+                     (assert (not (s/invalid? conformed))
+                       "Malformed default value")
                      (columns-and-string conformed stringify)))
         validate (wrap-validate-order-by validate)]
-    (fn [supplied]
-      (let [conformed (conform supplied)]
-        (if (and conformed (validate conformed))
-          (columns-and-string conformed stringify)
-          default)))))
+    (if throw?
+      (fn aggressive-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (s/invalid? conformed)
+            (throw (ex-info "Malformed!" {}))
+            (if (validate conformed)
+              (columns-and-string conformed stringify)
+              (throw (ex-info "Invalid!" {}))))))
+      (fn silent-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (and (not (s/invalid? conformed)) (validate conformed))
+            (columns-and-string conformed stringify)
+            default))))))
 
 (defn order-by-fallback
-  [clojuric-names order-by]
+  [{:keys [conform-order-by stringify-order-by] :as emitter}
+   clojuric-names order-by-config]
   (order-by-fallback*
-    {:conform       #(conform-order-by clojuric-names %)
-     :stringify     #(when % (str " ORDER BY "
-                               (->order-by-string clojuric-names %)))}
-    order-by))
+    {:conform   conform-order-by
+     :stringify #(stringify-order-by clojuric-names %)}
+    order-by-config))
+
+(defn number-fallback
+  [{:keys [stringify conform wrap-validate]}
+   {:keys [default validate throw?] :or {validate (constantly true)}}]
+  (let [default
+        (when default
+          (let [conformed (conform default)]
+            (assert (not (s/invalid? conformed))
+              "Malformed default value")
+            (stringify conformed)))
+        validate (wrap-validate validate)]
+    (if throw?
+      (fn aggressive-fallback [supplied]
+        (let [conformed (conform supplied)]
+          (if (s/invalid? conformed)
+            (throw (ex-info "Malformed!" {}))
+            (if (validate conformed)
+              (stringify conformed)
+              (throw (ex-info "Invalid!" {}))))))
+      (fn silent-fallback [supplied]
+        (let [conformed (conform supplied)
+              valid?    (and (not (s/invalid? conformed))
+                          (validate conformed))]
+          (if valid?
+            (stringify conformed)
+            default))))))
+
+(defn offset-fallback
+  [emitter offset-config]
+  (number-fallback {:stringify     (:stringify-offset emitter)
+                    :conform       (:conform-offset emitter)
+                    :wrap-validate (:wrap-validate-offset emitter)}
+    offset-config))
+
+(defn limit-fallback
+  [emitter limit-config]
+  (number-fallback {:stringify     (:stringify-limit emitter)
+                    :conform       (:conform-limit emitter)
+                    :wrap-validate (:wrap-validate-limit emitter)}
+    limit-config))
 
 (defn compile-fallbacks*
   [emitter clojuric-names pagination-fallbacks]
-  (reduce (fn [acc [k {:keys [offset limit order-by]}]]
+  (reduce (fn [acc [k {offset-config   :offset
+                       limit-config    :limit
+                       order-by-config :order-by}]]
             (let [v {:offset-fallback
-                     ((emitter->offset-fallback emitter) offset)
+                     (offset-fallback emitter offset-config)
 
                      :limit-fallback
-                     ((emitter->limit-fallback emitter) limit)
+                     (limit-fallback emitter limit-config)
 
                      :order-by-fallback
-                     (order-by-fallback clojuric-names order-by)}]
+                     (order-by-fallback emitter clojuric-names order-by-config)}]
               (assoc acc k v)))
     {}
     pagination-fallbacks))

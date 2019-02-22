@@ -1,5 +1,9 @@
 dist: cosmic
 language: clojure
+cache:
+  directories:
+  - node_modules
+  - $HOME/.m2
 services:
   - mysql
   - postgresql

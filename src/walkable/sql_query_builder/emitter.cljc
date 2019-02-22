@@ -1,6 +1,7 @@
 (ns walkable.sql-query-builder.emitter
   (:require [clojure.spec.alpha :as s]
-            [walkable.sql-query-builder.expressions :as expressions]))
+            [walkable.sql-query-builder.expressions :as expressions]
+            [walkable.sql-query-builder.pagination :as pagination]))
 
 (def backticks
   (repeat 2 "`"))
@@ -53,8 +54,10 @@
   (let [[wrap-open wrap-close] (:wrap-select-strings this)]
     (str wrap-open s wrap-close)))
 
+(def conform-integer #(s/conform integer? %))
+
 (def default-emitter
-  {:quote-marks           quotation-marks
+  {:quote-marks quotation-marks
 
    :transform-table-name  dash-to-underscore
    :transform-column-name dash-to-underscore
@@ -62,17 +65,31 @@
    :rename-columns        {}
    :rename-keywords       {}
 
-   :wrap-select-strings   ["(" ")"]
+   :wrap-select-strings ["(" ")"]
 
-   :conform-offset        identity
-   :stringify-offset      #(str " OFFSET " %)
+   :conform-offset       conform-integer
+   :wrap-validate-offset identity
+   :stringify-offset     #(str " OFFSET " %)
 
-   :conform-limit         identity
-   :stringify-limit       #(str " LIMIT " %)})
+   :conform-limit       conform-integer
+   :wrap-validate-limit identity
+   :stringify-limit     #(str " LIMIT " %)
+
+   :conform-order-by   (pagination/->conform-order-by #{:asc :desc :nils-first :nils-last})
+   :stringify-order-by (pagination/->stringify-order-by
+                         {:asc        " ASC"
+                          :desc       " DESC"
+                          :nils-first " NULLS FIRST"
+                          :nils-last  " NULLS LAST"})})
 
 (def sqlite-emitter
   (merge default-emitter
-    {:wrap-select-strings ["SELECT * FROM (" ")"]}))
+    {:wrap-select-strings ["SELECT * FROM (" ")"]
+
+     :conform-order-by   (pagination/->conform-order-by #{:asc :desc})
+     :stringify-order-by (pagination/->stringify-order-by
+                           {:asc        " ASC"
+                            :desc       " DESC"})}))
 
 (def postgres-emitter
   default-emitter)
@@ -81,10 +98,26 @@
   (merge default-emitter
     {:quote-marks backticks}))
 
+(defn oracle-conform-limit
+  [limit]
+  (->> (if (sequential? limit) limit [limit])
+    (s/conform (s/cat :limit integer?
+                 :percent (s/? #(= :percent %))
+                 :with-ties (s/? #(= :with-ties %))))))
+
+(defn oracle-stringify-limit
+  [{:keys [limit percent with-ties] :as conformed-limit}]
+  (str " FETCH FIRST " limit
+    (when percent " PERCENT")
+    " ROWS"
+    (if with-ties " WITH TIES" " ONLY")))
+
 (def oracle-emitter
   (merge default-emitter
-    {:stringify-limit  #(str " FETCH FIRST " % " ROWS ONLY ")
-     :stringify-offset #(str " OFFSET " % " ROWS ")}))
+    {:conform-limit       oracle-conform-limit
+     :stringify-limit     oracle-stringify-limit
+
+     :stringify-offset #(str " OFFSET " % " ROWS")}))
 
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]

@@ -2,56 +2,175 @@
   (:require [walkable.sql-query-builder.pagination :as sut]
             [walkable.sql-query-builder.emitter :as emitter]
             [clojure.spec.alpha :as s]
-            [clojure.test :as t :refer [deftest testing is]]))
+            [clojure.test :as t :refer [deftest testing is are]]))
 
-(deftest ->order-by-string-tests
-  (is (= (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
-           [{:column :person/name} {:column :person/age, :params [:desc :nils-last]}])
-        "`p`.`n`, `p`.`a` DESC NULLS LAST"))
+(deftest ->stringify-order-by-tests
+  (is (= ((sut/->stringify-order-by
+            {:asc        " ASC"
+             :desc       " DESC"
+             :nils-first " NULLS FIRST"
+             :nils-last  " NULLS LAST"})
+          {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+          [{:column :person/name} {:column :person/age, :params [:desc :nils-last]}])
+        " ORDER BY `p`.`n`, `p`.`a` DESC NULLS LAST"))
 
-  (is (nil? (sut/->order-by-string {:person/name "`p`.`n`" :person/age "`p`.`a`"}
-              nil))))
+  (is (nil? ((sut/->stringify-order-by
+               {:asc        " ASC"
+                :desc       " DESC"
+                :nils-first " NULLS FIRST"
+                :nils-last  " NULLS LAST"})
+             {:person/name "`p`.`n`" :person/age "`p`.`a`"}
+             nil))))
 
-(deftest wrap-validate-number-test
-  (is (= (->> (range 8) (map (sut/wrap-validate-number #(<= 2 % 4))))
-        [false false true true true false false false]))
-  (is (= (->> [:invalid 'types] (map (sut/wrap-validate-number #(<= 2 % 4))))
-        [false false])))
+(deftest ->conform-order-by-test
+  (are [order-by conformed]
+      (= ((sut/->conform-order-by #{:asc :desc :nils-first :nils-last})
+          order-by)
+        conformed)
 
-(deftest conform-order-by-test
-  (is (= (map #(sut/conform-order-by {:x/a "`x/a`" :x/b "`x/b`"} %)
-           [[:x/a :asc :x/b :desc :nils-first :x/invalid-key]
-            [:x/a :asc :x/b :desc :nils-first 'invalid-type]
-            [:x/a :asc :x/b :desc :nils-first]
-            :invalid-type])
-        [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-         nil
-         [{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-         nil])))
+    :x/a
+    [{:column :x/a}]
+
+    [:x/a :asc :x/b :desc :nils-first :x/c]
+    [{:column :x/a, :params [:asc]}
+     {:column :x/b, :params [:desc :nils-first]}
+     {:column :x/c}]
+
+    [:x/a :asc :x/b :desc :nils-first 'invalid-type]
+    ::s/invalid
+
+    [:x/a :asc :x/b :desc :nils-first]
+    [{:column :x/a, :params [:asc]}
+     {:column :x/b, :params [:desc :nils-first]}]
+
+    :invalid-type
+    ::s/invalid))
 
 (deftest wrap-validate-order-by-test
-  (is (= (mapv (sut/wrap-validate-order-by #{:x/a :x/b})
-           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:asc]} {:column :x/invalid-key, :params [:desc :nils-first]}]
-            nil])
-        [true false false]))
-  (is (= (mapv (sut/wrap-validate-order-by nil)
-           [[{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
-            [{:column :x/a, :params [:asc]} {:column :x/any-key, :params [:desc :nils-first]}]
-            nil])
-        [true true false])))
+  (let [simple-validate  (sut/wrap-validate-order-by #{:x/a :x/b})
+        default-validate (sut/wrap-validate-order-by nil)]
+    (are [validate conformed-order-by valid?]
+        (= (validate conformed-order-by) valid?)
 
-(deftest emitter->offset-fallback-test
-  (let [offset-fallback (sut/emitter->offset-fallback emitter/default-emitter)]
-    (is (= (mapv (offset-fallback {:default 2 :validate #(<= 2 % 4)})
-             (range 8))
-          (mapv #(str " OFFSET " %) [2 2 2 3 4 2 2 2])))
-    (is (= (map (offset-fallback {:default 2 :validate #(<= 2 % 4)})
-             [:invalid 'types])
-          (mapv #(str " OFFSET " %) [2 2])))))
+      simple-validate
+      [{:column :x/a, :params [:asc]} {:column :x/b, :params [:desc :nils-first]}]
+      true
+
+      simple-validate
+      [{:column :x/a, :params [:asc]}
+       {:column :x/invalid-key, :params [:desc :nils-first]}]
+      false
+
+      default-validate
+      [{:column :x/a, :params [:asc]}
+       {:column :x/b, :params [:desc :nils-first]}]
+      true
+
+      default-validate
+      [{:column :x/a, :params [:asc]}
+       {:column :x/any-key, :params [:desc :nils-first]}]
+      true)))
+
+(deftest offset-fallback-with-default-emitter-test
+  (is (= (mapv (sut/offset-fallback emitter/default-emitter
+                 {:default 99 :validate #(<= 2 % 4)})
+           (range 8))
+        (mapv #(str " OFFSET " %) [99 99 2 3 4 99 99 99])))
+  (is (= (map (sut/offset-fallback emitter/default-emitter
+                {:default 99 :validate #(<= 2 % 4)})
+           [:invalid 'types])
+        (mapv #(str " OFFSET " %) [99 99]))))
+
+(deftest limit-fallback-with-default-emitter-test
+  (is (= (mapv (sut/limit-fallback emitter/default-emitter
+                 {:default 99 :validate #(<= 2 % 4)})
+           (range 8))
+        (mapv #(str " LIMIT " %) [99 99 2 3 4 99 99 99])))
+  (is (= (map (sut/limit-fallback emitter/default-emitter
+                {:default 99 :validate #(<= 2 % 4)})
+           [:invalid 'types])
+        (mapv #(str " LIMIT " %) [99 99])))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Malformed"
+        ((sut/limit-fallback emitter/default-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         :abc)))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Invalid"
+        ((sut/limit-fallback emitter/default-emitter
+           {:default 99 :validate #(<= 2 % 4)
+            :throw?  true})
+         1))))
+
+(defn oracle-validate-limit
+  [{:keys [limit percent with-ties]}]
+  (if percent
+    (< 0 limit 5)
+    (<= 2 limit 4)))
+
+(deftest limit-fallback-with-oracle-emitter-test
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default 99 :validate oracle-validate-limit})
+           (range 8))
+        (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99 2 3 4 99 99 99])))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent] :validate oracle-validate-limit})
+           (mapv #(do [% :percent]) (range 8)))
+        [" FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 1 PERCENT ROWS ONLY"
+         " FETCH FIRST 2 PERCENT ROWS ONLY"
+         " FETCH FIRST 3 PERCENT ROWS ONLY"
+         " FETCH FIRST 4 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent] :validate oracle-validate-limit})
+           (mapv #(do [% :percent :with-ties]) (range 8)))
+        [" FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 1 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 2 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 3 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 4 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"
+         " FETCH FIRST 99 PERCENT ROWS ONLY"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent]})
+           (mapv #(do [% :percent :with-ties]) (range 8)))
+        [" FETCH FIRST 0 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 1 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 2 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 3 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 4 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 5 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 6 PERCENT ROWS WITH TIES"
+         " FETCH FIRST 7 PERCENT ROWS WITH TIES"]))
+  (is (= (mapv (sut/limit-fallback emitter/oracle-emitter
+                 {:default [99 :percent]})
+           (mapv #(do [% :percent :with-ties-typo]) (range 8)))
+        (repeat 8 " FETCH FIRST 99 PERCENT ROWS ONLY")))
+  (is (= (map (sut/limit-fallback emitter/oracle-emitter
+                {:default 99 :validate #(<= 2 % 4)})
+           [:invalid 'types])
+        (mapv #(str " FETCH FIRST " % " ROWS ONLY") [99 99])))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Malformed"
+        ((sut/limit-fallback emitter/oracle-emitter
+           {:default 99 :validate oracle-validate-limit
+            :throw?  true})
+         :abc)))
+  (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
+        #"Invalid"
+        ((sut/limit-fallback emitter/oracle-emitter
+           {:default 99 :validate oracle-validate-limit
+            :throw?  true})
+         1))))
 
 (deftest order-by-fallback-test
   (is (= (mapv (sut/order-by-fallback
+                 emitter/default-emitter
                  {:x/a "x.a" :x/b "x.b"}
                  {:default  [:x/a :asc :x/b]
                   :validate #{:x/a :x/b}})
@@ -60,8 +179,8 @@
             nil])
         [{:columns #{:x/a :x/b},
           :string  " ORDER BY x.a DESC, x.b DESC NULLS FIRST"}
-         {:columns #{:x/a},
-          :string  " ORDER BY x.a DESC"}
+         {:columns #{:x/a :x/b},
+          :string  " ORDER BY x.a ASC, x.b"}
          {:columns #{:x/a :x/b},
           :string  " ORDER BY x.a ASC, x.b"}])))
 
