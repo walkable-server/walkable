@@ -414,15 +414,15 @@
                       final-query (expressions/concatenate #(apply str %)
                                     [shared-query batched-individuals])]
                   [join-child-ast
-                   {:data-fn #(group-by target-column %)
-                    :query   (build-parameterized-sql-query final-query)}]))]
+                   {:target-column target-column
+                    :query         (build-parameterized-sql-query final-query)}]))]
         (mapv f join-children)))))
 
 (defn join-children-data-by-join-key
   [{::keys [run-query sql-db] :as env} entities join-children]
-  (let [f (fn [[join-child {:keys [data-fn query]}]]
+  (let [f (fn [[join-child {:keys [target-column query]}]]
             (let [data (run-query sql-db query)]
-              [join-child (data-fn data)]))]
+              [join-child (group-by target-column data)]))]
     (into {}
       (map f)
       (join-children-data env entities join-children))))
@@ -431,9 +431,9 @@
   [{::keys [run-query sql-db] :as env} entities join-children]
   (async/into {}
     (async/merge
-      (map (fn [[join-child {:keys [data-fn query]}]]
+      (map (fn [[join-child {:keys [target-column query]}]]
              (go (let [data (<! (run-query sql-db query))]
-                  [join-child (data-fn data)])))
+                   [join-child (group-by target-column data)])))
         (join-children-data env entities join-children)))))
 
 (defn entities-with-join-children-data
