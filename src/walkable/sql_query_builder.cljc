@@ -388,8 +388,8 @@
                             target-columns
                             source-columns]} floor-plan]
     (when (and (seq entities) (seq join-children))
-      (let [f (fn [join-child]
-                (let [j (:dispatch-key join-child)
+      (let [f (fn [join-child-ast]
+                (let [j (:dispatch-key join-child-ast)
 
                       aggregator?   (contains? aggregator-keywords j)
                       ;; parent
@@ -397,7 +397,7 @@
                       ;; children
                       target-column (get target-columns j)
 
-                      child-env (assoc env :ast join-child)
+                      child-env (assoc env :ast join-child-ast)
 
                       {:keys [shared-query unbound-individual-query]}
                       (process-join-children child-env aggregator?)
@@ -413,7 +413,7 @@
 
                       final-query (expressions/concatenate #(apply str %)
                                     [shared-query batched-individuals])]
-                  [join-child
+                  [join-child-ast
                    {:data-fn #(group-by target-column %)
                     :query   (build-parameterized-sql-query final-query)}]))]
         (mapv f join-children)))))
