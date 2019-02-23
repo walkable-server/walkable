@@ -367,6 +367,19 @@
   {:variable-values {`floor-plan/source-column-value
                      (expressions/verbatim-raw-string v)}})
 
+(defn process-join-children
+  [child-env aggregator?]
+  (if aggregator?
+    {:shared-query
+     (child-join-process-shared-aggregator-query child-env)
+     :unbound-individual-query
+     (child-join-process-individual-aggregator-query child-env)}
+    (let [pagination (process-pagination child-env)]
+      {:shared-query
+       (child-join-process-shared-query child-env pagination)
+       :unbound-individual-query
+       (child-join-process-individual-query child-env pagination)})))
+
 (defn join-children-data
   [{::keys [floor-plan] :as env}
    entities join-children]
@@ -386,19 +399,8 @@
 
                       child-env (assoc env :ast join-child)
 
-                      pagination (if aggregator?
-                                   {}
-                                   (process-pagination child-env))
-
-                      shared-query
-                      (if aggregator?
-                        (child-join-process-shared-aggregator-query child-env)
-                        (child-join-process-shared-query child-env pagination))
-
-                      unbound-individual-query
-                      (if aggregator?
-                        (child-join-process-individual-aggregator-query child-env)
-                        (child-join-process-individual-query child-env pagination))
+                      {:keys [shared-query unbound-individual-query]}
+                      (process-join-children child-env aggregator?)
 
                       individual-queries
                       (for [e    entities
