@@ -441,6 +441,14 @@
 (defn process-join-children
   [child-env aggregator?]
   (if aggregator?
+    {:unbound-individual-query
+     (child-join-process-individual-aggregator-query child-env)}
+    (let [pagination (process-pagination child-env)]
+      {:unbound-individual-query
+       (child-join-process-individual-query child-env pagination)})))
+
+  [child-env aggregator?]
+  (if aggregator?
     {:shared-query
      (child-join-process-shared-aggregator-query child-env)
      :unbound-individual-query
