@@ -447,17 +447,19 @@
       {:unbound-individual-query
        (child-join-process-individual-query child-env pagination)})))
 
+(defn process-join-children-cte
   [child-env aggregator?]
   (if aggregator?
     {:shared-query
      (child-join-process-shared-aggregator-query child-env)
      :unbound-individual-query
-     (child-join-process-individual-aggregator-query child-env)}
+     (child-join-process-individual-aggregator-query-cte child-env)}
     (let [pagination (process-pagination child-env)]
       {:shared-query
        (child-join-process-shared-query child-env pagination)
        :unbound-individual-query
-       (child-join-process-individual-query child-env pagination)})))
+       (child-join-process-individual-query-cte child-env pagination)})))
+
 
 (defn join-children-data
   [{::keys [floor-plan] :as env}
