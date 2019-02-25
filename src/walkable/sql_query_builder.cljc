@@ -115,9 +115,8 @@
     (mapv (fn [x] (str "(" x ")")) xs)))
 
 (defn top-level-process-conditions
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [compiled-conditions]} floor-plan
-        conditions
+  [env]
+  (let [conditions
         (->> env
           ((juxt process-ident-condition
              process-supplied-condition
