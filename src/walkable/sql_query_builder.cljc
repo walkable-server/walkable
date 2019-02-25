@@ -460,6 +460,26 @@
        :unbound-individual-query
        (child-join-process-individual-query-cte child-env pagination)})))
 
+(defn final-query
+  [batch-query cet? aggregator?
+   child-env source-column entities]
+  (let [{:keys [shared-query unbound-individual-query]}
+        (if cet?
+          (process-join-children-cte child-env aggregator?)
+          (process-join-children child-env aggregator?))
+
+        individual-queries
+        (for [e    entities
+              :let [v (get e source-column)]]
+          (->> unbound-individual-query
+            (expressions/substitute-atomic-variables
+              (source-column-variable-values v))))
+
+        batched-individuals (batch-query individual-queries)]
+    (if cet?
+      (expressions/concatenate #(apply str %)
+        [shared-query batched-individuals])
+      batched-individuals)))
 
 (defn join-children-data
   [{::keys [floor-plan] :as env}
