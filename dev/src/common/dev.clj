@@ -135,7 +135,7 @@
              {:emitter          emitter
               ;; columns already declared in :joins are not needed
               ;; here
-              :columns          [:cow/color
+              :true-columns     [:cow/color
                                  :farmer/number
                                  :farmer/name]
               :idents           {:farmer/by-id :farmer/number
@@ -166,7 +166,7 @@
                      {:emitter          emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
-                      :columns          [:cow/color
+                      :true-columns     [:cow/color
                                          :farmer/number
                                          :farmer/name]
                       :idents           {:farmer/by-id :farmer/number
