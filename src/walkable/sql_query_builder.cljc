@@ -486,6 +486,7 @@
    entities join-children]
   (let [{::floor-plan/keys [batch-query
                             aggregator-keywords
+                            cet-keywords
                             target-columns
                             source-columns]} floor-plan]
     (when (and (seq entities) (seq join-children))
@@ -493,6 +494,8 @@
                 (let [j (:dispatch-key join-child-ast)
 
                       aggregator?   (contains? aggregator-keywords j)
+
+                      cet? true
                       ;; parent
                       source-column (get source-columns j)
                       ;; children
@@ -500,23 +503,12 @@
 
                       child-env (assoc env :ast join-child-ast)
 
-                      {:keys [shared-query unbound-individual-query]}
-                      (process-join-children child-env aggregator?)
-
-                      individual-queries
-                      (for [e    entities
-                            :let [v (get e source-column)]]
-                        (->> unbound-individual-query
-                          (expressions/substitute-atomic-variables
-                            (source-column-variable-values v))))
-
-                      batched-individuals (batch-query individual-queries)
-
-                      final-query (expressions/concatenate #(apply str %)
-                                    [shared-query batched-individuals])]
+                      query
+                      (final-query batch-query cet? aggregator?
+                        child-env source-column entities)]
                   [join-child-ast
                    {:target-column target-column
-                    :query         (build-parameterized-sql-query final-query)}]))]
+                    :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
 
 (defn join-children-data-by-join-key
