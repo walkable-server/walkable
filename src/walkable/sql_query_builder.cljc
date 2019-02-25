@@ -251,6 +251,33 @@
     sql-query))
 
 (defn child-join-process-individual-query*
+  [{::keys [floor-plan] :as env} {:keys [offset limit order-by order-by-columns]}]
+  (let [{:keys [columns-to-query]} (process-children env)
+        target-column              (env/target-column env)
+
+        columns-to-query
+        (-> (clojure.set/union columns-to-query order-by-columns)
+          (conj target-column))
+
+        selection
+        (top-level-process-selection env columns-to-query)
+
+        conditions (env/compiled-join-condition env)
+
+        having    (env/compiled-having env)
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table   (env/target-table env)
+                      :join-statement (env/join-statement env)
+                      :selection      (:raw-string selection)
+                      :conditions     (:raw-string conditions)
+                      :group-by       (env/compiled-group-by env)
+                      :having         (:raw-string having)
+                      :offset         offset
+                      :limit          limit
+                      :order-by       order-by})
+                   :params (combine-params selection conditions having)}]
+    sql-query))
   [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
   (let [selection  select-all
         conditions (env/compiled-join-condition env)
