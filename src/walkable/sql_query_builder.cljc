@@ -139,9 +139,8 @@
         conditions))))
 
 (defn child-join-process-shared-conditions
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [compiled-conditions]} floor-plan
-        conditions
+  [env]
+  (let [conditions
         (->> env
           ((juxt process-supplied-condition
              env/compiled-extra-condition))
