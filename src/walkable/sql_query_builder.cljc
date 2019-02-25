@@ -291,9 +291,11 @@
                       :conditions   (:raw-string conditions)})
                    :params (combine-params selection conditions)}]
     sql-query))
+
+(defn child-join-process-individual-query-cte*
   [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
   (let [selection  select-all
-        conditions (env/compiled-join-condition env)
+        conditions (env/compiled-join-condition-cte env)
 
         sql-query {:raw-string
                    (emitter/->query-string
