@@ -470,7 +470,7 @@
           {}
           joins)]
     (-> floor-plan
-      (assoc :compiled-join-conditions compiled-join-conditions)
+      (assoc :compiled-join-conditions-cte compiled-join-conditions)
       (dissoc :joins))))
 
 (defn compile-extra-conditions
@@ -585,6 +585,7 @@
    :compiled-having
    :compiled-ident-conditions
    :compiled-join-conditions
+   :compiled-join-conditions-cte
    :compiled-join-selection
    :compiled-aggregator-selection
    :compiled-selection
@@ -623,6 +624,7 @@
     compile-return-or-join-async
     compile-return-or-join
     compile-extra-conditions
+    compile-join-conditions-cte
     compile-join-conditions
     compile-aggregator-selection
     compile-join-selection
