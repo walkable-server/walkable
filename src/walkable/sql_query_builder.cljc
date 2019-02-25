@@ -236,12 +236,15 @@
 
 (defn child-join-process-individual-aggregator-query*
   [{::keys [floor-plan] :as env}]
-  (let [selection  (env/compiled-aggregator-selection env)
+  (let [{:keys [columns-to-query]} (process-children env)
+        target-column              (env/target-column env)
+
+        selection  (env/compiled-aggregator-selection env)
         conditions (env/compiled-join-condition env)
 
         sql-query {:raw-string
                    (emitter/->query-string
-                     {:target-table "walkable_common_join_children"
+                     {:target-table (env/target-table env)
                       :selection    (:raw-string selection)
                       :conditions   (:raw-string conditions)})
                    :params (combine-params selection conditions)}]
