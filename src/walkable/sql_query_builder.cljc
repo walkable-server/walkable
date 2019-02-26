@@ -486,7 +486,7 @@
    entities join-children]
   (let [{::floor-plan/keys [batch-query
                             aggregator-keywords
-                            cet-keywords
+                            cte-keywords
                             target-columns
                             source-columns]} floor-plan]
     (when (and (seq entities) (seq join-children))
