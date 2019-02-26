@@ -470,7 +470,21 @@
           {}
           joins)]
     (-> floor-plan
-      (assoc :compiled-join-conditions-cte compiled-join-conditions)
+      (assoc :compiled-join-conditions-cte compiled-join-conditions))))
+
+(defn compile-cte-keywords
+  [{:keys [joins use-cte] :as floor-plan}]
+  (let [join-keys (keys joins)
+        {:keys [default]} use-cte
+        cte-keywords (reduce (fn [acc k]
+                               (if (get use-cte k default)
+                                 (conj acc k)
+                                 acc))
+                       #{}
+                       join-keys)]
+    (-> floor-plan
+      (assoc :cte-keywords cte-keywords)
+      (dissoc :use-cte)
       (dissoc :joins))))
 
 (defn compile-extra-conditions
