@@ -607,6 +607,7 @@
    :ident-keywords
    :join-filter-subqueries
    :join-keywords
+   :cte-keywords
    :join-statements
    :compiled-pagination-fallbacks
    :required-columns
@@ -638,6 +639,7 @@
     compile-return-or-join-async
     compile-return-or-join
     compile-extra-conditions
+    compile-cte-keywords
     compile-join-conditions-cte
     compile-join-conditions
     compile-aggregator-selection
