@@ -22,7 +22,7 @@
   [db db-type scenarios]
   (into []
     (for [[scenario {:keys [core-floor-plan test-suite]}] scenarios
-          {:keys [message env query expected]}        test-suite]
+          {:keys [message env query expected]}            test-suite]
       (testing (str "In scenario " scenario " for " db-type ", testing " message)
         (is (= expected
               (-> {::p/placeholder-prefixes #{"ph"}}
@@ -32,4 +32,16 @@
                             (floor-plan/compile-floor-plan
                               (merge core-floor-plan
                                 {:emitter (db-specific-emitter db-type)}))})
-                (walkable-parser query))))))))
+                (walkable-parser query)))
+          "without CTEs in joins")
+        (is (= expected
+              (-> {::p/placeholder-prefixes #{"ph"}}
+                (merge env {::sqb/sql-db    db
+                            ::sqb/run-query jdbc/query
+                            ::sqb/floor-plan
+                            (floor-plan/compile-floor-plan
+                              (merge core-floor-plan
+                                {:emitter (db-specific-emitter db-type)
+                                 :use-cte {:default true}}))})
+                (walkable-parser query)))
+          "with CTEs in joins")))))
