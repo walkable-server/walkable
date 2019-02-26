@@ -493,9 +493,9 @@
       (let [f (fn [join-child-ast]
                 (let [j (:dispatch-key join-child-ast)
 
-                      aggregator?   (contains? aggregator-keywords j)
+                      aggregator? (contains? aggregator-keywords j)
+                      cet?        (contains? cte-keywords j)
 
-                      cet? false
                       ;; parent
                       source-column (get source-columns j)
                       ;; children
