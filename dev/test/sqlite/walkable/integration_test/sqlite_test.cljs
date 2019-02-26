@@ -33,19 +33,34 @@
 
 (defn run-scenario-tests*
   [db db-type scenarios]
-  (for [[scenario {:keys [core-floor-plan test-suite]}] scenarios
-        {:keys [message env query expected]}            test-suite]
-    {:msg      (str "In scenario " scenario " for " db-type ", testing " message)
-     :result   (walkable-parser
-                 (->> env (merge {::sqb/sql-db             db
-                                  ::sqb/run-query          async-run-query
-                                  ::p/placeholder-prefixes #{"ph"}
-                                  ::sqb/floor-plan
-                                  (floor-plan/compile-floor-plan
-                                    (merge core-floor-plan
-                                      {:emitter (db-specific-emitter db-type)}))}))
-                 query)
-     :expected expected}))
+  (apply concat
+    (for [[scenario {:keys [core-floor-plan test-suite]}] scenarios
+          {:keys [message env query expected]}            test-suite]
+      [{:msg      (str "In scenario " scenario " for " db-type ", testing "
+                    message " without CTEs in joins")
+        :result   (walkable-parser
+                    (->> env (merge {::sqb/sql-db             db
+                                     ::sqb/run-query          async-run-query
+                                     ::p/placeholder-prefixes #{"ph"}
+                                     ::sqb/floor-plan
+                                     (floor-plan/compile-floor-plan
+                                       (merge core-floor-plan
+                                         {:emitter (db-specific-emitter db-type)}))}))
+                    query)
+        :expected expected}
+       {:msg      (str "In scenario " scenario " for " db-type ", testing "
+                    message " with CTEs in joins")
+        :result   (walkable-parser
+                    (->> env (merge {::sqb/sql-db             db
+                                     ::sqb/run-query          async-run-query
+                                     ::p/placeholder-prefixes #{"ph"}
+                                     ::sqb/floor-plan
+                                     (floor-plan/compile-floor-plan
+                                       (merge core-floor-plan
+                                         {:emitter (db-specific-emitter db-type)
+                                          :use-cte {:default true}}))}))
+                    query)
+        :expected expected}])))
 
 (defn run-scenario-tests
   [db db-type scenarios]

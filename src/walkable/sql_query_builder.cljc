@@ -114,13 +114,11 @@
   (clojure.string/join " AND "
     (mapv (fn [x] (str "(" x ")")) xs)))
 
-(defn process-conditions
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [compiled-conditions]} floor-plan
-        conditions
+(defn top-level-process-conditions
+  [env]
+  (let [conditions
         (->> env
           ((juxt process-ident-condition
-             env/compiled-join-condition
              process-supplied-condition
              env/compiled-extra-condition))
           (into [] (remove nil?)))]
@@ -128,24 +126,45 @@
       (expressions/concatenate concat-with-and
         conditions))))
 
-(defn process-selection
+(defn child-join-process-conditions
+  [env]
+  (let [conditions
+        (->> env
+          ((juxt env/compiled-join-condition
+             process-supplied-condition
+             env/compiled-extra-condition))
+          (into [] (remove nil?)))]
+    (when (seq conditions)
+      (expressions/concatenate concat-with-and
+        conditions))))
+
+(defn child-join-process-shared-conditions
+  [env]
+  (let [conditions
+        (->> env
+          ((juxt process-supplied-condition
+             env/compiled-extra-condition))
+          (into [] (remove nil?)))]
+    (when (seq conditions)
+      (expressions/concatenate concat-with-and
+        conditions))))
+
+(defn top-level-process-selection
   [{::keys [floor-plan] :as env} columns-to-query]
   (let [{::floor-plan/keys [compiled-selection]} floor-plan
 
-        compiled-join-selection   (env/compiled-join-selection env)
-        compiled-normal-selection (mapv compiled-selection columns-to-query)
-        all-compiled-selection    (if compiled-join-selection
-                                    (conj compiled-normal-selection compiled-join-selection)
-                                    compiled-normal-selection)]
+        compiled-normal-selection (mapv compiled-selection columns-to-query)]
     (expressions/concatenate  #(clojure.string/join ", " %)
-      all-compiled-selection)))
+      compiled-normal-selection)))
+
+(def select-all {:raw-string "*" :params []})
 
 (defn combine-params
   [& compiled-exprs]
   (into [] (comp (map :params) cat)
     compiled-exprs))
 
-(defn process-query*
+(defn top-level-process-query*
   [{::keys [floor-plan] :as env}]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -154,8 +173,8 @@
         (process-pagination env)
 
         columns-to-query (clojure.set/union columns-to-query order-by-columns)
-        selection        (process-selection env columns-to-query)
-        conditions       (process-conditions env)
+        selection        (top-level-process-selection env columns-to-query)
+        conditions       (top-level-process-conditions env)
         having           (env/compiled-having env)
         sql-query        {:raw-string
                           (emitter/->query-string
@@ -171,6 +190,125 @@
                           :params (combine-params selection conditions having)}]
     {:sql-query     sql-query
      :join-children join-children}))
+
+(defn child-join-process-shared-query*
+  [{::keys [floor-plan] :as env} {:keys [order-by-columns]}]
+  (let [{:keys [columns-to-query]} (process-children env)
+
+        target-column    (env/target-column env)
+        columns-to-query (-> (clojure.set/union columns-to-query order-by-columns)
+                           (conj target-column))
+        selection        (top-level-process-selection env columns-to-query)
+        conditions       (child-join-process-shared-conditions env)
+        having           (env/compiled-having env)
+        sql-query        {:raw-string
+                          (str "WITH walkable_common_join_children AS ("
+                            (emitter/->query-string
+                              {:target-table   (env/target-table env)
+                               :join-statement (env/join-statement env)
+                               :selection      (:raw-string selection)
+                               :conditions     (:raw-string conditions)
+                               :group-by       (env/compiled-group-by env)
+                               :having         (:raw-string having)})
+                            ")\n")
+                          :params (combine-params selection conditions having)}]
+    sql-query))
+
+(defn child-join-process-shared-aggregator-query*
+  [{::keys [floor-plan] :as env}]
+  (let [target-column    (env/target-column env)
+        columns-to-query #{target-column}
+        selection        (top-level-process-selection env columns-to-query)
+        conditions       (child-join-process-shared-conditions env)
+        having           (env/compiled-having env)
+        sql-query        {:raw-string
+                          (str "WITH walkable_common_join_children AS ("
+                            (emitter/->query-string
+                              {:target-table   (env/target-table env)
+                               :join-statement (env/join-statement env)
+                               :selection      (:raw-string selection)
+                               :conditions     (:raw-string conditions)
+                               :group-by       (env/compiled-group-by env)
+                               :having         (:raw-string having)})
+                            ")\n")
+                          :params (combine-params selection conditions having)}]
+    sql-query))
+
+(defn child-join-process-individual-aggregator-query*
+  [{::keys [floor-plan] :as env}]
+  (let [{:keys [columns-to-query]} (process-children env)
+        target-column              (env/target-column env)
+
+        selection  (env/compiled-aggregator-selection env)
+        conditions (env/compiled-join-condition env)
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table (env/target-table env)
+                      :selection    (:raw-string selection)
+                      :conditions   (:raw-string conditions)})
+                   :params (combine-params selection conditions)}]
+    sql-query))
+
+(defn child-join-process-individual-query*
+  [{::keys [floor-plan] :as env} {:keys [offset limit order-by order-by-columns]}]
+  (let [{:keys [columns-to-query]} (process-children env)
+        target-column              (env/target-column env)
+
+        columns-to-query
+        (-> (clojure.set/union columns-to-query order-by-columns)
+          (conj target-column))
+
+        selection
+        (top-level-process-selection env columns-to-query)
+
+        conditions (env/compiled-join-condition env)
+
+        having    (env/compiled-having env)
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table   (env/target-table env)
+                      :join-statement (env/join-statement env)
+                      :selection      (:raw-string selection)
+                      :conditions     (:raw-string conditions)
+                      :group-by       (env/compiled-group-by env)
+                      :having         (:raw-string having)
+                      :offset         offset
+                      :limit          limit
+                      :order-by       order-by})
+                   :params (combine-params selection conditions having)}]
+    sql-query))
+
+(defn child-join-process-individual-aggregator-query-cte*
+  [{::keys [floor-plan] :as env}]
+  (let [selection  (env/compiled-aggregator-selection env)
+        conditions (env/compiled-join-condition-cte env)
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table "walkable_common_join_children"
+                      :selection    (:raw-string selection)
+                      :conditions   (:raw-string conditions)})
+                   :params (combine-params selection conditions)}]
+    sql-query))
+
+(defn child-join-process-individual-query-cte*
+  [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
+  (let [selection  select-all
+        conditions (env/compiled-join-condition-cte env)
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                     {:target-table "walkable_common_join_children"
+
+                      :selection  (:raw-string selection)
+                      :conditions (:raw-string conditions)
+
+                      :offset   offset
+                      :limit    limit
+                      :order-by order-by})
+                   :params (combine-params selection conditions)}]
+    sql-query))
 
 (defn compute-graphs [env variables]
   (let [variable->graph-index (env/variable->graph-index env)
@@ -200,15 +338,63 @@
         (compute-graphs env variables)]
     (compute-variables env computed-graphs variables)))
 
-(defn process-query
+(defn top-level-process-query
   [env]
-  (let [query           (process-query* env)
+  (let [query           (top-level-process-query* env)
         sql-query       (:sql-query query)
         variable-values (process-variables env
                           (expressions/find-variables sql-query))]
     (assoc query :sql-query
       (expressions/substitute-atomic-variables
         {:variable-values variable-values} sql-query))))
+
+(defn child-join-process-shared-query
+  [env pagination]
+  (let [sql-query       (child-join-process-shared-query* env pagination)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
+(defn child-join-process-shared-aggregator-query
+  [env]
+  (let [sql-query       (child-join-process-shared-aggregator-query* env)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
+(defn child-join-process-individual-query
+  [env pagination]
+  (let [sql-query       (child-join-process-individual-query* env pagination)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
+(defn child-join-process-individual-aggregator-query
+  [env]
+  (let [sql-query       (child-join-process-individual-aggregator-query* env)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
+(defn child-join-process-individual-query-cte
+  [env pagination]
+  (let [sql-query       (child-join-process-individual-query-cte* env pagination)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
+
+(defn child-join-process-individual-aggregator-query-cte
+  [env]
+  (let [sql-query       (child-join-process-individual-aggregator-query-cte* env)
+        variable-values (process-variables env
+                          (expressions/find-variables sql-query))]
+    (expressions/substitute-atomic-variables
+      {:variable-values variable-values} sql-query)))
 
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
@@ -220,7 +406,7 @@
         floor-plan
 
         k                                 (env/dispatch-key env)
-        {:keys [sql-query join-children]} (process-query env)]
+        {:keys [sql-query join-children]} (top-level-process-query env)]
     {:join-children join-children
      :entities      (if (contains? ident-keywords k)
                       ;; for idents
@@ -236,7 +422,7 @@
         floor-plan
 
         k                                 (env/dispatch-key env)
-        {:keys [sql-query join-children]} (process-query env)]
+        {:keys [sql-query join-children]} (top-level-process-query env)]
     (go
       {:join-children join-children
        :entities      (if (contains? ident-keywords k)
@@ -252,39 +438,84 @@
   {:variable-values {`floor-plan/source-column-value
                      (expressions/verbatim-raw-string v)}})
 
+(defn process-join-children
+  [child-env aggregator?]
+  (if aggregator?
+    {:unbound-individual-query
+     (child-join-process-individual-aggregator-query child-env)}
+    (let [pagination (process-pagination child-env)]
+      {:unbound-individual-query
+       (child-join-process-individual-query child-env pagination)})))
+
+(defn process-join-children-cte
+  [child-env aggregator?]
+  (if aggregator?
+    {:shared-query
+     (child-join-process-shared-aggregator-query child-env)
+     :unbound-individual-query
+     (child-join-process-individual-aggregator-query-cte child-env)}
+    (let [pagination (process-pagination child-env)]
+      {:shared-query
+       (child-join-process-shared-query child-env pagination)
+       :unbound-individual-query
+       (child-join-process-individual-query-cte child-env pagination)})))
+
+(defn final-query
+  [batch-query cet? aggregator?
+   child-env source-column entities]
+  (let [{:keys [shared-query unbound-individual-query]}
+        (if cet?
+          (process-join-children-cte child-env aggregator?)
+          (process-join-children child-env aggregator?))
+
+        individual-queries
+        (for [e    entities
+              :let [v (get e source-column)]]
+          (->> unbound-individual-query
+            (expressions/substitute-atomic-variables
+              (source-column-variable-values v))))
+
+        batched-individuals (batch-query individual-queries)]
+    (if cet?
+      (expressions/concatenate #(apply str %)
+        [shared-query batched-individuals])
+      batched-individuals)))
+
 (defn join-children-data
   [{::keys [floor-plan] :as env}
    entities join-children]
   (let [{::floor-plan/keys [batch-query
+                            aggregator-keywords
+                            cte-keywords
                             target-columns
                             source-columns]} floor-plan]
     (when (and (seq entities) (seq join-children))
-      (let [f (fn [join-child]
-                (let [j             (:dispatch-key join-child)
+      (let [f (fn [join-child-ast]
+                (let [j (:dispatch-key join-child-ast)
+
+                      aggregator? (contains? aggregator-keywords j)
+                      cet?        (contains? cte-keywords j)
+
                       ;; parent
                       source-column (get source-columns j)
                       ;; children
                       target-column (get target-columns j)
 
-                      unbound-sql-query
-                      (:sql-query (process-query (assoc env :ast join-child)))
+                      child-env (assoc env :ast join-child-ast)
 
-                      queries
-                      (for [e    entities
-                            :let [v (get e source-column)]]
-                        (->> unbound-sql-query
-                          (expressions/substitute-atomic-variables
-                            (source-column-variable-values v))))]
-                  [join-child
-                   {:data-fn #(group-by target-column %)
-                    :query   (build-parameterized-sql-query (batch-query queries))}]))]
+                      query
+                      (final-query batch-query cet? aggregator?
+                        child-env source-column entities)]
+                  [join-child-ast
+                   {:target-column target-column
+                    :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
 
 (defn join-children-data-by-join-key
   [{::keys [run-query sql-db] :as env} entities join-children]
-  (let [f (fn [[join-child {:keys [data-fn query]}]]
+  (let [f (fn [[join-child {:keys [target-column query]}]]
             (let [data (run-query sql-db query)]
-              [join-child (data-fn data)]))]
+              [join-child (group-by target-column data)]))]
     (into {}
       (map f)
       (join-children-data env entities join-children))))
@@ -293,9 +524,9 @@
   [{::keys [run-query sql-db] :as env} entities join-children]
   (async/into {}
     (async/merge
-      (map (fn [[join-child {:keys [data-fn query]}]]
+      (map (fn [[join-child {:keys [target-column query]}]]
              (go (let [data (<! (run-query sql-db query))]
-                  [join-child (data-fn data)])))
+                   [join-child (group-by target-column data)])))
         (join-children-data env entities join-children)))))
 
 (defn entities-with-join-children-data

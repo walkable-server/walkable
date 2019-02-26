@@ -417,11 +417,35 @@
     (-> floor-plan
       (assoc :compiled-join-selection compiled-join-selection))))
 
+(defn compile-aggregator-selection
+  [{:keys [aggregator-keywords compiled-selection clojuric-names target-columns] :as floor-plan}]
+  (let [compiled-aggregator-selection
+        (reduce (fn [acc k]
+                  (let [target-column
+                        (get target-columns k)
+
+                        aggregator-selection
+                        (get compiled-selection k)
+
+                        source-column-selection
+                        (compile-selection
+                          {:raw-string "?"
+                           :params     [(expressions/av `source-column-value)]}
+                          (get clojuric-names target-column))]
+                    (assoc acc k
+                      (expressions/concatenate #(clojure.string/join ", " %)
+                        [source-column-selection aggregator-selection]))))
+          {}
+          aggregator-keywords)]
+    (-> floor-plan
+      (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
+
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
   (let [compiled-join-conditions
         (reduce-kv (fn [acc k join-seq]
-                     (let [target-column (get target-columns k)]
+                     (let [target-column (get target-columns k)
+                           clojuric-name (get clojuric-names target-column)]
                        (assoc acc k
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}
@@ -430,7 +454,37 @@
           {}
           joins)]
     (-> floor-plan
-      (assoc :compiled-join-conditions compiled-join-conditions)
+      (assoc :compiled-join-conditions compiled-join-conditions))))
+
+(defn compile-join-conditions-cte
+  [{:keys [joins compiled-formulas target-columns clojuric-names] :as floor-plan}]
+  (let [compiled-join-conditions
+        (reduce-kv (fn [acc k join-seq]
+                     (let [target-column (get target-columns k)
+                           clojuric-name (get clojuric-names target-column)]
+                       (assoc acc k
+                         (expressions/substitute-atomic-variables
+                           {:variable-values compiled-formulas}
+                           {:raw-string (str clojuric-name "=?")
+                            :params     [(expressions/av `source-column-value)]}))))
+          {}
+          joins)]
+    (-> floor-plan
+      (assoc :compiled-join-conditions-cte compiled-join-conditions))))
+
+(defn compile-cte-keywords
+  [{:keys [joins use-cte] :as floor-plan}]
+  (let [join-keys (keys joins)
+        {:keys [default]} use-cte
+        cte-keywords (reduce (fn [acc k]
+                               (if (get use-cte k default)
+                                 (conj acc k)
+                                 acc))
+                       #{}
+                       join-keys)]
+    (-> floor-plan
+      (assoc :cte-keywords cte-keywords)
+      (dissoc :use-cte)
       (dissoc :joins))))
 
 (defn compile-extra-conditions
@@ -545,12 +599,15 @@
    :compiled-having
    :compiled-ident-conditions
    :compiled-join-conditions
+   :compiled-join-conditions-cte
    :compiled-join-selection
+   :compiled-aggregator-selection
    :compiled-selection
    :emitter
    :ident-keywords
    :join-filter-subqueries
    :join-keywords
+   :cte-keywords
    :join-statements
    :compiled-pagination-fallbacks
    :required-columns
@@ -582,7 +639,10 @@
     compile-return-or-join-async
     compile-return-or-join
     compile-extra-conditions
+    compile-cte-keywords
+    compile-join-conditions-cte
     compile-join-conditions
+    compile-aggregator-selection
     compile-join-selection
     compile-ident-conditions
     compile-formulas-with-aliases

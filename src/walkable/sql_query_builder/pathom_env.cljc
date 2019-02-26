@@ -75,11 +75,23 @@
                           :walkable.sql-query-builder.floor-plan/compiled-join-conditions)]
     (get join-conditions (dispatch-key env))))
 
+(defn compiled-join-condition-cte
+  [env]
+  (let [join-conditions (-> env :walkable.sql-query-builder/floor-plan
+                          :walkable.sql-query-builder.floor-plan/compiled-join-conditions-cte)]
+    (get join-conditions (dispatch-key env))))
+
 (defn compiled-join-selection
   [env]
   (let [join-selection (-> env :walkable.sql-query-builder/floor-plan
                          :walkable.sql-query-builder.floor-plan/compiled-join-selection)]
     (get join-selection (dispatch-key env))))
+
+(defn compiled-aggregator-selection
+  [env]
+  (let [aggregator-selection (-> env :walkable.sql-query-builder/floor-plan
+                               :walkable.sql-query-builder.floor-plan/compiled-aggregator-selection)]
+    (get aggregator-selection (dispatch-key env))))
 
 (defn compiled-group-by
   [env]
