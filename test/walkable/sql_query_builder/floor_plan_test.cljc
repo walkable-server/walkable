@@ -186,6 +186,14 @@
   (is (= (sut/columns-in-joins {:x [:u :v] :y [:m :n]})
        #{:v :n :m :u})))
 
+(deftest compile-cte-keywords-test
+  (is (= (sut/compile-cte-keywords {:joins   {:x/a [] :x/b [] :x/c []}
+                                    :use-cte {:x/b false :default true}})
+        {:cte-keywords #{:x/a :x/c}}))
+  (is (= (sut/compile-cte-keywords {:joins {:x/a [] :x/b [] :x/c []}
+                                    :use-cte     {:x/a true :x/b true :default false}})
+        {:cte-keywords #{:x/a :x/b}})))
+
 (deftest polulate-columns-with-joins-test
   (is (= (sut/polulate-columns-with-joins {:joins        {:x [:u :v] :y [:m :n]}
                                            :true-columns #{:a :b}})
