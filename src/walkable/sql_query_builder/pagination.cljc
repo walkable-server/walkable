@@ -134,10 +134,10 @@
 
 (defn compile-fallbacks
   [emitter clojuric-names pagination-fallbacks]
-  (->> (merge {`default-fallbacks {:offset   {}
-                                   :limit    {}
-                                   :order-by {}}}
-         pagination-fallbacks)
+  (->> (clojure.set/rename-keys pagination-fallbacks {:default `default-fallbacks})
+    (merge {`default-fallbacks {:offset   {}
+                                :limit    {}
+                                :order-by {}}})
     (compile-fallbacks* emitter clojuric-names)))
 
 (defn merge-pagination
