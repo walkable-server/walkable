@@ -66,10 +66,12 @@
         {:raw-string "(?) OR (?) OR (?)", :params [{} {} {}]})))
 
 (deftest in-tests
-  (is (= (sut/process-operator {} [:in []])
-        {:raw-string "(?) IN ()", :params []}))
-  (is (= (sut/process-operator {} [:in [{}]])
-        {:raw-string "(?) IN ()", :params [{}]}))
+  (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error)
+        #"There must be at least two parameters"
+        (sut/process-operator {} [:in []])))
+  (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error)
+        #"There must be at least two parameters"
+        (sut/process-operator {} [:in [{}]])))
   (is (= (sut/process-operator {} [:in [{} {}]])
         {:raw-string "(?) IN (?)", :params [{} {}]}))
   (is (= (sut/process-operator {} [:in [{} {} {}]])
