@@ -393,6 +393,16 @@
                    ")")
      :params     params}))
 
+(defmethod process-operator :tuple
+  [_env [_operator params]]
+  (let [n (count params)]
+    (assert (pos? n) "There must be at least one parameter to `:tuple`")
+    {:raw-string (str "("
+                   (clojure.string/join ", "
+                     (repeat (count params) \?))
+                   ")")
+     :params     params}))
+
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
   (inline-params env
