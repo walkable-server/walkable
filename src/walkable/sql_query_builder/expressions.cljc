@@ -383,13 +383,15 @@
 
 (defmethod process-operator :in
   [_env [_operator params]]
-  {:raw-string (str "(?) IN ("
-                 (clojure.string/join ", "
-                   ;; decrease by 1 to exclude the first param
-                   ;; which should go before `IN`
-                   (repeat (dec (count params)) \?))
-                 ")")
-   :params     params})
+  ;; decrease by 1 to exclude the first param
+  ;; which should go before `IN`
+  (let [n (dec (count params))]
+    (assert (pos? n) "There must be at least two parameters to `:in`")
+    {:raw-string (str "(?) IN ("
+                   (clojure.string/join ", "
+                     (repeat n \?))
+                   ")")
+     :params     params}))
 
 (defmethod process-expression :expression
   [env [_kw {:keys [operator params] :or {operator :and}}]]
