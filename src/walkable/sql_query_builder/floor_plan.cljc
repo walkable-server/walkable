@@ -30,6 +30,11 @@
                  ")")
    :params     []})
 
+(defn compile-exists-forms [emitter column-keywords]
+  (apply hash-map
+    (interleave column-keywords
+      (map #(compile-exists emitter %) column-keywords))))
+
 (s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 2))
