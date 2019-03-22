@@ -246,9 +246,11 @@
 (defn rotate [coll]
   (take (count coll) (drop 1 (cycle coll))))
 
-(defn compile-formulas-once [compiled-true-columns formulas]
+(defn compile-formulas-once [compiled-true-columns compiled-exists-forms formulas]
   (reduce-kv (fn [result k expression]
-               (let [compiled (expressions/compile-to-string {} expression)]
+               (let [compiled (expressions/compile-to-string
+                                {:compiled-exists-forms compiled-exists-forms}
+                                expression)]
                  (if (unbound-expression? compiled)
                    (update result :unbound assoc k compiled)
                    (update result :bound assoc k compiled))))
@@ -381,9 +383,10 @@
     (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
 
 (defn compile-formulas
-  [{:keys [true-columns pseudo-columns aggregators emitter] :as floor-plan}]
+  [{:keys [true-columns pseudo-columns aggregators emitter compiled-exists-forms]
+    :as   floor-plan}]
   (let [compiled-formulas       (-> (compile-true-columns emitter true-columns)
-                                  (compile-formulas-once (merge pseudo-columns aggregators))
+                                  (compile-formulas-once compiled-exists-forms (merge pseudo-columns aggregators))
                                   compile-formulas-recursively)
         _ok?                    (column-dependencies compiled-formulas)
         {:keys [bound unbound]} compiled-formulas
@@ -401,13 +404,15 @@
     (assoc floor-plan :compiled-selection compiled-selection)))
 
 (defn compile-ident-conditions
-  [{:keys [conditional-idents compiled-formulas] :as floor-plan}]
+  [{:keys [conditional-idents compiled-formulas compiled-exists-forms]
+    :as   floor-plan}]
   (let [compiled-ident-conditions
         (reduce-kv (fn [acc k ident-key]
                      (assoc acc k
                        (expressions/substitute-atomic-variables
                          {:variable-values compiled-formulas}
-                         (expressions/compile-to-string {}
+                         (expressions/compile-to-string
+                           {:compiled-exists-forms compiled-exists-forms}
                            [:= ident-key (expressions/av `ident-value)]))))
           {}
           conditional-idents)]
@@ -454,7 +459,8 @@
       (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
 
 (defn compile-join-conditions
-  [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
+  [{:keys [joins compiled-formulas target-columns compiled-exists-forms]
+    :as   floor-plan}]
   (let [compiled-join-conditions
         (reduce-kv (fn [acc k join-seq]
                      (let [target-column (get target-columns k)
@@ -462,7 +468,8 @@
                        (assoc acc k
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}
-                           (expressions/compile-to-string {}
+                           (expressions/compile-to-string
+                             {:compiled-exists-forms compiled-exists-forms}
                              [:= target-column (expressions/av `source-column-value)])))))
           {}
           joins)]
@@ -501,13 +508,16 @@
       (dissoc :joins))))
 
 (defn compile-extra-conditions
-  [{:keys [extra-conditions compiled-formulas join-filter-subqueries] :as floor-plan}]
+  [{:keys [extra-conditions compiled-formulas compiled-exists-forms
+           join-filter-subqueries]
+    :as   floor-plan}]
   (let [compiled-extra-conditions
         (reduce-kv (fn [acc k extra-condition]
                      (assoc acc k
                        (->> extra-condition
                          (expressions/compile-to-string
-                           {:join-filter-subqueries join-filter-subqueries})
+                           {:compiled-exists-forms  compiled-exists-forms
+                            :join-filter-subqueries join-filter-subqueries})
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}))))
           {}
@@ -522,10 +532,12 @@
      :params     [compiled-having]}))
 
 (defn compile-having
-  [{:keys [compiled-formulas join-filter-subqueries]} having-condition]
+  [{:keys [compiled-formulas join-filter-subqueries compiled-exists-forms]}
+   having-condition]
   (->> having-condition
     (expressions/compile-to-string
-      {:join-filter-subqueries join-filter-subqueries})
+      {:compiled-exists-forms  compiled-exists-forms
+       :join-filter-subqueries join-filter-subqueries})
     (expressions/substitute-atomic-variables
       {:variable-values compiled-formulas})
     prefix-having))
