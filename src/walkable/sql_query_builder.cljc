@@ -240,7 +240,7 @@
         target-column              (env/target-column env)
 
         selection  (env/compiled-aggregator-selection env)
-        conditions (env/compiled-join-condition env)
+        conditions (child-join-process-conditions env)
 
         sql-query {:raw-string
                    (emitter/->query-string
@@ -262,7 +262,7 @@
         selection
         (top-level-process-selection env columns-to-query)
 
-        conditions (env/compiled-join-condition env)
+        conditions (child-join-process-conditions env)
 
         having    (env/compiled-having env)
         sql-query {:raw-string
