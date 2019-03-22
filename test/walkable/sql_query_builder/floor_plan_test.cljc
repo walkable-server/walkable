@@ -145,6 +145,7 @@
 (deftest compile-formulas-once-test
   (is (= (sut/compile-formulas-once
           (sut/compile-true-columns emitter/postgres-emitter
+            {}
             #{:x/a :x/b})
           {:x/c 99
            :x/d [:- 100 :x/c]})
@@ -159,6 +160,7 @@
           (sut/compile-formulas-once
             (sut/compile-true-columns
               emitter/postgres-emitter #{:x/a :x/b})
+            {}
             {:x/c 99
              :x/d [:- 100 :x/c]}))
         {:unbound {},
@@ -173,6 +175,7 @@
             (sut/compile-formulas-once
               (sut/compile-true-columns
                 emitter/postgres-emitter #{:x/a :x/b})
+              {}
               {:x/c [:+ :x/d (expressions/av 'o)]
                :x/d [:- 100 :x/e]
                :x/e [:- 100 :x/c]})))
