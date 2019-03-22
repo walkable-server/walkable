@@ -145,8 +145,8 @@
 (deftest compile-formulas-once-test
   (is (= (sut/compile-formulas-once
           (sut/compile-true-columns emitter/postgres-emitter
-            {}
             #{:x/a :x/b})
+          {}
           {:x/c 99
            :x/d [:- 100 :x/c]})
         {:unbound #:x {:d {:params     [(expressions/av :x/c)],
