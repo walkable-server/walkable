@@ -730,7 +730,8 @@
     separate-idents
     polulate-columns-with-condititional-idents
     prepare-keywords
-    prepare-clojuric-names))
+    prepare-clojuric-names
+    prepare-exists-forms))
 
 (defn precompile-floor-plan
   [{:keys [joins emitter idents unconditional-idents conditional-idents] :as floor-plan}]
