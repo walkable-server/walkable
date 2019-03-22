@@ -14,6 +14,10 @@
   (is (= (sut/clojuric-names emitter/mysql-emitter [:foo/bar :loo/lar])
         {:foo/bar "`foo/bar`", :loo/lar "`loo/lar`"})))
 
+(deftest compile-exists-test
+  (is (= (sut/compile-exists emitter/default-emitter :foo/bar)
+        {:raw-string "EXISTS (SELECT \"foo\".\"bar\" FROM \"foo\")", :params []})))
+
 (deftest target-column-tests
   (is (= (sut/target-column [:pet/owner :person/number])
         :person/number))
