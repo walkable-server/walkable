@@ -22,6 +22,14 @@
   (zipmap ks
     (map #(emitter/clojuric-name emitter %) ks)))
 
+(defn compile-exists [emitter column-keyword]
+  {:raw-string (str "EXISTS (SELECT "
+                 (emitter/column-name emitter column-keyword)
+                 " FROM "
+                 (emitter/table-name emitter column-keyword)
+                 ")")
+   :params     []})
+
 (s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
     :count 2))
