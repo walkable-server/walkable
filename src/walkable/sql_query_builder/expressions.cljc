@@ -145,6 +145,14 @@
       {:raw-string (str "CAST (? AS " type-str ")")
        :params     [(process-expression env expression)]})))
 
+(defmethod unsafe-expression? :exists [_operator] true)
+
+(defmethod process-unsafe-expression :exists
+  [{:keys [compiled-exists-forms] :as env} [_operator [column-keyword]]]
+  (if-let [compiled (get compiled-exists-forms column-keyword)]
+    compiled
+    (throw (ex-info "Invalid column supplied to :exists" {}))))
+
 (defmethod operator? :and [_operator] true)
 
 (defmethod process-operator :and
