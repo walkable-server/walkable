@@ -605,6 +605,7 @@
    :batch-query
    :cardinality
    :clojuric-names
+   :compiled-exists-forms
    :column-keywords
    :compiled-extra-conditions
    :compiled-formulas
