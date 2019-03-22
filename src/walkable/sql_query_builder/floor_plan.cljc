@@ -717,6 +717,11 @@
   (-> floor-plan
     (assoc :clojuric-names (clojuric-names emitter column-keywords))))
 
+(defn prepare-exists-forms
+  [{:keys [emitter column-keywords] :as floor-plan}]
+  (-> floor-plan
+    (assoc :compiled-exists-forms (compile-exists-forms emitter column-keywords))))
+
 (defn separate-floor-plan-keys
   [{:keys [joins emitter idents
            extra-conditions]
