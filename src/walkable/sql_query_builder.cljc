@@ -244,9 +244,10 @@
 
         sql-query {:raw-string
                    (emitter/->query-string
-                     {:target-table (env/target-table env)
-                      :selection    (:raw-string selection)
-                      :conditions   (:raw-string conditions)})
+                     {:target-table   (env/target-table env)
+                      :join-statement (env/join-statement env)
+                      :selection      (:raw-string selection)
+                      :conditions     (:raw-string conditions)})
                    :params (combine-params selection conditions)}]
     sql-query))
 
