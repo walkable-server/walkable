@@ -240,13 +240,14 @@
         target-column              (env/target-column env)
 
         selection  (env/compiled-aggregator-selection env)
-        conditions (env/compiled-join-condition env)
+        conditions (child-join-process-conditions env)
 
         sql-query {:raw-string
                    (emitter/->query-string
-                     {:target-table (env/target-table env)
-                      :selection    (:raw-string selection)
-                      :conditions   (:raw-string conditions)})
+                     {:target-table   (env/target-table env)
+                      :join-statement (env/join-statement env)
+                      :selection      (:raw-string selection)
+                      :conditions     (:raw-string conditions)})
                    :params (combine-params selection conditions)}]
     sql-query))
 
@@ -262,7 +263,7 @@
         selection
         (top-level-process-selection env columns-to-query)
 
-        conditions (env/compiled-join-condition env)
+        conditions (child-join-process-conditions env)
 
         having    (env/compiled-having env)
         sql-query {:raw-string
