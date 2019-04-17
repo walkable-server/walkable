@@ -437,7 +437,7 @@
 (defn source-column-variable-values
   [v]
   {:variable-values {`floor-plan/source-column-value
-                     (expressions/verbatim-raw-string v)}})
+                     (expressions/compile-to-string {} v)}})
 
 (defn process-join-children
   [child-env aggregator?]
