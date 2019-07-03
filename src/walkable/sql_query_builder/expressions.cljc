@@ -282,7 +282,7 @@
 #?(:clj
    (defmacro import-functions
      "Defines Walkable operators using SQL equivalent."
-     [{:keys [arity] :as options} function-names]
+     [{:keys [arity postfix?] :as options} function-names]
      `(do
         ~@(for [[operator sql-name] (if (map? function-names)
                                       (mapv (fn [[sym sql-name]] [(operator-name options (name sym)) sql-name]) function-names)
@@ -303,7 +303,7 @@
                      [_env# [_operator# params#]]
                      (assert (= 1 (count params#))
                        ~(str "There must exactly one argument to " operator))
-                     {:raw-string ~(str sql-name "(?)")
+                     {:raw-string ~(if postfix? (str "(?)" sql-name) (str sql-name "(?)"))
                       :params     params#})
                   ;; default
                   `(defmethod process-operator ~operator
