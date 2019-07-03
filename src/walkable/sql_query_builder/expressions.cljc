@@ -331,6 +331,9 @@
 (import-functions {}
   {str "CONCAT"})
 
+(import-functions {:arity 1 :postfix? true}
+  {nil? " is null"})
+
 #?(:clj
    (defmacro import-infix-operators
      "Defines Walkable operators using SQL equivalent."
