@@ -437,7 +437,7 @@
 (defn source-column-variable-values
   [v]
   {:variable-values {`floor-plan/source-column-value
-                     (expressions/verbatim-raw-string v)}})
+                     (expressions/compile-to-string {} v)}})
 
 (defn process-join-children
   [child-env aggregator?]
@@ -471,7 +471,8 @@
 
         individual-queries
         (for [e    entities
-              :let [v (get e source-column)]]
+              :let [v (get e source-column)]
+              :when (not (nil? v))]
           (->> unbound-individual-query
             (expressions/substitute-atomic-variables
               (source-column-variable-values v))))

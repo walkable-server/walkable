@@ -1,12 +1,12 @@
 {;; scenario 1 migrations
- [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-cow-table]
- {:up   ["CREATE TABLE `cow` (`index` SERIAL PRIMARY KEY, `color` TEXT)"
-         "INSERT INTO `cow` (`index`, `color`) VALUES (10, 'black'), (20, 'brown')"]
-  :down ["DROP TABLE `cow`"]}
+ [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-house-table]
+ {:up   ["CREATE TABLE `house` (`index` VARCHAR(32) PRIMARY KEY, `color` TEXT)"
+         "INSERT INTO `house` (`index`, `color`) VALUES ('10', 'black'), ('20', 'brown')"]
+  :down ["DROP TABLE `house`"]}
 
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-farmer-table]
- {:up   ["CREATE TABLE `farmer` (`number` SERIAL PRIMARY KEY, `cow_index` INTEGER REFERENCES `cow`(`index`), `name` TEXT)"
-         "INSERT INTO `farmer` (`number`, `name`, `cow_index`) VALUES (1, 'jon', 10), (2, 'mary', 20)"]
+ {:up   ["CREATE TABLE `farmer` (`number` SERIAL PRIMARY KEY, `house_index` VARCHAR(32) REFERENCES `house`(`index`), `name` TEXT)"
+         "INSERT INTO `farmer` (`number`, `name`, `house_index`) VALUES (1, 'jon', '10'), (2, 'mary', '20'), (3, 'homeless', NULL)"]
   :down ["DROP TABLE `farmer`"]}
 
  ;; scenario 2 migrations
