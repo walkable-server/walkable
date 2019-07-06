@@ -2,18 +2,18 @@
   (:require [com.wsscode.pathom.core :as p]
             [plumbing.core :refer [fnk defnk sum]]))
 
-(def farmer-cow-floor-plan
-  {:true-columns     [:cow/color
+(def farmer-house-floor-plan
+  {:true-columns     [:house/color
                       :farmer/number
                       :farmer/name]
    :idents           {:farmer/by-id :farmer/number
                       :farmers/all  "farmer"}
    :extra-conditions {}
-   :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
-   :reversed-joins   {:cow/owner :farmer/cow}
+   :joins            {:farmer/house [:farmer/house-index :house/index]}
+   :reversed-joins   {:house/owner :farmer/house}
    :cardinality      {:farmer/by-id :one
-                      :cow/owner    :one
-                      :farmer/cow   :one}})
+                      :house/owner    :one
+                      :farmer/house   :one}})
 
 (def kid-toy-floor-plan
   {:true-columns     [:kid/name :toy/index :toy/color]
@@ -73,26 +73,27 @@
                       :person/pet   :many}})
 
 (def common-scenarios
-  {:farmer-cow
-   {:core-floor-plan farmer-cow-floor-plan
+  {:farmer-house
+   {:core-floor-plan farmer-house-floor-plan
     :test-suite
     [{:message "filters should work"
       :query
-      `[{(:farmers/all {:filters {:farmer/cow [{:cow/owner [:= :farmer/name "mary"]}]}})
+      `[{(:farmers/all {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}]}})
          [:farmer/number :farmer/name
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
       :expected
-      {:farmers/all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}
+      {:farmers/all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
      {:message  "no pagination"
       :query
       `[{:farmers/all
          [:farmer/number :farmer/name
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 1, :name "jon", :cow #:cow {:index 10, :color "black"}}
-                       #:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}]}
-   :farmer-cow-paginated
-   {:core-floor-plan (assoc farmer-cow-floor-plan
+      #:farmers {:all [#:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
+                       #:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
+                       #:farmer{:number 3, :name "homeless", :house {}}]}}]}
+   :farmer-house-paginated
+   {:core-floor-plan (assoc farmer-house-floor-plan
                        :pagination-fallbacks
                        {:farmers/all
                         {:order-by {:default  [:farmer/name :desc]
@@ -102,24 +103,25 @@
       :query
       `[{:farmers/all
          [:farmer/number :farmer/name
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers{:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}
-                      #:farmer{:number 1, :name "jon", :cow #:cow {:index 10, :color "black"}}]}}
+      #:farmers{:all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
+                      #:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
+                      #:farmer{:number 3, :name "homeless", :house {}}]}}
      {:message  "supplied pagination"
       :query
       `[{(:farmers/all {:limit 1})
          [:farmer/number :farmer/name
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 2, :name "mary", :cow #:cow {:index 20, :color "brown"}}]}}
+      #:farmers {:all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
      {:message  "without order-by column in query"
       :query
       `[{(:farmers/all {:limit 1})
          [:farmer/number
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 2, :cow #:cow {:index 20, :color "brown"}}]}}]}
+      #:farmers {:all [#:farmer{:number 2, :house #:house {:index "20", :color "brown"}}]}}]}
    :kid-toy
    {:core-floor-plan kid-toy-floor-plan
     :test-suite
