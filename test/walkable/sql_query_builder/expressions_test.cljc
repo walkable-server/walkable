@@ -81,6 +81,10 @@
   (is (= (sut/process-operator {} [:not [{}]])
         {:raw-string "NOT(?)", :params [{}]})))
 
+(deftest nil?-tests
+  (is (= (sut/process-operator {} [:nil? [{}]])
+        {:raw-string "(?) is null", :params [{}]})))
+
 (deftest =-tests
   ;; the same to >, >=, <, <=
   (is (= (sut/process-operator {} [:= [{} {}]])
