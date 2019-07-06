@@ -471,7 +471,8 @@
 
         individual-queries
         (for [e    entities
-              :let [v (get e source-column)]]
+              :let [v (get e source-column)]
+              :when (not (nil? v))]
           (->> unbound-individual-query
             (expressions/substitute-atomic-variables
               (source-column-variable-values v))))
