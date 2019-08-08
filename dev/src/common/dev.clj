@@ -120,10 +120,10 @@
 ;; Example: join column living in source table
 #_
 (let [eg-1
-      '[{(:farmers/all {:filters {:farmer/cow [{:cow/owner [:= :farmer/name "mary"]}
-                                               [:= :cow/color "brown"]]}})
+      '[{(:farmers/all {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
+                                                 [:= :house/color "brown"]]}})
          [:farmer/number :farmer/name
-          {:farmer/cow [:cow/index :cow/color]}]}]
+          {:farmer/house [:house/index :house/color]}]}]
 
       parser
       sync-parser]
@@ -135,24 +135,24 @@
              {:emitter          emitter
               ;; columns already declared in :joins are not needed
               ;; here
-              :true-columns     [:cow/color
+              :true-columns     [:house/color
                                  :farmer/number
                                  :farmer/name]
               :idents           {:farmer/by-id :farmer/number
                                  :farmers/all  "farmer"}
               :extra-conditions {}
-              :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
-              :reversed-joins   {:cow/owner :farmer/cow}
+              :joins            {:farmer/house [:farmer/house-index :house/index]}
+              :reversed-joins   {:house/owner :farmer/house}
               :cardinality      {:farmer/by-id :one
-                                 :cow/owner    :one
-                                 :farmer/cow   :one}})}
+                                 :house/owner  :one
+                                 :farmer/house :one}})}
     eg-1))
 
 ;; the same above, but using async version
 #_
 (let [eg-1
       '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/cow [:cow/index :cow/color]}]}]
+                            {:farmer/house [:house/index :house/color]}]}]
 
       parser
       async-parser]
@@ -166,15 +166,15 @@
                      {:emitter          emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
-                      :true-columns     [:cow/color
+                      :true-columns     [:house/color
                                          :farmer/number
                                          :farmer/name]
                       :idents           {:farmer/by-id :farmer/number
                                          :farmers/all  "farmer"}
                       :extra-conditions {}
-                      :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
-                      :reversed-joins   {:cow/owner :farmer/cow}
+                      :joins            {:farmer/house [:farmer/house-index :house/index]}
+                      :reversed-joins   {:house/owner :farmer/house}
                       :cardinality      {:farmer/by-id :one
-                                         :cow/owner    :one
-                                         :farmer/cow   :one}})}
+                                         :house/owner  :one
+                                         :farmer/house :one}})}
             eg-1)))))

@@ -42,10 +42,10 @@
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
-            :farmer/cow [:farmer/cow-index :cow/index]})
+            :farmer/house [:farmer/house-index :house/index]})
          {:person/pet "`person_pet`",
           :pet/owner  "`person_pet`",
-          :farmer/cow "`cow`"})))
+          :farmer/house "`house`"})))
 
 (deftest joins->source-columns-test
   (is (= (sut/joins->source-columns
@@ -53,10 +53,10 @@
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
-            :farmer/cow [:farmer/cow-index :cow/index]})
+            :farmer/house [:farmer/house-index :house/index]})
         {:person/pet :person/number,
          :pet/owner :pet/index,
-         :farmer/cow :farmer/cow-index})))
+         :farmer/house :farmer/house-index})))
 
 (deftest joins->target-columns-test
   (is (= (sut/joins->target-columns
@@ -64,10 +64,10 @@
                          :person-pet/pet-index :pet/index]
             :pet/owner  [:pet/index :person-pet/pet-index
                          :person-pet/person-number :person/number]
-            :farmer/cow [:farmer/cow-index :cow/index]})
+            :farmer/house [:farmer/house-index :house/index]})
         {:person/pet :person-pet/person-number,
          :pet/owner :person-pet/pet-index,
-         :farmer/cow :cow/index})))
+         :farmer/house :house/index})))
 
 (deftest expand-multi-keys-tests
   (is (= (sut/expand-multi-keys {:a 1 [:a :b] 2})
