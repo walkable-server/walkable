@@ -37,7 +37,7 @@
 #_
 (let [eg-1
       '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/cow [:cow/index :cow/color]}]}]
+                            {:farmer/house [:house/index :house/color]}]}]
 
       parser async-parser]
   (go
@@ -49,17 +49,17 @@
                      {:emitter          emitter/sqlite-emitter
                       ;; columns already declared in :joins are not needed
                       ;; here
-                      :columns          [:cow/color
+                      :columns          [:house/color
                                          :farmer/number
                                          :farmer/name]
                       :idents           {:farmer/by-id :farmer/number
                                          :farmers/all  "farmer"}
                       :extra-conditions {}
-                      :joins            {:farmer/cow [:farmer/cow-index :cow/index]}
-                      :reversed-joins   {:cow/owner :farmer/cow}
+                      :joins            {:farmer/house [:farmer/house-index :house/index]}
+                      :reversed-joins   {:house/owner :farmer/house}
                       :cardinality      {:farmer/by-id :one
-                                         :cow/owner    :one
-                                         :farmer/cow   :one}})}
+                                         :house/owner  :one
+                                         :farmer/house :one}})}
             eg-1)))))
 #_
 (let [eg-1
