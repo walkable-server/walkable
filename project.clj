@@ -36,7 +36,7 @@
                        :test-paths     ["dev/test/postgres" "dev/test/common"]
                        :resource-paths ["dev/resources/common" "dev/resources/postgres"]
                        :dependencies   [[org.postgresql/postgresql "42.2.4"]]}
-   :project/common    {:plugins      [[duct/lein-duct "0.11.2"]]
+   :project/common    {:plugins      [[duct/lein-duct "0.12.1"]]
                        :dependencies [[duct/core "0.7.0"]
                                       [duct/module.logging "0.4.0"]
                                       [duct/module.sql "0.5.0"]
