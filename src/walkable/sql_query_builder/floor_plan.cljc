@@ -2,12 +2,10 @@
   (:require [walkable.sql-query-builder.pagination :as pagination]
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
-            [walkable.sql-query-builder.pathom-env :as env]
             [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]
             [plumbing.graph :as graph]
-            [clojure.core.async :as async
-             :refer [go go-loop <! >! put! promise-chan to-chan]]))
+            [clojure.core.async :as async]))
 
 (defn column-names
   "Makes a hash-map of keywords and their equivalent column names"
@@ -43,7 +41,7 @@
    :post [string?]}
   (let [[tag] (s/conform ::join-seq join-seq)]
     (when (= :with-join-table tag)
-      (let [[source join-source join-target target] join-seq]
+      (let [[_source _join-source join-target target] join-seq]
         (str
           " JOIN " (emitter/table-name emitter target)
           " ON " (emitter/column-name emitter join-target)
@@ -405,7 +403,7 @@
 (defn compile-join-selection
   [{:keys [joins clojuric-names target-columns] :as floor-plan}]
   (let [compiled-join-selection
-        (reduce-kv (fn [acc k join-seq]
+        (reduce-kv (fn [acc k _join-seq]
                      (let [target-column (get target-columns k)]
                        (assoc acc k
                          (compile-selection
@@ -443,9 +441,8 @@
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
   (let [compiled-join-conditions
-        (reduce-kv (fn [acc k join-seq]
-                     (let [target-column (get target-columns k)
-                           clojuric-name (get clojuric-names target-column)]
+        (reduce-kv (fn [acc k _join-seq]
+                     (let [target-column (get target-columns k)]
                        (assoc acc k
                          (expressions/substitute-atomic-variables
                            {:variable-values compiled-formulas}
@@ -459,7 +456,7 @@
 (defn compile-join-conditions-cte
   [{:keys [joins compiled-formulas target-columns clojuric-names] :as floor-plan}]
   (let [compiled-join-conditions
-        (reduce-kv (fn [acc k join-seq]
+        (reduce-kv (fn [acc k _join-seq]
                      (let [target-column (get target-columns k)
                            clojuric-name (get clojuric-names target-column)]
                        (assoc acc k
@@ -578,7 +575,7 @@
                   (let [aggregator? (contains? aggregator-keywords k)
                         one?        (= :one (get cardinality k))
                         f           (if aggregator?
-                                      #(go (get (first %2) k))
+                                      #(async/go (get (first %2) k))
                                       (if one?
                                         join-one
                                         p/join-seq))]
@@ -687,7 +684,7 @@
 
 (defn prepare-keywords
   [{:keys [true-columns aggregators pseudo-columns
-           idents emitter joins] :as floor-plan}]
+           idents joins] :as floor-plan}]
   (-> floor-plan
     (assoc :aggregator-keywords (set (keys aggregators)))
 
@@ -705,9 +702,7 @@
     (assoc :clojuric-names (clojuric-names emitter column-keywords))))
 
 (defn separate-floor-plan-keys
-  [{:keys [joins emitter idents
-           extra-conditions]
-    :as floor-plan}]
+  [floor-plan]
   (-> floor-plan
     separate-idents
     polulate-columns-with-condititional-idents
@@ -715,7 +710,7 @@
     prepare-clojuric-names))
 
 (defn precompile-floor-plan
-  [{:keys [joins emitter idents unconditional-idents conditional-idents] :as floor-plan}]
+  [{:keys [joins emitter unconditional-idents conditional-idents] :as floor-plan}]
   (-> floor-plan
     (assoc :batch-query (emitter/emitter->batch-query emitter))
     (assoc :join-statements (compile-join-statements emitter joins))
