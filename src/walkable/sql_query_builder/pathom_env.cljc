@@ -1,6 +1,7 @@
 (ns walkable.sql-query-builder.pathom-env
   (:refer-clojure :exclude [key])
-  (:require [com.wsscode.pathom.core :as p]))
+  (:require [com.wsscode.pathom.core :as p]
+            [com.wsscode.pathom.connect :as pc]))
 
 (defn dispatch-key
   [env]
@@ -16,27 +17,47 @@
     (when (vector? k)
       (second k))))
 
+(defn parent-path
+  [env]
+  (loop [path (pop (::p/path env))]
+    (let [k (peek path)]
+      (if (or (p/placeholder-key? env k) (number? k))
+        (recur (pop path))
+        path))))
+
+(comment
+  (parent-path {::p/path                 [:a :b 1 :</x :u]
+                ::p/placeholder-prefixes #{"<"}}))
+
+(defn config
+  [env]
+  (get-in env [::pc/resolver-data :walkable.core/config]))
+
+(defn floor-plan
+  [env]
+  (get-in env [::pc/resolver-data :walkable.core/config :walkable.core/floor-plan]))
+
 (defn ident-column
   [env]
-  (let [ident-columns (-> env :walkable.sql-query-builder/floor-plan
+  (let [ident-columns (-> env floor-plan
                         :walkable.sql-query-builder.floor-plan/ident-columns)]
     (get ident-columns (dispatch-key env))))
 
 (defn target-column
   [env]
-  (let [target-columns (-> env :walkable.sql-query-builder/floor-plan
+  (let [target-columns (-> env floor-plan
                          :walkable.sql-query-builder.floor-plan/target-columns)]
     (get target-columns (dispatch-key env))))
 
 (defn target-table
   [env]
-  (let [target-tables (-> env :walkable.sql-query-builder/floor-plan
+  (let [target-tables (-> env floor-plan
                         :walkable.sql-query-builder.floor-plan/target-tables)]
     (get target-tables (dispatch-key env))))
 
 (defn source-column
   [env]
-  (let [source-columns (-> env :walkable.sql-query-builder/floor-plan
+  (let [source-columns (-> env floor-plan
                          :walkable.sql-query-builder.floor-plan/source-columns)]
     (get source-columns (dispatch-key env))))
 
@@ -47,104 +68,105 @@
 
 (defn source-table
   [env]
-  (let [source-tables (-> env :walkable.sql-query-builder/floor-plan
+  (let [source-tables (-> env floor-plan
                         :walkable.sql-query-builder.floor-plan/source-tables)]
     (get source-tables (dispatch-key env))))
 
 (defn join-statement
   [env]
-  (let [join-statements (-> env :walkable.sql-query-builder/floor-plan
+  (let [join-statements (-> env floor-plan
                           :walkable.sql-query-builder.floor-plan/join-statements)]
     (get join-statements (dispatch-key env))))
 
 (defn compiled-extra-condition
   [env]
-  (let [extra-conditions (-> env :walkable.sql-query-builder/floor-plan
+  (let [extra-conditions (-> env floor-plan
                            :walkable.sql-query-builder.floor-plan/compiled-extra-conditions)]
     (get extra-conditions (dispatch-key env))))
 
 (defn compiled-ident-condition
   [env]
-  (let [ident-conditions (-> env :walkable.sql-query-builder/floor-plan
+  (let [ident-conditions (-> env floor-plan
                            :walkable.sql-query-builder.floor-plan/compiled-ident-conditions)]
     (get ident-conditions (dispatch-key env))))
 
 (defn compiled-join-condition
   [env]
-  (let [join-conditions (-> env :walkable.sql-query-builder/floor-plan
+  (let [join-conditions (-> env floor-plan
                           :walkable.sql-query-builder.floor-plan/compiled-join-conditions)]
     (get join-conditions (dispatch-key env))))
 
 (defn compiled-join-condition-cte
   [env]
-  (let [join-conditions (-> env :walkable.sql-query-builder/floor-plan
+  (let [join-conditions (-> env floor-plan
                           :walkable.sql-query-builder.floor-plan/compiled-join-conditions-cte)]
     (get join-conditions (dispatch-key env))))
 
 (defn compiled-join-selection
   [env]
-  (let [join-selection (-> env :walkable.sql-query-builder/floor-plan
+  (let [join-selection (-> env floor-plan
                          :walkable.sql-query-builder.floor-plan/compiled-join-selection)]
     (get join-selection (dispatch-key env))))
 
 (defn compiled-aggregator-selection
   [env]
-  (let [aggregator-selection (-> env :walkable.sql-query-builder/floor-plan
+  (let [aggregator-selection (-> env floor-plan
                                :walkable.sql-query-builder.floor-plan/compiled-aggregator-selection)]
     (get aggregator-selection (dispatch-key env))))
 
 (defn compiled-group-by
   [env]
-  (let [group-bys (-> env :walkable.sql-query-builder/floor-plan
+  (let [group-bys (-> env floor-plan
                     :walkable.sql-query-builder.floor-plan/compiled-group-by)]
     (get group-bys (dispatch-key env))))
 
 (defn compiled-having
   [env]
-  (let [havings (-> env :walkable.sql-query-builder/floor-plan
+  (let [havings (-> env floor-plan
                   :walkable.sql-query-builder.floor-plan/compiled-having)]
     (get havings (dispatch-key env))))
 
 (defn pagination-fallbacks
   [env]
-  (let [fallbacks (-> env :walkable.sql-query-builder/floor-plan
+  (let [fallbacks (-> env floor-plan
                     :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks)]
     (get fallbacks (dispatch-key env))))
 
 (defn pagination-default-fallbacks
   [env]
-  (get-in env
-    [:walkable.sql-query-builder/floor-plan
-     :walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
-     'walkable.sql-query-builder.pagination/default-fallbacks]))
+  (-> env
+    floor-plan
+    (get-in
+      [:walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
+       'walkable.sql-query-builder.pagination/default-fallbacks])))
 
 (defn return-or-join
   [env]
-  (get-in env
-    [:walkable.sql-query-builder/floor-plan
-     :walkable.sql-query-builder.floor-plan/return-or-join
-     (dispatch-key env)]))
+  (-> env
+    floor-plan
+    (get-in
+      [:walkable.sql-query-builder.floor-plan/return-or-join
+       (dispatch-key env)])))
 
 (defn return-or-join-async
   [env]
-  (get-in env
-    [:walkable.sql-query-builder/floor-plan
-     :walkable.sql-query-builder.floor-plan/return-or-join-async
-     (dispatch-key env)]))
+  (-> env
+    floor-plan
+    (get-in
+      [:walkable.sql-query-builder.floor-plan/return-or-join-async
+       (dispatch-key env)])))
 
 (defn aggregator?
   [env]
-  (let [aggregators (get-in env
-                      [:walkable.sql-query-builder/floor-plan
-                       :walkable.sql-query-builder.floor-plan/aggregator-keywords])]
+  (let [aggregators (-> env floor-plan
+                      :walkable.sql-query-builder.floor-plan/aggregator-keywords)]
     (contains? aggregators (dispatch-key env))))
 
 (defn cardinality-one?
   [env]
-  (->> [:walkable.sql-query-builder/floor-plan
-        :walkable.sql-query-builder.floor-plan/cardinality
-        (dispatch-key env)]
-    (get-in env)
+  (->> (get-in (floor-plan env)
+         [:walkable.sql-query-builder.floor-plan/cardinality
+          (dispatch-key env)])
     (= :one)))
 
 (defn params [env]
@@ -165,15 +187,15 @@
 
 (defn variable->graph-index
   [env]
-  (-> env :walkable.sql-query-builder/floor-plan
+  (-> env floor-plan
     :walkable.sql-query-builder.floor-plan/variable->graph-index))
 
 (defn compiled-variable-getters
   [env]
-  (-> env :walkable.sql-query-builder/floor-plan
+  (-> env floor-plan
     :walkable.sql-query-builder.floor-plan/compiled-variable-getters))
 
 (defn compiled-variable-getter-graphs
   [env]
-  (get-in env [:walkable.sql-query-builder/floor-plan
-               :walkable.sql-query-builder.floor-plan/compiled-variable-getter-graphs]))
+  (-> env floor-plan
+    :walkable.sql-query-builder.floor-plan/compiled-variable-getter-graphs))
