@@ -1,14 +1,11 @@
 (ns walkable.integration-test.sqlite-test
   {:integration true}
-  (:require [walkable.sql-query-builder :as sqb]
-            [walkable.integration-test.helper :refer [run-scenario-tests]]
+  (:require [walkable.integration-test.helper :refer [run-scenario-tests]]
             [walkable.integration-test.common :refer [common-scenarios]]
             [clojure.java.io :as io]
             [integrant.core :as ig]
             [duct.core :as duct]
-            [clojure.test :as t :refer [deftest is]]
-            [com.wsscode.pathom.core :as p]
-            [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer [deftest]]
             [walkable.sql-query-builder.impl.sqlite]))
 
 (duct/load-hierarchy)
