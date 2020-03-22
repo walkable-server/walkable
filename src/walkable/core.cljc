@@ -495,7 +495,7 @@
                    {:target-column target-column
                     :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
-env/return-or-join-async
+
 (defn join-children-data-by-join-key
   [env {:keys [entities join-children]}]
   (let [{::keys [db query]} (env/config env)
