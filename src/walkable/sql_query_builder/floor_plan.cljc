@@ -559,10 +559,10 @@
                   (let [aggregator? (contains? aggregator-keywords k)
                         one?        (= :one (get cardinality k))
                         f           (if aggregator?
-                                      #(get (first %2) k)
+                                      #(get (first %) k)
                                       (if one?
-                                        join-one
-                                        p/join-seq))]
+                                        first
+                                        identity))]
                     (assoc acc k f)))
           {}
           (keys target-tables))]
@@ -575,10 +575,10 @@
                   (let [aggregator? (contains? aggregator-keywords k)
                         one?        (= :one (get cardinality k))
                         f           (if aggregator?
-                                      #(async/go (get (first %2) k))
+                                      #(async/go (get (first %) k))
                                       (if one?
-                                        join-one
-                                        p/join-seq))]
+                                        first
+                                        identity))]
                     (assoc acc k f)))
           {}
           (keys target-tables))]

@@ -518,7 +518,7 @@
             (join-children-data-by-join-key env
               {:entities      entities
                :join-children join-children})))
-        {(env/dispatch-key env) entities}))))
+        {(env/dispatch-key env) ((env/return-or-join env) entities)}))))
 
 (defn connect-plugin
   [{:keys [resolver-sym db query floor-plan index-oir index-io index-idents resolver]
