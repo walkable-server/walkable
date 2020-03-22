@@ -1,4 +1,4 @@
-(ns walkable.sql-query-builder
+(ns walkable.core
   (:require [walkable.sql-query-builder.pagination :as pagination]
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
@@ -6,28 +6,21 @@
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
-            [clojure.core.async :as async
-             :refer [go <! >! put!]]
-            [com.wsscode.pathom.core :as p]))
+            [com.wsscode.pathom.core :as p]
+            [com.wsscode.pathom.connect :as pc]))
 
 (defn process-children*
   "Infers which columns to include in SQL query from child keys in env ast"
-  [{::keys [floor-plan] :keys [ast] ::p/keys [placeholder-prefixes]
-    :as    env}]
-  {:pre  [(s/valid? (s/keys :req [::floor-plan/column-keywords ::floor-plan/source-columns]
-                      :opt [::floor-plan/required-columns])
-            floor-plan)
-
-          (if placeholder-prefixes
-            (set? placeholder-prefixes)
-            true)]
+  [{:keys [ast] ::p/keys [placeholder-prefixes] :as env}]
+  {:pre [(if placeholder-prefixes
+           (set? placeholder-prefixes)
+           true)]
    :post [#(s/valid? (s/keys :req-un [::join-children ::columns-to-query]) %)]}
-  (let [{::floor-plan/keys [column-keywords required-columns source-columns]} floor-plan
+  (let [{::floor-plan/keys [column-keywords required-columns source-columns]} (env/floor-plan env)
 
         all-children
         (ast/find-all-children ast
-          {:placeholder? #(contains? placeholder-prefixes
-                            (namespace (:dispatch-key %)))
+          {:placeholder? #(p/placeholder-key? env (:dispatch-key %))
            :leaf?        #(or ;; it's a column child
                             (contains? column-keywords (:dispatch-key %))
                             ;; it's a join child
@@ -64,8 +57,9 @@
                          child-source-columns)}))
 
 (defn process-children
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [aggregator-keywords]} floor-plan
+  "Infers which columns to include in SQL query from child keys in env ast"
+  [env]
+  (let [{::floor-plan/keys [aggregator-keywords]} (env/floor-plan env)
         k                                         (env/dispatch-key env)]
     (if (contains? aggregator-keywords k)
       {:columns-to-query #{k}
@@ -74,22 +68,23 @@
 
 (defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
-  om.next query params."
+  EQL query params."
   [env]
   {:offset   (env/offset env)
    :limit    (env/limit env)
    :order-by (env/order-by env)})
 
 (defn process-ident-condition
-  [{::keys [floor-plan] :as env}]
+  [env]
   (when-let [compiled-ident-condition (env/compiled-ident-condition env)]
     (->> compiled-ident-condition
       (expressions/substitute-atomic-variables
         {:variable-values {`floor-plan/ident-value
                            (expressions/compile-to-string {} (env/ident-value env))}}))))
 
-(defn process-pagination [{::keys [floor-plan] :as env}]
-  {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) floor-plan)]
+(defn process-pagination
+  [env]
+  {:pre  [(s/valid? (s/keys :req [::floor-plan/clojuric-names]) (env/floor-plan env))]
    :post [#(s/valid? (s/keys :req-un [::offset ::limit ::order-by ::order-by-columns]) %)]}
   (pagination/merge-pagination
     (env/pagination-default-fallbacks env)
@@ -97,9 +92,9 @@
     (supplied-pagination env)))
 
 (defn process-supplied-condition
-  [{::keys [floor-plan] :as env}]
+  [env]
   (let [{::floor-plan/keys [compiled-formulas join-filter-subqueries]}
-        floor-plan
+        (env/floor-plan env)
 
         supplied-condition
         (get-in env [:ast :params :filters])]
@@ -150,9 +145,8 @@
         conditions))))
 
 (defn top-level-process-selection
-  [{::keys [floor-plan] :as env} columns-to-query]
-  (let [{::floor-plan/keys [compiled-selection]} floor-plan
-
+  [env columns-to-query]
+  (let [{::floor-plan/keys [compiled-selection]} (env/floor-plan env)
         compiled-normal-selection (mapv compiled-selection columns-to-query)]
     (expressions/concatenate  #(clojure.string/join ", " %)
       compiled-normal-selection)))
@@ -165,7 +159,7 @@
     compiled-exprs))
 
 (defn top-level-process-query*
-  [{::keys [floor-plan] :as env}]
+  [env]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
 
@@ -192,7 +186,7 @@
      :join-children join-children}))
 
 (defn child-join-process-shared-query*
-  [{::keys [floor-plan] :as env} {:keys [order-by-columns]}]
+  [env {:keys [order-by-columns]}]
   (let [{:keys [columns-to-query]} (process-children env)
 
         target-column    (env/target-column env)
@@ -215,7 +209,7 @@
     sql-query))
 
 (defn child-join-process-shared-aggregator-query*
-  [{::keys [floor-plan] :as env}]
+  [env]
   (let [target-column    (env/target-column env)
         columns-to-query #{target-column}
         selection        (top-level-process-selection env columns-to-query)
@@ -235,13 +229,9 @@
     sql-query))
 
 (defn child-join-process-individual-aggregator-query*
-  [{::keys [floor-plan] :as env}]
-  (let [{:keys [columns-to-query]} (process-children env)
-        target-column              (env/target-column env)
-
-        selection  (env/compiled-aggregator-selection env)
+  [env]
+  (let [selection  (env/compiled-aggregator-selection env)
         conditions (child-join-process-conditions env)
-
         sql-query {:raw-string
                    (emitter/->query-string
                      {:target-table   (env/target-table env)
@@ -252,7 +242,7 @@
     sql-query))
 
 (defn child-join-process-individual-query*
-  [{::keys [floor-plan] :as env} {:keys [offset limit order-by order-by-columns]}]
+  [env {:keys [offset limit order-by order-by-columns]}]
   (let [{:keys [columns-to-query]} (process-children env)
         target-column              (env/target-column env)
 
@@ -281,7 +271,7 @@
     sql-query))
 
 (defn child-join-process-individual-aggregator-query-cte*
-  [{::keys [floor-plan] :as env}]
+  [env]
   (let [selection  (env/compiled-aggregator-selection env)
         conditions (env/compiled-join-condition-cte env)
 
@@ -294,7 +284,7 @@
     sql-query))
 
 (defn child-join-process-individual-query-cte*
-  [{::keys [floor-plan] :as env} {:keys [offset limit order-by]}]
+  [env {:keys [offset limit order-by]}]
   (let [selection  select-all
         conditions (env/compiled-join-condition-cte env)
 
@@ -323,7 +313,7 @@
       variables)))
 
 (defn compute-variables
-  [env computed-graphs variables]
+  [env {:keys [computed-graphs variables]}]
   (let [getters (select-keys (env/compiled-variable-getters env) variables)]
     (into {}
       (map (fn [[k f]]
@@ -334,10 +324,10 @@
       getters)))
 
 (defn process-variables
-  [{::keys [floor-plan] :as env} variables]
-  (let [computed-graphs
-        (compute-graphs env variables)]
-    (compute-variables env computed-graphs variables)))
+  [env variables]
+  (compute-variables env
+    {:computed-graphs (compute-graphs env variables)
+     :variables       variables}))
 
 (defn top-level-process-query
   [env]
@@ -402,37 +392,26 @@
   (vec (cons raw-string params)))
 
 (defn top-level
-  [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [ident-keywords]}
-        floor-plan
+  [env]
+  (let [{::keys [floor-plan db query]} (env/config env)
 
-        k                                 (env/dispatch-key env)
+        {::floor-plan/keys [ident-keywords]} floor-plan
+
+        k (env/dispatch-key env)
+
         {:keys [sql-query join-children]} (top-level-process-query env)]
     {:join-children join-children
      :entities      (if (contains? ident-keywords k)
                       ;; for idents
-                      (run-query sql-db (build-parameterized-sql-query sql-query))
+                      (query db (build-parameterized-sql-query sql-query))
                       ;; joins don't have to build a query themselves
-                      ;; just look up the key in their parents data
-                      (let [parent (p/entity env)]
-                        (get parent (:ast env))))}))
-
-(defn top-level-async
-  [{::keys [floor-plan sql-db run-query] :as env}]
-  (let [{::floor-plan/keys [ident-keywords]}
-        floor-plan
-
-        k                                 (env/dispatch-key env)
-        {:keys [sql-query join-children]} (top-level-process-query env)]
-    (go
-      {:join-children join-children
-       :entities      (if (contains? ident-keywords k)
-                        ;; for idents
-                        (<! (run-query sql-db (build-parameterized-sql-query sql-query)))
-                        ;; joins don't have to build a query themselves
-                        ;; just look up the key in their parents data
-                        (let [parent (p/entity env)]
-                          (get parent (:ast env))))})))
+                      ;; just look up the key in cached data
+                      ;; fetched by their parents
+                      (let [p (env/parent-path env)
+                            ast (:ast env)
+                            scv (env/source-column-value env)
+                            parent-data (p/cached env p {})]
+                        (get-in parent-data [ast scv])))}))
 
 (defn source-column-variable-values
   [v]
@@ -462,8 +441,8 @@
        (child-join-process-individual-query-cte child-env pagination)})))
 
 (defn final-query
-  [batch-query cet? aggregator?
-   child-env source-column entities]
+  [{:keys [batch-query cet? aggregator?
+           child-env source-column entities]}]
   (let [{:keys [shared-query unbound-individual-query]}
         (if cet?
           (process-join-children-cte child-env aggregator?)
@@ -484,13 +463,13 @@
       batched-individuals)))
 
 (defn join-children-data
-  [{::keys [floor-plan] :as env}
-   entities join-children]
+  [env {:keys [entities join-children]}]
   (let [{::floor-plan/keys [batch-query
                             aggregator-keywords
                             cte-keywords
                             target-columns
-                            source-columns]} floor-plan]
+                            source-columns]}
+        (env/floor-plan env)]
     (when (and (seq entities) (seq join-children))
       (let [f (fn [join-child-ast]
                 (let [j (:dispatch-key join-child-ast)
@@ -506,105 +485,69 @@
                       child-env (assoc env :ast join-child-ast)
 
                       query
-                      (final-query batch-query cet? aggregator?
-                        child-env source-column entities)]
+                      (final-query {:batch-query batch-query
+                                    :cet? cet?
+                                    :aggregator? aggregator?
+                                    :child-env child-env
+                                    :source-column source-column
+                                    :entities entities})]
                   [join-child-ast
                    {:target-column target-column
                     :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
-
+env/return-or-join-async
 (defn join-children-data-by-join-key
-  [{::keys [run-query sql-db] :as env} entities join-children]
-  (let [f (fn [[join-child {:keys [target-column query]}]]
-            (let [data (run-query sql-db query)]
+  [env {:keys [entities join-children]}]
+  (let [{::keys [db query]} (env/config env)
+        f (fn [[join-child {:keys [target-column] q :query}]]
+            (let [data (query db q)]
               [join-child (group-by target-column data)]))]
     (into {}
       (map f)
-      (join-children-data env entities join-children))))
+      (join-children-data env {:entities entities :join-children join-children}))))
 
-(defn join-childen-data-by-join-key-async
-  [{::keys [run-query sql-db] :as env} entities join-children]
-  (async/into {}
-    (async/merge
-      (map (fn [[join-child {:keys [target-column query]}]]
-             (go (let [data (<! (run-query sql-db query))]
-                   [join-child (group-by target-column data)])))
-        (join-children-data env entities join-children)))))
-
-(defn entities-with-join-children-data
-  [join-children-data-by-join-key entities source-columns join-children]
-  (for [e entities]
-    (let [f (fn [join-child]
-              (let [j             (:dispatch-key join-child)
-                    source-column (get source-columns j)
-                    parent-id     (get e source-column)
-                    children      (get-in join-children-data-by-join-key
-                                    [join-child parent-id])]
-                [join-child children]))
-          child-joins (into {} (map f) join-children)]
-      (merge e child-joins))))
-
-(defn pull-entities
-  "A Pathom plugin that pulls entities from SQL database and puts
-  relevent data to ::p/entity ready for p/map-reader plugin.
-
-  The env given to the Pathom parser must contains:
-
-  - floor-plan: output of compile-floor-plan
-
-  - sql-db: a database instance
-
-  - run-query: a function that run an SQL query (optionally with
-  params) against the given sql-db. Shares the same signature with
-  clojure.java.jdbc/query."
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [target-tables source-columns]}
-        floor-plan
-
-        k (env/dispatch-key env)]
+(defn dynamic-resolver
+  [env]
+  (let [{::floor-plan/keys [target-tables]} (env/floor-plan env)
+        k                                   (env/dispatch-key env)]
     (if (contains? target-tables k)
       ;; this is an ident or a join, let's go for data
-      (let [{:keys [join-children entities]} (top-level env)
+      (let [{:keys [join-children entities]} (top-level env)]
+        (when (seq join-children)
+          (p/cached env (::p/path env)
+            (join-children-data-by-join-key env
+              {:entities      entities
+               :join-children join-children})))
+        {(env/dispatch-key env) entities}))))
 
-            full-entities
-            (-> (join-children-data-by-join-key env entities join-children)
-              (entities-with-join-children-data entities source-columns join-children))
+(defn connect-plugin
+  [{:keys [resolver-sym db query floor-plan index-oir index-io index-idents resolver]
+    :or   {resolver dynamic-resolver
+           resolver-sym `walkable-resolver}}]
+  (let [config {::db db
+                ::query query
+                ::resolver-sym resolver-sym
+                ::floor-plan (floor-plan/compile-floor-plan floor-plan)}]
+    {::p/intercept-output (fn [env v] v)
+     ::p/wrap-parser2
+     (fn [parser {::p/keys [plugins]}]
+       (let [resolve-fn   (fn [env _] (resolver env))
 
-            return-or-join
-            (env/return-or-join env)
+             all-indexes  {::pc/index-resolvers
+                           {resolver-sym
+                            {::config config
+                             ::pc/transform pc/transform-batch-resolver
+                             ::pc/sym               resolver-sym
+                             ::pc/cache?            false
+                             ::pc/dynamic-resolver? true
+                             ::pc/output            []
+                             ::pc/resolve           resolve-fn}}
 
-            one?
-            (env/cardinality-one? env)]
-        (if (seq full-entities)
-          (return-or-join env full-entities)
-          (if-not one?
-            []
-            {})))
-
-      ::p/continue)))
-
-(defn async-pull-entities
-  [{::keys [floor-plan] :as env}]
-  (let [{::floor-plan/keys [target-tables source-columns]}
-        floor-plan
-
-        k         (env/dispatch-key env)]
-    (if (contains? target-tables k)
-      (go (let [{:keys [join-children entities]} (<! (top-level-async env))
-
-                full-entities
-                (-> (<! (join-childen-data-by-join-key-async env entities join-children))
-                  (entities-with-join-children-data entities source-columns join-children))
-
-                return-or-join-async
-                (env/return-or-join-async env)
-
-                one?
-                (env/cardinality-one? env)]
-            (if (seq full-entities)
-              (<! (return-or-join-async env full-entities))
-              (if one?
-                {}
-                []))))
-
-      ::p/continue)))
+                           ::pc/index-oir           index-oir
+                           ::pc/index-io            index-io
+                           ::pc/idents              index-idents
+                           ::pc/autocomplete-ignore #{}}
+             idx-atoms (keep ::pc/indexes plugins)]
+         (doseq [idx* idx-atoms]
+           (swap! idx* pc/merge-indexes all-indexes))
+         (fn [env tx] (parser env tx))))}))
