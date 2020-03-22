@@ -1,5 +1,5 @@
-(ns walkable.sql-query-builder-test
-  (:require [walkable.sql-query-builder :as sut]
+(ns walkable.core-test
+  (:require [walkable.core :as sut]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [clojure.test :as t :refer [deftest is]]
             [com.wsscode.pathom.core :as p]))
