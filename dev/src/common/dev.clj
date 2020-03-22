@@ -17,7 +17,7 @@
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.sql-query-builder :as sqb]))
+            [walkable.core :as walkable]))
 
 ;; <<< Beginning of Duct framework helpers
 
@@ -92,21 +92,6 @@
       (put! c r))
     c))
 
-(def sync-parser
-  (p/parser
-    {::p/plugins
-     [(p/env-plugin
-        {::p/reader
-         [sqb/pull-entities p/map-reader
-          pc/all-readers]})]}))
-
-(def async-parser
-  (p/async-parser
-    {::p/plugins
-     [(p/env-plugin
-        {::p/reader
-         [sqb/async-pull-entities p/map-reader]})]}))
-
 (def emitter emitter/default-emitter)
 
 ;; Simple join examples
@@ -114,64 +99,102 @@
 ;; I named the primary columns "index" and "number" instead of "id" to
 ;; ensure arbitrary columns will work.
 
-;; Example: join column living in source table
+(defn now []
+  (.format (java.text.SimpleDateFormat. "HH:mm") (java.util.Date.)))
+
+(def core-config
+  (let [resolver-sym `my-resolver]
+    {:resolver-sym resolver-sym
+     :index-oir
+     (merge
+       {:farmers/farmers {#{} #{resolver-sym}}
+        :houses/houses  {#{} #{resolver-sym}}}
+
+       #:farmer{:number      {#{:farmers/farmers} #{resolver-sym}}
+                :name        {#{:farmers/farmers} #{resolver-sym}}
+                :house-index {#{:farmers/farmers} #{resolver-sym}}
+                :house       {#{:farmer/number}      #{resolver-sym}
+                              #{:farmer/house-index} #{resolver-sym}}}
+       #:house{:index        {#{:farmer/house} #{resolver-sym}
+                              #{:houses/houses}   #{resolver-sym}}
+               :color        {#{:house/index} #{resolver-sym}
+                              #{:houses/houses}  #{resolver-sym}}
+               :owner-number {#{:house/index} #{resolver-sym}
+                              #{:houses/houses}  #{resolver-sym}}
+               :owner        {#{:house/index} #{resolver-sym}
+                              #{:houses/houses}  #{resolver-sym}}})
+
+     :index-io
+     {#{}
+      {:farmers/farmers #:farmer{:number {} :name {} :house-index {} :house #:house{:index {}}}
+       :houses/houses #:house{:index {} :color {} :owner #:farmer {:number {}}}}
+
+      #{:farmer/number}
+      #:farmer{:name {} :house-index {}}
+
+      #{:farmer/house-index}
+      #:house{:index {} :color {}
+              :owner #:farmer{:number {}}}
+
+      #{:house/index}
+      #:house{:color {}
+              :owner #:farmer{:number {}}}}
+
+     :index-idents
+     #{:farmer/number :house/index}
+
+     :floor-plan
+     {:emitter          emitter
+      ;; columns already declared in :joins are not needed
+      ;; here
+      :true-columns     [:house/color
+                         :farmer/number
+                         :farmer/name]
+      :idents           {:farmer/id   :farmer/number
+                         :farmers/farmers "farmer"
+                         :houses/houses "house"}
+      :extra-conditions {}
+      :joins            {:farmer/house [:farmer/house-index :house/index]}
+      :reversed-joins   {:house/owner :farmer/house}
+      :cardinality      {:farmer/id    :one
+                         :house/owner  :one
+                         :farmer/house :one}}}))
+
 #_
 (let [eg-1
-      '[{(:farmers/all {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
-                                                 [:= :house/color "brown"]]}})
+      '[{(:farmers/farmers {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
+                                                   [:= :house/color "brown"]]}})
          [:farmer/number :farmer/name
-          {:farmer/house [:house/index :house/color]}]}]
+          {:farmer/house [;; :house/index
+                          :house/color {:house/owner [:farmer/name]}]}]}]
+      eg-2
+      '[{:houses/houses [; :house/index
+                      :house/color
 
-      parser
-      sync-parser]
-  (parser {::sqb/sql-db    (db)
-           ::sqb/run-query run-print-query
+                      {:>/else [{:house/owner [:farmer/name
+                                               {:farmer/house [:house/index
+                                                               :house/color
+                                                               {:house/owner [:farmer/name]}]}]}]}
+                      #_
+                      {:house/owner [:farmer/name
+                                     {:farmer/house [;; :house/index
+                                                     :house/color
+                                                     {:house/owner [:farmer/name]}]}]}]}]
 
-           ::sqb/floor-plan
-           (floor-plan/compile-floor-plan
-             {:emitter          emitter
-              ;; columns already declared in :joins are not needed
-              ;; here
-              :true-columns     [:house/color
-                                 :farmer/number
-                                 :farmer/name]
-              :idents           {:farmer/by-id :farmer/number
-                                 :farmers/all  "farmer"}
-              :extra-conditions {}
-              :joins            {:farmer/house [:farmer/house-index :house/index]}
-              :reversed-joins   {:house/owner :farmer/house}
-              :cardinality      {:farmer/by-id :one
-                                 :house/owner  :one
-                                 :farmer/house :one}})}
-    eg-1))
-
-;; the same above, but using async version
-#_
-(let [eg-1
-      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/house [:house/index :house/color]}]}]
-
-      parser
-      async-parser]
-  (async/go
-    (println "final result"
-      (<! (parser {::sqb/sql-db    (db)
-                   ::sqb/run-query async-run-print-query
-
-                   ::sqb/floor-plan
-                   (floor-plan/compile-floor-plan
-                     {:emitter          emitter
-                      ;; columns already declared in :joins are not needed
-                      ;; here
-                      :true-columns     [:house/color
-                                         :farmer/number
-                                         :farmer/name]
-                      :idents           {:farmer/by-id :farmer/number
-                                         :farmers/all  "farmer"}
-                      :extra-conditions {}
-                      :joins            {:farmer/house [:farmer/house-index :house/index]}
-                      :reversed-joins   {:house/owner :farmer/house}
-                      :cardinality      {:farmer/by-id :one
-                                         :house/owner  :one
-                                         :farmer/house :one}})}
-            eg-1)))))
+      config
+      (merge {:db    (db)
+              :query run-print-query}
+        core-config)
+      the-parser
+      (p/parser
+        {::p/env     {::p/reader               [p/map-reader
+                                                pc/reader2
+                                                pc/open-ident-reader
+                                                p/env-placeholder-reader]
+                      ::p/placeholder-prefixes #{">"}}
+         ::p/mutate  pc/mutate
+         ::p/plugins [(pc/connect-plugin {::pc/register []})
+                      (walkable/connect-plugin config)
+                      p/error-handler-plugin
+                      p/trace-plugin]})]
+  (the-parser {} eg-2))
