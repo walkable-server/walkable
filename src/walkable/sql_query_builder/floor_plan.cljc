@@ -104,12 +104,20 @@
     {} joins))
 
 (defn roots->target-tables
-  "Produces map of ident keys to their corresponding source table name."
+  "Produces map of root keys to their corresponding source table name."
   [emitter roots]
   {:post [#(s/valid? ::keyword-string-map %)]}
   (reduce (fn [result [k raw-table-name]]
             (assoc result k (emitter/table-name* emitter raw-table-name)))
     {} roots))
+
+(defn idents->target-tables
+  "Produces map of ident keys to their corresponding source table name."
+  [emitter idents]
+  {:post [#(s/valid? ::keyword-string-map %)]}
+  (into {}
+    (map (fn [k] [k (emitter/table-name emitter k)]))
+    idents))
 
 (s/def ::multi-keys
   (s/coll-of (s/tuple (s/or :single-key keyword?
@@ -676,7 +684,7 @@
   (-> floor-plan
     (assoc :batch-query (emitter/emitter->batch-query emitter))
     (assoc :join-statements (compile-join-statements emitter joins))
-    (assoc :target-tables (merge
+    (assoc :target-tables (merge #_(idents->target-tables emitter roots)
                             (roots->target-tables emitter roots)
                             (joins->target-tables emitter joins)))
     (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))

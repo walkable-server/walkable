@@ -97,29 +97,18 @@
                                     :d #{:e}})
         {:a #{:e :c}, :b #{:e}, :d #{:e}})))
 
-(deftest separate-idents*-test
-  (is (= (sut/separate-idents* {:person/by-id  :person/number
-                               :person/by-yob :person/yob
-                               :pets/all      "pet"
-                               :people/all    "person"})
-        {:unconditional-idents {:pets/all   "pet",
-                                :people/all "person"},
-         :conditional-idents   #:person {:by-id  :person/number,
-                                         :by-yob :person/yob}})))
+(deftest idents->target-tables-test
+  (is (= (sut/idents->target-tables emitter/mysql-emitter
+           #{:person/number :pet/index})
+        {:person/number "`person`", :pet/index "`pet`"})))
 
-(deftest conditional-idents->target-tables-test
-  (is (= (sut/conditional-idents->target-tables emitter/mysql-emitter
-           {:person/by-id :person/number
-            :pets/by-ids  :pet/index})
-         {:person/by-id "`person`", :pets/by-ids "`pet`"})))
-
-(deftest unconditional-idents->target-tables-test
-  (is (= (sut/unconditional-idents->target-tables emitter/mysql-emitter
+(deftest roots->target-tables-test
+  (is (= (sut/roots->target-tables emitter/mysql-emitter
            {:people/all "person"
             :pets/all   "pet"})
         {:people/all "`person`", :pets/all "`pet`"}))
 
-  (is (= (sut/unconditional-idents->target-tables emitter/default-emitter
+  (is (= (sut/roots->target-tables emitter/default-emitter
            {:people/all "public.person"
             :pets/all   "public.pet"})
         {:people/all "\"public\".\"person\""
@@ -199,17 +188,6 @@
                                            :true-columns #{:a :b}})
         {:joins        {:x [:u :v], :y [:m :n]},
          :true-columns #{:v :n :m :b :a :u}})))
-
-(deftest columns-in-conditional-idents-test
-  (is (= (sut/columns-in-conditional-idents {:x/by-id :x/id :y/by-id :y/id})
-        #{:y/id :x/id})))
-
-(deftest polulate-columns-with-condititional-idents-test
-  (is (= (sut/polulate-columns-with-condititional-idents
-           {:conditional-idents {:x/by-id :x/id :y/by-id :y/id}
-            :true-columns       #{:x/id :m/id}})
-        {:conditional-idents {:x/by-id :x/id, :y/by-id :y/id},
-         :true-columns       #{:m/id :y/id :x/id}})))
 
 (deftest member->graph-id-test
   (is (= (let [graphs [{:graph (zipmap [:xs :n :m :m2 :v]
