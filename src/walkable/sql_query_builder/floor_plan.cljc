@@ -526,9 +526,9 @@
 (defn join-one [env entities]
   (p/join (first entities) env))
 
-(defn compile-return-or-join
+(defn compile-return
   [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
-  (let [compiled-return-or-join
+  (let [compiled-return
         (reduce (fn [acc k]
                   (let [aggregator? (contains? aggregator-keywords k)
                         one?        (= :one (get cardinality k))
@@ -540,11 +540,11 @@
                     (assoc acc k f)))
           {}
           (keys target-tables))]
-    (assoc floor-plan :return-or-join compiled-return-or-join)))
+    (assoc floor-plan :return compiled-return)))
 
-(defn compile-return-or-join-async
+(defn compile-return-async
   [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
-  (let [compiled-return-or-join-async
+  (let [compiled-return-async
         (reduce (fn [acc k]
                   (let [aggregator? (contains? aggregator-keywords k)
                         one?        (= :one (get cardinality k))
@@ -556,7 +556,7 @@
                     (assoc acc k f)))
           {}
           (keys target-tables))]
-    (assoc floor-plan :return-or-join-async compiled-return-or-join-async)))
+    (assoc floor-plan :return-async compiled-return-async)))
 
 (def floor-plan-keys
   [:aggregator-keywords
@@ -584,8 +584,8 @@
    :compiled-pagination-fallbacks
    :required-columns
    :reversed-joins
-   :return-or-join
-   :return-or-join-async
+   :return
+   :return-async
    :compiled-variable-getters
    :compiled-variable-getter-graphs
    :variable->graph-index
@@ -609,8 +609,8 @@
     compile-pagination-fallbacks
     compile-variable-getter-graphs
     compile-variable-getters
-    compile-return-or-join-async
-    compile-return-or-join
+    compile-return-async
+    compile-return
     compile-extra-conditions
     compile-cte-keywords
     compile-join-conditions-cte

@@ -155,20 +155,20 @@
       [:walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
        'walkable.sql-query-builder.pagination/default-fallbacks])))
 
-(defn return-or-join
+(defn return
   [env]
   (-> env
     floor-plan
     (get-in
-      [:walkable.sql-query-builder.floor-plan/return-or-join
+      [:walkable.sql-query-builder.floor-plan/return
        (dispatch-key env)])))
 
-(defn return-or-join-async
+(defn return-async
   [env]
   (-> env
     floor-plan
     (get-in
-      [:walkable.sql-query-builder.floor-plan/return-or-join-async
+      [:walkable.sql-query-builder.floor-plan/return-async
        (dispatch-key env)])))
 
 (defn aggregator?

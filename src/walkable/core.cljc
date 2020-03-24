@@ -558,7 +558,7 @@
             {:entities      entities
              :join-children join-children})))
       (if-let [k (or (env/root-keyword env) (env/join-keyword env))]
-        {k ((env/return-or-join env) entities)}
+        {k ((env/return env) entities)}
         (first entities)))))
 
 (defn compute-indexes [resolver-sym ios]
