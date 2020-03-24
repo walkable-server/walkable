@@ -98,9 +98,11 @@
                      :pet/color
                      {:pet/owner [:person/number
                                   :person-pet/adoption-year]}]]
-     [{::pc/output [{:persons/persons person-out}]}
+     [{::pc/output [{:people/people person-out}]}
 
       {::pc/output [{:pets/by-color [:pet/color :color/pet-count]}]}
+
+      {::pc/output [:people/count]}
 
       {::pc/input  #{:person/number}
        ::pc/output person-out}
@@ -254,9 +256,10 @@
                                         #:human{:number 3, :name "peter", :yob 1989}]}
                        #:human{:number 3, :name "peter", :follow []}
                        #:human{:number 4, :name "sandra", :follow []}]}}]}
+
    :human-follow-variable-getters
-   :core-config human-follow-config
-   {:core-floor-plan (merge human-follow-floor-plan
+   {:core-config human-follow-config
+    :core-floor-plan (merge human-follow-floor-plan
                        {:pseudo-columns
                         {:human/age   [:- 'current-year :human/yob]
                          :human/stats [:str 'stats-header
