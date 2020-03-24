@@ -207,8 +207,8 @@
           {:farmer/house [:house/index :house/color]}]}]
       :expected
       #:farmers{:farmers [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
-                      #:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
-                      #:farmer{:number 3, :name "homeless", :house {}}]}}
+                          #:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
+                          #:farmer{:number 3, :name "homeless", :house {}}]}}
      {:message "supplied pagination"
       :query
       `[{(:farmers/farmers {:limit 1})
@@ -229,10 +229,10 @@
     :test-suite
     [{:message "idents should work"
       :query
-      '[{[:kid/by-id 1] [:kid/number :kid/name
-                         {:kid/toy [:toy/index :toy/color]}]}]
+      '[{[:kid/number 1] [:kid/number :kid/name
+                          {:kid/toy [:toy/index :toy/color]}]}]
       :expected
-      {[:kid/by-id 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}
+      {[:kid/number 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}
 
    :human-follow
    {:core-floor-plan human-follow-floor-plan
@@ -258,7 +258,7 @@
                        #:human{:number 4, :name "sandra", :follow []}]}}]}
 
    :human-follow-variable-getters
-   {:core-config human-follow-config
+   {:core-config     human-follow-config
     :core-floor-plan (merge human-follow-floor-plan
                        {:pseudo-columns
                         {:human/age   [:- 'current-year :human/yob]
@@ -305,20 +305,20 @@
          [:human/number :human/name :human/stats]}]
       :expected
       #:humans{:humans [#:human{:number 1, :name "jon",
-                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
-                    #:human{:number 2, :name "mary",
-                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
-                    #:human{:number 3, :name "peter",
-                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
-                    #:human{:number 4, :name "sandra",
-                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
+                                :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                        #:human{:number 2, :name "mary",
+                                :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                        #:human{:number 3, :name "peter",
+                                :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                        #:human{:number 4, :name "sandra",
+                                :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
    :person-pet
    {:core-floor-plan person-pet-floor-plan
     :core-config     person-pet-config
     :test-suite
     [{:message "join-table should work"
       :query
-      `[{[:person/by-id 1]
+      `[{[:person/number 1]
          [:person/number
           :person/name
           :person/yob
@@ -328,7 +328,7 @@
                         :person-pet/adoption-year
                         {:pet/owner [:person/name]}]}]}]
       :expected
-      {[:person/by-id 1]
+      {[:person/number 1]
        #:person {:number 1,
                  :name   "jon",
                  :yob    1980,
@@ -478,4 +478,4 @@
                          :person/age]}]
       :expected
       #:people {:people [#:person{:number 1, :name "jon", :yob 1980, :age 38}
-                      #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
+                         #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
