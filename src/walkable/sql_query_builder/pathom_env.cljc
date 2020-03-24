@@ -11,12 +11,6 @@
   [env]
   (-> env :ast :key))
 
-(defn ident-value
-  [env]
-  (let [k (key env)]
-    (when (vector? k)
-      (second k))))
-
 (defn parent-path
   [env]
   (loop [path (pop (::p/path env))]
@@ -29,6 +23,11 @@
   (parent-path {::p/path                 [:a :b 1 :</x :u]
                 ::p/placeholder-prefixes #{"<"}}))
 
+(defn planner-input [env]
+  (-> env
+    :com.wsscode.pathom.connect.planner/node
+    :com.wsscode.pathom.connect.planner/input))
+
 (defn config
   [env]
   (get-in env [::pc/resolver-data :walkable.core/config]))
@@ -37,29 +36,45 @@
   [env]
   (get-in env [::pc/resolver-data :walkable.core/config :walkable.core/floor-plan]))
 
-(defn ident-column
+(defn root-keyword [env]
+  (let [{:walkable.sql-query-builder.floor-plan/keys [root-keywords]} (floor-plan env)
+        k                                                             (dispatch-key env)]
+    (when (contains? root-keywords k)
+      k)))
+
+(defn join-keyword [env]
+  (let [{:walkable.sql-query-builder.floor-plan/keys [join-keywords]} (floor-plan env)
+        k                                                             (dispatch-key env)]
+    (when (contains? join-keywords k)
+      k)))
+
+(defn ident-keyword [env]
+  (when-not (or (root-keyword env) (join-keyword env))
+    (ffirst (planner-input env))))
+
+(defn ident-value
   [env]
-  (let [ident-columns (-> env floor-plan
-                        :walkable.sql-query-builder.floor-plan/ident-columns)]
-    (get ident-columns (dispatch-key env))))
+  (let [k (ident-keyword env)
+        e (p/entity env)]
+    (get e k)))
 
 (defn target-column
   [env]
   (let [target-columns (-> env floor-plan
                          :walkable.sql-query-builder.floor-plan/target-columns)]
-    (get target-columns (dispatch-key env))))
+    (get target-columns (or (root-keyword env) (join-keyword env) (ident-keyword env)))))
 
 (defn target-table
   [env]
   (let [target-tables (-> env floor-plan
                         :walkable.sql-query-builder.floor-plan/target-tables)]
-    (get target-tables (dispatch-key env))))
+    (get target-tables (or (root-keyword env) (join-keyword env) (ident-keyword env)))))
 
 (defn source-column
   [env]
   (let [source-columns (-> env floor-plan
                          :walkable.sql-query-builder.floor-plan/source-columns)]
-    (get source-columns (dispatch-key env))))
+    (get source-columns (or (root-keyword env) (join-keyword env) (ident-keyword env)))))
 
 (defn source-column-value
   [env]
@@ -88,7 +103,7 @@
   [env]
   (let [ident-conditions (-> env floor-plan
                            :walkable.sql-query-builder.floor-plan/compiled-ident-conditions)]
-    (get ident-conditions (dispatch-key env))))
+    (get ident-conditions (ident-keyword env))))
 
 (defn compiled-join-condition
   [env]
