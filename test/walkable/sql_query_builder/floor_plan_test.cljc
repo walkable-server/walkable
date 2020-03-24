@@ -176,11 +176,13 @@
        #{:v :n :m :u})))
 
 (deftest compile-cte-keywords-test
-  (is (= (sut/compile-cte-keywords {:joins   {:x/a [] :x/b [] :x/c []}
-                                    :use-cte {:x/b false :default true}})
+  (is (= (-> (sut/compile-cte-keywords {:joins   {:x/a [] :x/b [] :x/c []}
+                                        :use-cte {:x/b false :default true}})
+           (select-keys [:cte-keywords]))
         {:cte-keywords #{:x/a :x/c}}))
-  (is (= (sut/compile-cte-keywords {:joins {:x/a [] :x/b [] :x/c []}
-                                    :use-cte     {:x/a true :x/b true :default false}})
+  (is (= (-> (sut/compile-cte-keywords {:joins  {:x/a [] :x/b [] :x/c []}
+                                        :use-cte {:x/a true :x/b true :default false}})
+           (select-keys [:cte-keywords]))
         {:cte-keywords #{:x/a :x/b}})))
 
 (deftest polulate-columns-with-joins-test
