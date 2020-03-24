@@ -456,8 +456,7 @@
                        join-keys)]
     (-> floor-plan
       (assoc :cte-keywords cte-keywords)
-      (dissoc :use-cte)
-      (dissoc :joins))))
+      (dissoc :use-cte))))
 
 (defn compile-extra-conditions
   [{:keys [extra-conditions compiled-formulas join-filter-subqueries] :as floor-plan}]
@@ -576,7 +575,8 @@
    :compiled-aggregator-selection
    :compiled-selection
    :emitter
-   :root-keywords
+   :ident-keywords
+   :joins
    :join-filter-subqueries
    :join-keywords
    :cte-keywords
@@ -589,6 +589,7 @@
    :compiled-variable-getters
    :compiled-variable-getter-graphs
    :variable->graph-index
+   :root-keywords
    :source-columns
    :target-columns
    :target-tables])
@@ -656,7 +657,7 @@
 
 (defn prepare-keywords
   [{:keys [true-columns aggregators pseudo-columns
-           roots joins] :as floor-plan}]
+           idents roots joins] :as floor-plan}]
   (-> floor-plan
     (assoc :aggregator-keywords (set (keys aggregators)))
 
@@ -665,6 +666,7 @@
         (set (keys (merge aggregators pseudo-columns)))))
 
     (assoc :root-keywords (set (keys roots)))
+    (assoc :ident-keywords idents)
     (assoc :join-keywords (set (keys joins)))))
 
 (defn prepare-clojuric-names
@@ -680,11 +682,11 @@
     prepare-clojuric-names))
 
 (defn precompile-floor-plan
-  [{:keys [joins emitter roots] :as floor-plan}]
+  [{:keys [joins emitter idents roots] :as floor-plan}]
   (-> floor-plan
     (assoc :batch-query (emitter/emitter->batch-query emitter))
     (assoc :join-statements (compile-join-statements emitter joins))
-    (assoc :target-tables (merge #_(idents->target-tables emitter roots)
+    (assoc :target-tables (merge (idents->target-tables emitter idents)
                             (roots->target-tables emitter roots)
                             (joins->target-tables emitter joins)))
     (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))
