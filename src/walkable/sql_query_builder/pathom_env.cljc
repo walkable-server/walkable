@@ -23,10 +23,19 @@
   (parent-path {::p/path                 [:a :b 1 :</x :u]
                 ::p/placeholder-prefixes #{"<"}}))
 
+(defn planner-node [env]
+  (-> env
+    :com.wsscode.pathom.connect.planner/node))
+
 (defn planner-input [env]
   (-> env
     :com.wsscode.pathom.connect.planner/node
     :com.wsscode.pathom.connect.planner/input))
+
+(defn planner-requires [env]
+  (-> env
+    :com.wsscode.pathom.connect.planner/node
+    :com.wsscode.pathom.connect.planner/requires))
 
 (defn config
   [env]
@@ -49,8 +58,9 @@
       k)))
 
 (defn ident-keyword [env]
-  (when-not (or (root-keyword env) (join-keyword env))
-    (ffirst (planner-input env))))
+  (let [i (planner-input env)]
+    (when (not-empty i)
+      (ffirst i))))
 
 (defn ident-value
   [env]
@@ -67,8 +77,9 @@
 (defn target-table
   [env]
   (let [target-tables (-> env floor-plan
-                        :walkable.sql-query-builder.floor-plan/target-tables)]
-    (get target-tables (or (root-keyword env) (join-keyword env) (ident-keyword env)))))
+                        :walkable.sql-query-builder.floor-plan/target-tables)
+        out (get target-tables (or (root-keyword env) (join-keyword env) (ident-keyword env)))]
+    out))
 
 (defn source-column
   [env]
