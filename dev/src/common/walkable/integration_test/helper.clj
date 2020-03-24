@@ -28,8 +28,7 @@
     {::p/env     {::p/reader               [p/map-reader
                                             pc/reader3
                                             pc/open-ident-reader
-                                            p/env-placeholder-reader]
-                  ::p/placeholder-prefixes #{">"}}
+                                            p/env-placeholder-reader]}
      ::p/plugins [(pc/connect-plugin {::pc/register []})
                   (walkable/connect-plugin (assoc (connect-config config)
                                              :db db
@@ -48,13 +47,14 @@
                                              :core-config core-config
                                              :core-floor-plan core-floor-plan
                                              :db-type db-type})]
-                (parser (assoc env ::p/placeholder-prefixes #{"ph"}) query)))
+                (parser env query)))
           "without CTEs in joins")
+
         (is (= expected
               (let [parser (walkable-parser {:db db
                                              :core-config core-config
                                              :core-floor-plan core-floor-plan
                                              :db-type db-type
                                              :cte? true})]
-                (parser (assoc env ::p/placeholder-prefixes #{"ph"}) query)))
+                (parser env query)))
           "with CTEs in joins")))))
