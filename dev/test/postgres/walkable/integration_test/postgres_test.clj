@@ -5,6 +5,7 @@
             [clojure.java.io :as io]
             [integrant.core :as ig]
             [duct.core :as duct]
+            [com.wsscode.pathom.connect :as pc]
             [clojure.test :as t :refer [deftest]]
             [walkable.sql-query-builder.impl.postgres]))
 
@@ -24,27 +25,41 @@
 (def planet-inhabitant-floor-plan
   {:true-columns #{:land.animal/id :land.animal/name
                    :ocean.animal/id :ocean.animal/name}
-   :idents       {:land.animal/all    "land.animal"
-                  :land.animal/by-id  :land.animal/id
-                  :ocean.animal/all   "ocean.animal"
-                  :ocean.animal/by-id :ocean.animal/id}
-   :cardinality  {:land.animal/by-id  :one
-                  :ocean.animal/by-id :one}})
+   :roots        {:land.animal/animals  "land.animal"
+                  :ocean.animal/animals "ocean.animal"}
+   :cardinality  {:land.animal/id  :one
+                  :ocean.animal/id :one}})
+
+(def planet-inhabitant-config
+  {:inputs-outputs
+   [{::pc/output [{:land.animal/animals [:land.animal/id :land.animal/name]}]}
+
+    {::pc/output [{:ocean.animal/animals [:ocean.animal/id :ocean.animal/name]}]}
+
+    {::pc/input  #{:land.animal/id}
+     ::pc/output [:land.animal/name]}
+
+    {::pc/input  #{:ocean.animal/id}
+     ::pc/output [:ocean.animal/name]}]})
 
 (def postgres-scenarios
   {:planet-species
    {:core-floor-plan planet-inhabitant-floor-plan
+    :core-config     planet-inhabitant-config
     :test-suite
     [{:message "postgres schema should work"
       :query
-      `[{[:land.animal/by-id 1]
-         [:land.animal/id :land.animal/name]}
-        {:ocean.animal/all
+      `[{:ocean.animal/animals
          [:ocean.animal/id :ocean.animal/name]}]
       :expected
-      {[:land.animal/by-id 1] #:land.animal {:id 1, :name "elephant"},
-       :ocean.animal/all      [#:ocean.animal{:id 10, :name "whale"}
-                               #:ocean.animal{:id 20, :name "shark"}]}}]}})
+      {:ocean.animal/animals [#:ocean.animal{:id 10, :name "whale"}
+                              #:ocean.animal{:id 20, :name "shark"}]}}
+
+     {:message "postgres schema idents should work"
+      :query
+      `[{[:land.animal/id 1] [:land.animal/id :land.animal/name]}]
+      :expected
+      {[:land.animal/id 1]   #:land.animal {:id 1, :name "elephant"}}}]}})
 
 (deftest postgres-specific-scenarios-test
   (run-scenario-tests db :postgres postgres-scenarios))
