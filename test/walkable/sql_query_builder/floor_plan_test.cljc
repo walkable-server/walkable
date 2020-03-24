@@ -104,15 +104,15 @@
 
 (deftest roots->target-tables-test
   (is (= (sut/roots->target-tables emitter/mysql-emitter
-           {:people/all "person"
-            :pets/all   "pet"})
-        {:people/all "`person`", :pets/all "`pet`"}))
+           {:people/people "person"
+            :pets/pets   "pet"})
+        {:people/people "`person`", :pets/pets "`pet`"}))
 
   (is (= (sut/roots->target-tables emitter/default-emitter
-           {:people/all "public.person"
-            :pets/all   "public.pet"})
-        {:people/all "\"public\".\"person\""
-         :pets/all "\"public\".\"pet\""})))
+           {:people/people "public.person"
+            :pets/pets   "public.pet"})
+        {:people/people "\"public\".\"person\""
+         :pets/pets "\"public\".\"pet\""})))
 
 (deftest unbound-expression?-test
   (is (false? (sut/unbound-expression? {:raw-string "abc"
