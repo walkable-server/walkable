@@ -443,7 +443,9 @@
                       (let [p (env/parent-path env)
                             scv (env/source-column-value env)
                             parent-data (p/cached env p ::not-cached)
-                            r (get-in parent-data [(env/dispatch-key env) scv])]
+                            r (get-in parent-data [[(env/dispatch-key env)
+                                                    (into {} (:params (:ast env)))]
+                                                   scv])]
                         (if (= parent-data ::not-cached)
                           []
                           r))
@@ -532,7 +534,7 @@
                                     :child-env child-env
                                     :source-column source-column
                                     :entities entities})]
-                  [j
+                  [[j (into {} (:params join-child-ast))]
                    {:target-column target-column
                     :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
