@@ -523,8 +523,15 @@
       (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
       (dissoc :pagination-fallbacks))))
 
-(defn join-one [env entities]
-  (p/join (first entities) env))
+(defn return-one [entities]
+  (if (not-empty entities)
+    (first entities)
+    {}))
+
+(defn return-many [entities]
+  (if (not-empty entities)
+    entities
+    []))
 
 (defn compile-return
   [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
@@ -535,8 +542,8 @@
                         f           (if aggregator?
                                       #(get (first %) k)
                                       (if one?
-                                        first
-                                        identity))]
+                                        return-one
+                                        return-many))]
                     (assoc acc k f)))
           {}
           (keys target-tables))]
