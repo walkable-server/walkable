@@ -1,42 +1,141 @@
 (ns walkable.integration-test.common
   (:require [com.wsscode.pathom.core :as p]
+            [com.wsscode.pathom.connect :as pc]
             [plumbing.core :refer [fnk defnk sum]]))
 
 (def farmer-house-floor-plan
   {:true-columns     [:house/color
                       :farmer/number
                       :farmer/name]
-   :idents           {:farmer/by-id :farmer/number
-                      :farmers/all  "farmer"}
+   :roots            {:farmers/farmers "farmer"}
    :extra-conditions {}
    :joins            {:farmer/house [:farmer/house-index :house/index]}
    :reversed-joins   {:house/owner :farmer/house}
-   :cardinality      {:farmer/by-id :one
-                      :house/owner    :one
-                      :farmer/house   :one}})
+   :cardinality      {:house/owner  :one
+                      :farmer/house :one}})
+
+;; core-configs
+(def farmer-house-config
+  {:inputs-outputs
+   (let [farmer-out [:farmer/number
+                     :farmer/name
+                     :farmer/house-index
+                     {:farmer/house [:house/index]}]
+         house-out  [:house/index
+                     :house/color
+                     {:house/owner [:farmer/number]}]]
+     [{::pc/output [{:farmers/farmers farmer-out}]}
+
+      {::pc/input  #{:farmer/number}
+       ::pc/output farmer-out}
+
+      {::pc/input  #{:house/owner}
+       ::pc/output farmer-out}
+
+      {::pc/output [{:houses/houses house-out}]}
+
+      {::pc/input  #{:farmer/house}
+       ::pc/output house-out}
+
+      {::pc/input  #{:house/index}
+       ::pc/output house-out}])})
+
+(def kid-toy-config
+  {:inputs-outputs
+   (let [kid-out [:kid/number
+                  :kid/name
+                  {:kid/toy [:toy/index]}]
+         toy-out [:toy/index
+                  :toy/color
+                  {:toy/owner [:kid/number]}]]
+     [{::pc/output [{:kids/kids kid-out}]}
+
+      {::pc/input  #{:kid/number}
+       ::pc/output kid-out}
+
+      {::pc/input  #{:toy/owner}
+       ::pc/output kid-out}
+
+      {::pc/output [{:toys/toys toy-out}]}
+
+      {::pc/input  #{:kid/toy}
+       ::pc/output toy-out}
+
+      {::pc/input  #{:toy/index}
+       ::pc/output toy-out}])})
+
+(def human-follow-config
+  {:inputs-outputs
+   (let [human-out [:human/number
+                    :human/name
+                    :human/yob
+                    :human/follow-stats
+                    {:human/follow [:human/number]}]]
+     [{::pc/output [{:humans/humans human-out}]}
+
+      {::pc/input  #{:human/number}
+       ::pc/output human-out}
+
+      {::pc/input  #{:human/follow}
+       ::pc/output human-out}])})
+
+(def person-pet-config
+  {:inputs-outputs
+   (let [person-out [:person/number
+                     :person/name
+                     :person/age
+                     :person/yob
+                     :person/hidden
+                     :person/pet-count
+                     {:person/pet [:person-pet/person-number
+                                   :person-pet/pet-index
+                                   :pet/index
+                                   :person-pet/adoption-year
+                                   :pet/index
+                                   :pet/yob
+                                   :pet/color]}]
+         pet-out    [:pet/index
+                     :pet/color
+                     {:pet/owner [:person/number
+                                  :person-pet/adoption-year]}]]
+     [{::pc/output [{:persons/persons person-out}]}
+
+      {::pc/output [{:pets/by-color [:pet/color :color/pet-count]}]}
+
+      {::pc/input  #{:person/number}
+       ::pc/output person-out}
+
+      {::pc/input  #{:pet/owner}
+       ::pc/output person-out}
+
+      {::pc/output [{:pets/pets pet-out}]}
+
+      {::pc/input  #{:person/pet}
+       ::pc/output pet-out}
+
+      {::pc/input  #{:pet/index}
+       ::pc/output pet-out}])})
+
+;; ends core-configs
 
 (def kid-toy-floor-plan
   {:true-columns     [:kid/name :toy/index :toy/color]
-   :idents           {:kid/by-id :kid/number
-                      :kids/all  "kid"}
+   :roots            {:kids/kids "kid"}
    :extra-conditions {}
    :joins            {:toy/owner [:toy/owner-number :kid/number]}
    :reversed-joins   {:kid/toy :toy/owner}
-   :cardinality      {:kid/by-id :one
-                      :kid/toy   :one
+   :cardinality      {:kid/toy   :one
                       :toy/owner :one}})
 
 (def human-follow-floor-plan
   {:true-columns     [:human/number :human/name :human/yob]
    :required-columns {}
-   :idents           {:human/by-id :human/number
-                      :world/all   "human"}
+   :roots            {:humans/humans "human"}
    :extra-conditions {}
    :joins            {:human/follow
                       [:human/number :follow/human-1 :follow/human-2 :human/number]}
    :reversed-joins   {}
-   :cardinality      {:human/by-id        :one
-                      :human/follow-stats :one
+   :cardinality      {:human/follow-stats :one
                       :human/follow       :many}})
 
 (def person-pet-floor-plan
@@ -52,10 +151,9 @@
    ;; attribute resolvers that will run SQL queries themselves
    :required-columns {:pet/age    #{:pet/yob}
                       :person/age #{:person/yob}}
-   :idents           {:person/by-id               :person/number
-                      :pets/by-color              "pet"
-                      [:people/all :people/count] "person"}
-   :extra-conditions {[:person/by-id :people/all :people/count]
+   :roots            {:pets/by-color "pet"
+                      [:people/people :people/count] "person"}
+   :extra-conditions {[:person/number :people/people :people/count]
                       [:or [:= :person/hidden true]
                        [:= :person/hidden false]]}
    :joins            {[:person/pet :person/pet-count]
@@ -69,61 +167,63 @@
    :grouping         {:pets/by-color
                       {:group-by [:pet/color]
                        :having   [:< 1 [:color/pet-count]]}}
-   :cardinality      {:person/by-id :one
-                      :person/pet   :many}})
+   :cardinality      {:person/pet :many}})
 
 (def common-scenarios
   {:farmer-house
    {:core-floor-plan farmer-house-floor-plan
+    :core-config     farmer-house-config
     :test-suite
     [{:message "filters should work"
       :query
-      `[{(:farmers/all {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}]}})
+      `[{(:farmers/farmers {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}]}})
          [:farmer/number :farmer/name
           {:farmer/house [:house/index :house/color]}]}]
       :expected
-      {:farmers/all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
-     {:message  "no pagination"
+      {:farmers/farmers [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
+     {:message "no pagination"
       :query
-      `[{:farmers/all
+      `[{:farmers/farmers
          [:farmer/number :farmer/name
           {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
-                       #:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
-                       #:farmer{:number 3, :name "homeless", :house {}}]}}]}
+      #:farmers {:farmers [#:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
+                           #:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
+                           #:farmer{:number 3, :name "homeless", :house {}}]}}]}
    :farmer-house-paginated
-   {:core-floor-plan (assoc farmer-house-floor-plan
+   {:core-config     farmer-house-config
+    :core-floor-plan (assoc farmer-house-floor-plan
                        :pagination-fallbacks
-                       {:farmers/all
+                       {:farmers/farmers
                         {:order-by {:default  [:farmer/name :desc]
                                     :validate #{:farmer/name :farmer/number}}}})
     :test-suite
-    [{:message  "pagination fallbacks"
+    [{:message "pagination fallbacks"
       :query
-      `[{:farmers/all
+      `[{:farmers/farmers
          [:farmer/number :farmer/name
           {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers{:all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
+      #:farmers{:farmers [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
                       #:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
                       #:farmer{:number 3, :name "homeless", :house {}}]}}
-     {:message  "supplied pagination"
+     {:message "supplied pagination"
       :query
-      `[{(:farmers/all {:limit 1})
+      `[{(:farmers/farmers {:limit 1})
          [:farmer/number :farmer/name
           {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
-     {:message  "without order-by column in query"
+      #:farmers{:farmers [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}]}}
+     {:message "without order-by column in query"
       :query
-      `[{(:farmers/all {:limit 1})
+      `[{(:farmers/farmers {:limit 1})
          [:farmer/number
           {:farmer/house [:house/index :house/color]}]}]
       :expected
-      #:farmers {:all [#:farmer{:number 2, :house #:house {:index "20", :color "brown"}}]}}]}
+      #:farmers{:farmers [#:farmer{:number 2, :house #:house {:index "20", :color "brown"}}]}}]}
    :kid-toy
    {:core-floor-plan kid-toy-floor-plan
+    :core-config     kid-toy-config
     :test-suite
     [{:message "idents should work"
       :query
@@ -134,26 +234,28 @@
 
    :human-follow
    {:core-floor-plan human-follow-floor-plan
+    :core-config     human-follow-config
     :test-suite
     [{:message "self-join should work"
       :query
-      `[{(:world/all {:order-by :human/number})
+      `[{(:humans/humans {:order-by :human/number})
          [:human/number :human/name
           {(:human/follow {:order-by :human/number})
            [:human/number
             :human/name
             :human/yob]}]}]
       :expected
-      {:world/all [#:human{:number 1, :name "jon",
-                           :follow [#:human{:number 2, :name "mary", :yob 1992}
-                                    #:human{:number 3, :name "peter", :yob 1989}
-                                    #:human{:number 4, :name "sandra", :yob 1970}]}
-                   #:human{:number 2, :name "mary",
-                           :follow [#:human{:number 1, :name "jon", :yob 1980}
-                                    #:human{:number 3, :name "peter", :yob 1989}]}
-                   #:human{:number 3, :name "peter", :follow []}
-                   #:human{:number 4, :name "sandra", :follow []}]}}]}
+      {:humans/humans [#:human{:number 1, :name "jon",
+                               :follow [#:human{:number 2, :name "mary", :yob 1992}
+                                        #:human{:number 3, :name "peter", :yob 1989}
+                                        #:human{:number 4, :name "sandra", :yob 1970}]}
+                       #:human{:number 2, :name "mary",
+                               :follow [#:human{:number 1, :name "jon", :yob 1980}
+                                        #:human{:number 3, :name "peter", :yob 1989}]}
+                       #:human{:number 3, :name "peter", :follow []}
+                       #:human{:number 4, :name "sandra", :follow []}]}}]}
    :human-follow-variable-getters
+   :core-config human-follow-config
    {:core-floor-plan (merge human-follow-floor-plan
                        {:pseudo-columns
                         {:human/age   [:- 'current-year :human/yob]
@@ -175,40 +277,41 @@
     [{:message "variable-getters should work"
       :env     {:current-year 2019}
       :query
-      `[{(:world/all {:order-by :human/number})
+      `[{(:humans/humans {:order-by :human/number})
          [:human/number :human/name :human/age
           {(:human/follow {:order-by :human/number})
            [:human/number
             :human/name
             :human/age]}]}]
       :expected
-      {:world/all [#:human{:number 1, :name "jon", :age 39,
-                           :follow [#:human{:number 2, :name "mary", :age 27}
-                                    #:human{:number 3, :name "peter", :age 30}
-                                    #:human{:number 4, :name "sandra", :age 49}]}
-                   #:human{:number 2, :name "mary", :age 27,
-                           :follow [#:human{:number 1, :name "jon", :age 39}
-                                    #:human{:number 3, :name "peter", :age 30}]}
-                   #:human{:number 3, :name "peter", :age 30, :follow []}
-                   #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
+      {:humans/humans [#:human{:number 1, :name "jon", :age 39,
+                               :follow [#:human{:number 2, :name "mary", :age 27}
+                                        #:human{:number 3, :name "peter", :age 30}
+                                        #:human{:number 4, :name "sandra", :age 49}]}
+                       #:human{:number 2, :name "mary", :age 27,
+                               :follow [#:human{:number 1, :name "jon", :age 39}
+                                        #:human{:number 3, :name "peter", :age 30}]}
+                       #:human{:number 3, :name "peter", :age 30, :follow []}
+                       #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
      {:message "variable-getter-graphs should work"
       ;; choose this sequence so stats values are integers
       ;; therefore the output string is the same in all sql dbs
       :env     {:xs [2 4 6 8]}
       :query
-      `[{(:world/all {:order-by :human/number})
+      `[{(:humans/humans {:order-by :human/number})
          [:human/number :human/name :human/stats]}]
       :expected
-      #:world{:all [#:human{:number 1, :name "jon",
-                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+      #:humans{:humans [#:human{:number 1, :name "jon",
+                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 2, :name "mary",
-                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 3, :name "peter",
-                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}
+                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}
                     #:human{:number 4, :name "sandra",
-                            :stats "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
+                            :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
    :person-pet
    {:core-floor-plan person-pet-floor-plan
+    :core-config     person-pet-config
     :test-suite
     [{:message "join-table should work"
       :query
@@ -258,10 +361,10 @@
 
      {:message "filters should work"
       :query
-      `[{(:people/all {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
-                                                     [:= :pet/color "yellow"]]}
-                                  [:< :person/number 10]]
-                       :order-by [:person/name]})
+      `[{(:people/people {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
+                                                        [:= :pet/color "yellow"]]}
+                                     [:< :person/number 10]]
+                          :order-by [:person/name]})
          [:person/number :person/name
           :person/pet-count
           {:person/pet [:pet/index
@@ -270,7 +373,7 @@
                         :person-pet/adoption-year
                         :pet/color]}]}]
       :expected
-      #:people{:all
+      #:people{:people
                [#:person{:number    1,
                          :name      "jon",
                          :pet-count 4,
@@ -295,7 +398,7 @@
      {:message "placeholders should work"
       :env     {::p/placeholder-prefixes #{"ph" "placeholder"}}
       :query
-      `[{:people/all
+      `[{:people/people
          [{:placeholder/info [:person/yob :person/name]}
           {:person/pet [:pet/index
                         :pet/yob
@@ -304,7 +407,7 @@
                                                                     :pet/yob
                                                                     :pet/color]}]}]}]}]}]
       :expected
-      #:people{:all
+      #:people{:people
                [{:placeholder/info #:person {:yob 1980, :name "jon"},
                  :person/pet
                  [#:pet{:index 10, :yob 2015, :color "yellow"}
@@ -366,10 +469,10 @@
 
      {:message "pseudo-columns should work"
       :query
-      `[{:people/all [:person/number
-                      :person/name
-                      :person/yob
-                      :person/age]}]
+      `[{:people/people [:person/number
+                         :person/name
+                         :person/yob
+                         :person/age]}]
       :expected
-      #:people {:all [#:person{:number 1, :name "jon", :yob 1980, :age 38}
+      #:people {:people [#:person{:number 1, :name "jon", :yob 1980, :age 38}
                       #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
