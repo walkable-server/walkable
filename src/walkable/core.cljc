@@ -70,14 +70,6 @@
        :join-children    #{}}
       (process-children* env))))
 
-(defn process-ident-children
-  "Infers which columns to include in SQL query from child keys in env ast"
-  [env]
-  ;; fixme
-  (println "processing ident children...")
-  {:columns-to-query #{}
-   :join-children    #{}})
-
 (defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
   EQL query params."
@@ -170,24 +162,7 @@
   (into [] (comp (map :params) cat)
     compiled-exprs))
 
-(defn ident-process-query
-  [env]
-  (let [{:keys [join-children columns-to-query]}
-        (process-ident-children env)
-
-        selection        (top-level-process-selection env columns-to-query)
-        conditions       (top-level-process-conditions env)
-        sql-query        {:raw-string
-                          (emitter/->query-string
-                            {:target-table   (env/target-table env)
-                             :join-statement (env/join-statement env)
-                             :selection      (:raw-string selection)
-                             :conditions     (:raw-string conditions)})
-                          :params (combine-params selection conditions)}]
-    {:sql-query     sql-query
-     :join-children join-children}))
-
-(defn root-or-join-process-query
+(defn root-process-query*
   [env]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -213,12 +188,6 @@
                           :params (combine-params selection conditions having)}]
     {:sql-query     sql-query
      :join-children join-children}))
-
-(defn top-level-process-query*
-  [env]
-  (if (or (env/root-keyword env) (env/join-keyword env))
-    (root-or-join-process-query env)
-    (ident-process-query env)))
 
 (defn child-join-process-shared-query*
   [env {:keys [order-by-columns]}]
@@ -364,9 +333,9 @@
     {:computed-graphs (compute-graphs env variables)
      :variables       variables}))
 
-(defn top-level-process-query
+(defn root-process-query
   [env]
-  (let [query           (top-level-process-query* env)
+  (let [query           (root-process-query* env)
         sql-query       (:sql-query query)
         variable-values (process-variables env
                           (expressions/find-variables sql-query))]
@@ -426,35 +395,59 @@
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
 
+(defn level-up-ast [env]
+  (let [parent-query (::p/parent-query env)]
+    (assoc env :ast (p/query->ast parent-query))))
+
+(declare join-children-data-by-join-key)
+
+(defn save-cache [env {:keys [save-path entities join-children]}]
+  (when (seq join-children)
+    (let [p (or save-path (::p/path env))]
+      (when-not (p/cache-contains? env p)
+        (p/cached env p
+          (join-children-data-by-join-key env
+            {:entities      entities
+             :join-children join-children}))))))
+
+(defn root-execute-query [env]
+  (let [{::keys [db query]} (env/config env)
+        {:keys [sql-query join-children]} (root-process-query env)]
+    {:join-children join-children
+     :entities      (query db (build-parameterized-sql-query sql-query))}))
+
+(defn non-root-execute-query [env]
+  (let [{::keys [db query]} (env/config env)
+        {:keys [sql-query join-children]} (root-process-query (level-up-ast env))]
+    {:join-children join-children
+     :entities      (query db (build-parameterized-sql-query sql-query))}))
+
+(defn look-up-cache [env parent-data]
+  (let [scv (env/source-column-value env)
+        r (get-in parent-data [[(env/dispatch-key env)
+                                (into {} (:params (:ast env)))]
+                               scv])
+        {:keys [join-children]} (root-process-query env)]
+    {:join-children join-children
+     :entities      r}))
+
 (defn top-level
   [env]
-  (let [{::keys [db query]} (env/config env)
-        {:keys [sql-query join-children]} (top-level-process-query env)]
-    {:join-children join-children
-     :entities      (cond
-                      ;; for roots
-                      (env/root-keyword env)
-                      (query db (build-parameterized-sql-query sql-query))
+  (if (env/root-keyword env)
+    ;; for roots
+    (root-execute-query env)
 
-                      ;; joins don't have to build a query themselves
-                      ;; just look up the key in cached data
-                      ;; fetched by their parents
-                      (env/join-keyword env)
-                      (let [p (env/parent-path env)
-                            scv (env/source-column-value env)
-                            parent-data (p/cached env p ::not-cached)
-                            r (get-in parent-data [[(env/dispatch-key env)
-                                                    (into {} (:params (:ast env)))]
-                                                   scv])]
-                        (if (= parent-data ::not-cached)
-                          []
-                          r))
-                      ;; fixme: idents get empty data for now
-                      (env/ident-keyword env)
-                      [{}]
-
-                      :else
-                      [{}])}))
+    ;; non roots -> try to look up cached
+    (let [p (env/parent-path env)
+          parent-data (if (p/cache-contains? env p)
+                        (p/cache-read env p)
+                        ::not-cached)]
+      (if (= parent-data ::not-cached)
+        (assoc (non-root-execute-query env)
+          :save-path p)
+        ;; cache found, this must be a join
+        ;; -> just look up the key in fetched by their parents
+        (look-up-cache env parent-data)))))
 
 (defn source-column-variable-values
   [v]
@@ -551,17 +544,14 @@
 
 (defn dynamic-resolver
   [env]
-  ;; this is a root or a join, let's go for data
-  (if (or (env/root-keyword env) (env/join-keyword env) (env/ident-keyword env))
-    (let [{:keys [join-children entities]} (top-level env)]
-      (when (seq join-children)
-        (p/cached env (::p/path env)
-          (join-children-data-by-join-key env
-            {:entities      entities
-             :join-children join-children})))
-      (if-let [k (or (env/root-keyword env) (env/join-keyword env))]
-        {k ((env/return env) entities)}
-        (first entities)))))
+  ;; this is something declared in floor-plan, being either a root, join or column
+  (when true
+    (let [{:keys [entities] :as data} (top-level env)]
+      (save-cache env data)
+      (let [k (or (env/root-keyword env) (env/join-keyword env))]
+        (if (and k (contains? (env/planner-requires env) k))
+          {k ((env/return env) entities)}
+          (first entities))))))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
