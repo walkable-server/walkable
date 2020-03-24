@@ -158,21 +158,22 @@
           :farmer/name
           {:farmer/house [:house/index
                           :house/color
-                          {:house/owner [:farmer/name
-                                         :farmer/number
-                                         {:farmer/house [:house/index
-                                                         :house/color
-                                                         {:house/owner [:farmer/number
-                                                                        :farmer/name]}]}]}]}]}
-        #_
-        {:houses/houses
-         #_ [:house/index 10]
+                          #_{:house/owner
+                           [:farmer/name
+                            :farmer/number
+                            {:farmer/house [:house/index
+                                            :house/color
+                                            {:house/owner [:farmer/number
+                                                           :farmer/name]}]}]}]}]}
+
+        {#_:houses/houses
+         [:house/index "10"]
          [:house/index
           :house/color
 
           {:>/else [{:house/owner [:farmer/number
                                    :farmer/name
-                                   {:farmer/house [:house/index
+                                   #_{:farmer/house [:house/index
                                                    :house/color
                                                    {:house/owner [:farmer/name]}]}]}]}
           #_
@@ -182,8 +183,8 @@
                                          {:house/owner [:farmer/name]}]}]}]}]
       eg-2
       '[{:houses/houses
-         #_[:house/index 10]
-         [;:house/index
+         #_[:house/index "20"]
+         [:house/index
           :house/color
           #_
           {:>/else
@@ -197,16 +198,16 @@
           {:house/owner [:farmer/name
                          :farmer/number ;; <----------- not automatically injected yet. Source column is there but not look up column
                          :farmer/house-index
-                         {:farmer/house [;; :house/index
+                         {:farmer/house [:house/index
                                          :house/color
-                                         #_{:house/owner [:farmer/name
+                                         {:house/owner [:farmer/name
                                                         ;:farmer/house-index
-                                                        ;; :farmer/number
+                                                        :farmer/number
                                                         ]}]}]}]}]
 
       config
       (merge {:db    (db)
-              :query run-print-query}
+              :query jdbc/query #_run-print-query}
         core-config)
 
       plg
@@ -224,4 +225,5 @@
                       plg
                       p/error-handler-plugin
                       p/trace-plugin]})]
+  (println "running at " (now) "\n\n")
   (the-parser {} eg-1))
