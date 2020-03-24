@@ -7,7 +7,8 @@
             [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]
-            [com.wsscode.pathom.connect :as pc]))
+            [com.wsscode.pathom.connect :as pc]
+            [com.wsscode.pathom.connect.planner :as pcp]))
 
 (defn process-children*
   "Infers which columns to include in SQL query from child keys in env ast"
@@ -21,26 +22,28 @@
         all-children
         (ast/find-all-children ast
           {:placeholder? #(p/placeholder-key? env (:dispatch-key %))
-           :leaf?        #(or ;; it's a column child
-                            (contains? column-keywords (:dispatch-key %))
-                            ;; it's a join child
-                            (contains? source-columns (:dispatch-key %))
-                            ;; it's a attr child that requires some other column children
-                            (contains? required-columns (:dispatch-key %)))})
+           :leaf?        #(let [k (:dispatch-key %)]
+                            (or ;; it's a column child
+                              (contains? column-keywords k)
+                              ;; it's a join child
+                              (contains? source-columns k)
+                              ;; it's a attr child that requires some other column children
+                              (contains? required-columns k)))})
 
         {:keys [column-children join-children]}
         (->> all-children
-          (group-by #(cond (contains? source-columns (:dispatch-key %))
-                           :join-children
+          (group-by #(let [k (:dispatch-key %)]
+                       (cond (contains? source-columns k)
+                             :join-children
 
-                           (contains? column-keywords (:dispatch-key %))
-                           :column-children)))
+                             (contains? column-keywords k)
+                             :column-children))))
 
         all-child-keys
-        (->> all-children (map :dispatch-key) (into #{}))
+        (into #{} (map :dispatch-key) all-children)
 
         child-column-keys
-        (->> column-children (map :dispatch-key) (into #{}))
+        (into #{} (map :dispatch-key) column-children)
 
         child-required-keys
         (->> all-child-keys (map #(get required-columns %)) (apply clojure.set/union))
@@ -48,8 +51,9 @@
         child-join-keys
         (map :dispatch-key join-children)
 
+        ;; fixme: include ident columns here
         child-source-columns
-        (->> child-join-keys (map #(get source-columns %)) (into #{}))]
+        (into #{} (map #(get source-columns %)) child-join-keys)]
     {:join-children    (set join-children)
      :columns-to-query (clojure.set/union
                          child-column-keys
@@ -65,6 +69,14 @@
       {:columns-to-query #{k}
        :join-children    #{}}
       (process-children* env))))
+
+(defn process-ident-children
+  "Infers which columns to include in SQL query from child keys in env ast"
+  [env]
+  ;; fixme
+  (println "processing ident children...")
+  {:columns-to-query #{}
+   :join-children    #{}})
 
 (defn supplied-pagination
   "Processes :offset :limit and :order-by if provided in current
@@ -158,7 +170,24 @@
   (into [] (comp (map :params) cat)
     compiled-exprs))
 
-(defn top-level-process-query*
+(defn ident-process-query
+  [env]
+  (let [{:keys [join-children columns-to-query]}
+        (process-ident-children env)
+
+        selection        (top-level-process-selection env columns-to-query)
+        conditions       (top-level-process-conditions env)
+        sql-query        {:raw-string
+                          (emitter/->query-string
+                            {:target-table   (env/target-table env)
+                             :join-statement (env/join-statement env)
+                             :selection      (:raw-string selection)
+                             :conditions     (:raw-string conditions)})
+                          :params (combine-params selection conditions)}]
+    {:sql-query     sql-query
+     :join-children join-children}))
+
+(defn root-or-join-process-query
   [env]
   (let [{:keys [join-children columns-to-query]}
         (process-children env)
@@ -184,6 +213,12 @@
                           :params (combine-params selection conditions having)}]
     {:sql-query     sql-query
      :join-children join-children}))
+
+(defn top-level-process-query*
+  [env]
+  (if (or (env/root-keyword env) (env/join-keyword env))
+    (root-or-join-process-query env)
+    (ident-process-query env)))
 
 (defn child-join-process-shared-query*
   [env {:keys [order-by-columns]}]
@@ -393,25 +428,31 @@
 
 (defn top-level
   [env]
-  (let [{::keys [floor-plan db query]} (env/config env)
-
-        {::floor-plan/keys [ident-keywords]} floor-plan
-
-        k (env/dispatch-key env)
-
+  (let [{::keys [db query]} (env/config env)
         {:keys [sql-query join-children]} (top-level-process-query env)]
     {:join-children join-children
-     :entities      (if (contains? ident-keywords k)
-                      ;; for idents
+     :entities      (cond
+                      ;; for roots
+                      (env/root-keyword env)
                       (query db (build-parameterized-sql-query sql-query))
+
                       ;; joins don't have to build a query themselves
                       ;; just look up the key in cached data
                       ;; fetched by their parents
+                      (env/join-keyword env)
                       (let [p (env/parent-path env)
-                            ast (:ast env)
                             scv (env/source-column-value env)
-                            parent-data (p/cached env p {})]
-                        (get-in parent-data [ast scv])))}))
+                            parent-data (p/cached env p ::not-cached)
+                            r (get-in parent-data [(env/dispatch-key env) scv])]
+                        (if (= parent-data ::not-cached)
+                          []
+                          r))
+                      ;; fixme: idents get empty data for now
+                      (env/ident-keyword env)
+                      [{}]
+
+                      :else
+                      [{}])}))
 
 (defn source-column-variable-values
   [v]
@@ -491,7 +532,7 @@
                                     :child-env child-env
                                     :source-column source-column
                                     :entities entities})]
-                  [join-child-ast
+                  [j
                    {:target-column target-column
                     :query         (build-parameterized-sql-query query)}]))]
         (mapv f join-children)))))
@@ -508,45 +549,48 @@
 
 (defn dynamic-resolver
   [env]
-  (let [{::floor-plan/keys [target-tables]} (env/floor-plan env)
-        k                                   (env/dispatch-key env)]
-    (if (contains? target-tables k)
-      ;; this is an ident or a join, let's go for data
-      (let [{:keys [join-children entities]} (top-level env)]
-        (when (seq join-children)
-          (p/cached env (::p/path env)
-            (join-children-data-by-join-key env
-              {:entities      entities
-               :join-children join-children})))
-        {(env/dispatch-key env) ((env/return-or-join env) entities)}))))
+  ;; this is a root or a join, let's go for data
+  (if (or (env/root-keyword env) (env/join-keyword env) (env/ident-keyword env))
+    (let [{:keys [join-children entities]} (top-level env)]
+      (when (seq join-children)
+        (p/cached env (::p/path env)
+          (join-children-data-by-join-key env
+            {:entities      entities
+             :join-children join-children})))
+      (if-let [k (or (env/root-keyword env) (env/join-keyword env))]
+        {k ((env/return-or-join env) entities)}
+        (first entities)))))
+
+(defn compute-indexes [resolver-sym ios]
+  (reduce (fn [acc x] (pc/add acc resolver-sym x))
+    {}
+    ios))
 
 (defn connect-plugin
-  [{:keys [resolver-sym db query floor-plan index-oir index-io index-idents resolver]
-    :or   {resolver dynamic-resolver
+  [{:keys [resolver-sym db query floor-plan
+           inputs-outputs autocomplete-ignore
+           resolver]
+    :or   {resolver     dynamic-resolver
            resolver-sym `walkable-resolver}}]
-  (let [config {::db db
-                ::query query
+  (let [config {::db           db
+                ::query        query
                 ::resolver-sym resolver-sym
-                ::floor-plan (floor-plan/compile-floor-plan floor-plan)}]
-    {::p/intercept-output (fn [env v] v)
+                ::floor-plan   (floor-plan/compile-floor-plan floor-plan)}
+        provided-indexes (compute-indexes resolver-sym inputs-outputs)]
+    {::p/intercept-output (fn [_env v] v)
      ::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
-       (let [resolve-fn   (fn [env _] (resolver env))
-
-             all-indexes  {::pc/index-resolvers
-                           {resolver-sym
-                            {::config config
-                             ::pc/transform pc/transform-batch-resolver
-                             ::pc/sym               resolver-sym
-                             ::pc/cache?            false
-                             ::pc/dynamic-resolver? true
-                             ::pc/output            []
-                             ::pc/resolve           resolve-fn}}
-
-                           ::pc/index-oir           index-oir
-                           ::pc/index-io            index-io
-                           ::pc/idents              index-idents
-                           ::pc/autocomplete-ignore #{}}
+       (let [resolve-fn (fn [env _] (resolver env))
+             all-indexes (merge (do provided-indexes)
+                           {::pc/index-resolvers
+                            {resolver-sym
+                             {::config               config
+                              ::pc/sym               resolver-sym
+                              ::pc/cache?            false
+                              ::pc/dynamic-resolver? true
+                              ::pc/output            []
+                              ::pc/resolve           resolve-fn}}
+                            ::pc/autocomplete-ignore (or autocomplete-ignore #{})})
              idx-atoms (keep ::pc/indexes plugins)]
          (doseq [idx* idx-atoms]
            (swap! idx* pc/merge-indexes all-indexes))
