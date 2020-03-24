@@ -119,6 +119,8 @@
 
      :stringify-offset #(str " OFFSET " % " ROWS")}))
 
+(s/def ::target-table string?)
+
 (s/def ::query-string-input
   (s/keys :req-un [::selection ::target-table]
     :opt-un [::join-statement ::conditions
