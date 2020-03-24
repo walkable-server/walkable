@@ -424,9 +424,10 @@
 
 (defn look-up-cache [env parent-data]
   (let [scv (env/source-column-value env)
-        r (get-in parent-data [[(env/dispatch-key env)
-                                (into {} (:params (:ast env)))]
-                               scv])
+        r (get-in parent-data
+            [[(env/dispatch-key env)
+              (into {} (:params (:ast env)))]
+             scv])
         {:keys [join-children]} (root-process-query env)]
     {:join-children join-children
      :entities      r}))
@@ -544,14 +545,12 @@
 
 (defn dynamic-resolver
   [env]
-  ;; this is something declared in floor-plan, being either a root, join or column
-  (when true
-    (let [{:keys [entities] :as data} (top-level env)]
-      (save-cache env data)
-      (let [k (or (env/root-keyword env) (env/join-keyword env))]
-        (if (and k (contains? (env/planner-requires env) k))
-          {k ((env/return env) entities)}
-          (first entities))))))
+  (let [{:keys [entities] :as data} (top-level env)]
+    (save-cache env data)
+    (let [k (or (env/root-keyword env) (env/join-keyword env))]
+      (if (and k (contains? (env/planner-requires env) k))
+        {k ((env/return env) entities)}
+        (first entities)))))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
