@@ -572,16 +572,17 @@
            resolver]
     :or   {resolver     dynamic-resolver
            resolver-sym `walkable-resolver}}]
-  (let [config {::db           db
+  (let [provided-indexes (compute-indexes resolver-sym inputs-outputs)
+        config {::db           db
                 ::query        query
                 ::resolver-sym resolver-sym
-                ::floor-plan   (floor-plan/compile-floor-plan floor-plan)}
-        provided-indexes (compute-indexes resolver-sym inputs-outputs)]
+                ::floor-plan   (floor-plan/compile-floor-plan
+                                 (assoc floor-plan :idents (::pc/idents provided-indexes)))}]
     {::p/intercept-output (fn [_env v] v)
      ::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
        (let [resolve-fn (fn [env _] (resolver env))
-             all-indexes (merge (do provided-indexes)
+             all-indexes (merge provided-indexes
                            {::pc/index-resolvers
                             {resolver-sym
                              {::config               config
