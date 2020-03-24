@@ -17,7 +17,8 @@
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.core :as walkable]))
+            [walkable.core :as walkable]
+            [walkable.core-async :as walkable-async]))
 
 ;; <<< Beginning of Duct framework helpers
 
@@ -102,46 +103,34 @@
 (defn now []
   (.format (java.text.SimpleDateFormat. "HH:mm") (java.util.Date.)))
 
+(def inputs-outputs
+  (let [farmer-out [:farmer/number
+                    :farmer/name
+                    :farmer/house-index
+                    {:farmer/house [:house/index]}]
+        house-out  [:house/index
+                    :house/color
+                    {:house/owner [:farmer/number]}]]
+    [{::pc/output [{:farmers/farmers farmer-out}]}
+
+     {::pc/input  #{:farmer/number}
+      ::pc/output farmer-out}
+
+     {::pc/input  #{:house/owner}
+      ::pc/output farmer-out}
+
+     {::pc/output [{:houses/houses house-out}]}
+
+     {::pc/input  #{:farmer/house}
+      ::pc/output house-out}
+
+     {::pc/input  #{:house/index}
+      ::pc/output house-out}]))
+
 (def core-config
   (let [resolver-sym `my-resolver]
     {:resolver-sym resolver-sym
-     :index-oir
-     (merge
-       {:farmers/farmers {#{} #{resolver-sym}}
-        :houses/houses  {#{} #{resolver-sym}}}
-
-       #:farmer{:number      {#{:farmers/farmers} #{resolver-sym}}
-                :name        {#{:farmers/farmers} #{resolver-sym}}
-                :house-index {#{:farmers/farmers} #{resolver-sym}}
-                :house       {#{:farmer/number}      #{resolver-sym}
-                              #{:farmer/house-index} #{resolver-sym}}}
-       #:house{:index        {#{:farmer/house} #{resolver-sym}
-                              #{:houses/houses}   #{resolver-sym}}
-               :color        {#{:house/index} #{resolver-sym}
-                              #{:houses/houses}  #{resolver-sym}}
-               :owner-number {#{:house/index} #{resolver-sym}
-                              #{:houses/houses}  #{resolver-sym}}
-               :owner        {#{:house/index} #{resolver-sym}
-                              #{:houses/houses}  #{resolver-sym}}})
-
-     :index-io
-     {#{}
-      {:farmers/farmers #:farmer{:number {} :name {} :house-index {} :house #:house{:index {}}}
-       :houses/houses #:house{:index {} :color {} :owner #:farmer {:number {}}}}
-
-      #{:farmer/number}
-      #:farmer{:name {} :house-index {}}
-
-      #{:farmer/house-index}
-      #:house{:index {} :color {}
-              :owner #:farmer{:number {}}}
-
-      #{:house/index}
-      #:house{:color {}
-              :owner #:farmer{:number {}}}}
-
-     :index-idents
-     #{:farmer/number :house/index}
+     :inputs-outputs inputs-outputs
 
      :floor-plan
      {:emitter          emitter
@@ -150,51 +139,89 @@
       :true-columns     [:house/color
                          :farmer/number
                          :farmer/name]
-      :idents           {:farmer/id   :farmer/number
-                         :farmers/farmers "farmer"
-                         :houses/houses "house"}
+      :idents           #{:house/index :farmer/number}
+      :roots            {:farmers/farmers "farmer"
+                         :houses/houses   "house"}
       :extra-conditions {}
       :joins            {:farmer/house [:farmer/house-index :house/index]}
       :reversed-joins   {:house/owner :farmer/house}
-      :cardinality      {:farmer/id    :one
+      :cardinality      {;; :farmer/number :one
+                         ;; :house/index :one
                          :house/owner  :one
                          :farmer/house :one}}}))
 
 #_
 (let [eg-1
-      '[{(:farmers/farmers {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
+      '[{(:farmers/farmers #_{:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
                                                    [:= :house/color "brown"]]}})
-         [:farmer/number :farmer/name
-          {:farmer/house [;; :house/index
-                          :house/color {:house/owner [:farmer/name]}]}]}]
-      eg-2
-      '[{:houses/houses [; :house/index
-                      :house/color
+         [:farmer/number
+          :farmer/name
+          {:farmer/house [:house/index
+                          :house/color
+                          {:house/owner [:farmer/name
+                                         :farmer/number
+                                         {:farmer/house [:house/index
+                                                         :house/color
+                                                         {:house/owner [:farmer/number
+                                                                        :farmer/name]}]}]}]}]}
+        #_
+        {:houses/houses
+         #_ [:house/index 10]
+         [:house/index
+          :house/color
 
-                      {:>/else [{:house/owner [:farmer/name
-                                               {:farmer/house [:house/index
-                                                               :house/color
-                                                               {:house/owner [:farmer/name]}]}]}]}
-                      #_
-                      {:house/owner [:farmer/name
-                                     {:farmer/house [;; :house/index
-                                                     :house/color
-                                                     {:house/owner [:farmer/name]}]}]}]}]
+          {:>/else [{:house/owner [:farmer/number
+                                   :farmer/name
+                                   {:farmer/house [:house/index
+                                                   :house/color
+                                                   {:house/owner [:farmer/name]}]}]}]}
+          #_
+          {:house/owner [:farmer/name
+                         {:farmer/house [;; :house/index
+                                         :house/color
+                                         {:house/owner [:farmer/name]}]}]}]}]
+      eg-2
+      '[{:houses/houses
+         #_[:house/index 10]
+         [;:house/index
+          :house/color
+          #_
+          {:>/else
+           [{:house/owner [:farmer/name
+                           :farmer/number
+                           {:farmer/house [:house/index
+                                           :house/color
+                                           {:house/owner [:farmer/number
+                                                          :farmer/name]}]}]}]}
+
+          {:house/owner [:farmer/name
+                         :farmer/number ;; <----------- not automatically injected yet. Source column is there but not look up column
+                         :farmer/house-index
+                         {:farmer/house [;; :house/index
+                                         :house/color
+                                         #_{:house/owner [:farmer/name
+                                                        ;:farmer/house-index
+                                                        ;; :farmer/number
+                                                        ]}]}]}]}]
 
       config
       (merge {:db    (db)
               :query run-print-query}
         core-config)
+
+      plg
+      (walkable/connect-plugin config)
+
       the-parser
       (p/parser
         {::p/env     {::p/reader               [p/map-reader
-                                                pc/reader2
+                                                pc/reader3
                                                 pc/open-ident-reader
                                                 p/env-placeholder-reader]
                       ::p/placeholder-prefixes #{">"}}
          ::p/mutate  pc/mutate
          ::p/plugins [(pc/connect-plugin {::pc/register []})
-                      (walkable/connect-plugin config)
+                      plg
                       p/error-handler-plugin
                       p/trace-plugin]})]
-  (the-parser {} eg-2))
+  (the-parser {} eg-1))
