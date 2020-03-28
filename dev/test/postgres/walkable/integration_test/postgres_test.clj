@@ -50,16 +50,12 @@
     [{:message "postgres schema should work"
       :query
       `[{:ocean.animal/animals
-         [:ocean.animal/id :ocean.animal/name]}]
+         [:ocean.animal/id :ocean.animal/name]}
+        {[:land.animal/id 1] [:land.animal/id :land.animal/name]}]
       :expected
       {:ocean.animal/animals [#:ocean.animal{:id 10, :name "whale"}
-                              #:ocean.animal{:id 20, :name "shark"}]}}
-
-     {:message "postgres schema idents should work"
-      :query
-      `[{[:land.animal/id 1] [:land.animal/id :land.animal/name]}]
-      :expected
-      {[:land.animal/id 1]   #:land.animal {:id 1, :name "elephant"}}}]}})
+                              #:ocean.animal{:id 20, :name "shark"}]
+       [:land.animal/id 1]   #:land.animal {:id 1, :name "elephant"}}}]}})
 
 (deftest postgres-specific-scenarios-test
   (run-scenario-tests db :postgres postgres-scenarios))
