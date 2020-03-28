@@ -17,8 +17,7 @@
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.core :as walkable]
-            [walkable.core-async :as walkable-async]))
+            [walkable.core :as walkable]))
 
 ;; <<< Beginning of Duct framework helpers
 
