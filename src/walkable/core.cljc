@@ -573,16 +573,14 @@
      ::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
        (let [resolve-fn (fn [env _] (resolver env))
-             all-indexes (merge provided-indexes
-                           {::pc/index-resolvers
-                            {resolver-sym
+             all-indexes (-> provided-indexes
+                           (update-in [::pc/index-resolvers resolver-sym]
+                             merge
                              {::config               config
-                              ::pc/sym               resolver-sym
                               ::pc/cache?            false
                               ::pc/dynamic-resolver? true
-                              ::pc/output            []
-                              ::pc/resolve           resolve-fn}}
-                            ::pc/autocomplete-ignore (or autocomplete-ignore #{})})
+                              ::pc/resolve           resolve-fn})
+                           (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
              idx-atoms (keep ::pc/indexes plugins)]
          (doseq [idx* idx-atoms]
            (swap! idx* pc/merge-indexes all-indexes))
