@@ -37,6 +37,11 @@
     :com.wsscode.pathom.connect.planner/node
     :com.wsscode.pathom.connect.planner/requires))
 
+(defn planner-foreign-ast [env]
+  (-> env
+    :com.wsscode.pathom.connect.planner/node
+    :com.wsscode.pathom.connect.planner/foreign-ast))
+
 (defn config
   [env]
   (get-in env [::pc/resolver-data :walkable.core/config]))
