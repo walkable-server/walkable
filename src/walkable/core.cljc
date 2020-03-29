@@ -575,24 +575,24 @@
     :or   {resolver     dynamic-resolver
            resolver-sym `walkable-resolver}}]
   (let [provided-indexes (compute-indexes resolver-sym inputs-outputs)
-        config {::db           db
-                ::query        query
-                ::resolver-sym resolver-sym
-                ::floor-plan   (floor-plan/compile-floor-plan
-                                 (assoc floor-plan :idents (::pc/idents provided-indexes)))}]
+        config           {::db           db
+                          ::query        query
+                          ::resolver-sym resolver-sym
+                          ::floor-plan   (floor-plan/compile-floor-plan
+                                           (assoc floor-plan :idents (::pc/idents provided-indexes)))}]
     {::p/intercept-output (fn [_env v] v)
      ::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
-       (let [resolve-fn (fn [env _] (resolver env))
+       (let [resolve-fn  (fn [env _] (resolver env))
              all-indexes (-> provided-indexes
-                           (update-in [::pc/index-resolvers resolver-sym]
-                             merge
-                             {::config               config
+                           (internalize-indexes
+                             {::config                config
+                              ::pc/sym               (gensym resolver-sym)
                               ::pc/cache?            false
                               ::pc/dynamic-resolver? true
                               ::pc/resolve           resolve-fn})
                            (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
-             idx-atoms (keep ::pc/indexes plugins)]
+             idx-atoms   (keep ::pc/indexes plugins)]
          (doseq [idx* idx-atoms]
            (swap! idx* pc/merge-indexes all-indexes))
          (fn [env tx] (parser env tx))))}))
