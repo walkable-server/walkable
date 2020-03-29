@@ -557,6 +557,17 @@
     {}
     ios))
 
+(defn internalize-indexes
+  [indexes {::pc/keys [sym] :as dynamic-resolver}]
+  (-> indexes
+    (update ::pc/index-resolvers
+      (fn [resolvers]
+        (into {}
+          (map (fn [[r v]] [r (assoc v ::pc/dynamic-sym sym)]))
+          resolvers)))
+    (assoc-in [::pc/index-resolvers sym]
+      dynamic-resolver)))
+
 (defn connect-plugin
   [{:keys [resolver-sym db query floor-plan
            inputs-outputs autocomplete-ignore
