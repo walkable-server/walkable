@@ -490,10 +490,11 @@
               :let [v (get e source-column)]
               :when (not (nil? v))]
           (->> unbound-individual-query
-            (expressions/substitute-atomic-variables
-              (source-column-variable-values v))))
+               (expressions/substitute-atomic-variables
+                (source-column-variable-values v))))
 
-        batched-individuals (batch-query individual-queries)]
+        batched-individuals (when (seq individual-queries)
+                              (batch-query individual-queries))]
     (if cet?
       (expressions/concatenate #(apply str %)
         [shared-query batched-individuals])
@@ -529,15 +530,17 @@
                                     :source-column source-column
                                     :entities entities})]
                   [[j (into {} (:params join-child-ast))]
-                   {:target-column target-column
-                    :query         (build-parameterized-sql-query query)}]))]
+                   (when query
+                     {:target-column target-column
+                      :query         (build-parameterized-sql-query query)})]))]
         (mapv f join-children)))))
+
 
 (defn join-children-data-by-join-key
   [env {:keys [entities join-children]}]
   (let [{::keys [db query]} (env/config env)
         f (fn [[join-child {:keys [target-column] q :query}]]
-            (let [data (query db q)]
+            (let [data (when q (query db q))]
               [join-child (group-by target-column data)]))]
     (into {}
       (map f)
