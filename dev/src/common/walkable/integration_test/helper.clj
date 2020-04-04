@@ -33,6 +33,7 @@
                   (walkable/connect-plugin (assoc (connect-config config)
                                              :db db
                                              :query jdbc/query))
+                  p/elide-special-outputs-plugin
                   p/error-handler-plugin
                   p/trace-plugin]}))
 
