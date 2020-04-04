@@ -222,6 +222,7 @@
          ::p/mutate  pc/mutate
          ::p/plugins [(pc/connect-plugin {::pc/register []})
                       plg
+                      p/elide-special-outputs-plugin
                       p/error-handler-plugin
                       p/trace-plugin]})]
   (println "running at " (now) "\n\n")
