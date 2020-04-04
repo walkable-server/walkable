@@ -191,7 +191,7 @@
       :expected
       #:farmers {:farmers [#:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
                            #:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
-                           #:farmer{:number 3, :name "homeless", :house #:house {:index ::p/not-found, :color ::p/not-found}}]}}]}
+                           #:farmer{:number 3, :name "homeless", :house #:house {}}]}}]}
    :farmer-house-paginated
    {:core-config     farmer-house-config
     :core-floor-plan (assoc farmer-house-floor-plan
@@ -208,7 +208,7 @@
       :expected
       #:farmers{:farmers [#:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
                           #:farmer{:number 1, :name "jon", :house #:house {:index "10", :color "black"}}
-                          #:farmer{:number 3, :name "homeless", :house #:house {:index ::p/not-found, :color ::p/not-found}}]}}
+                          #:farmer{:number 3, :name "homeless", :house #:house {}}]}}
      {:message "supplied pagination"
       :query
       `[{(:farmers/farmers {:limit 1})
