@@ -565,12 +565,24 @@
           (keys target-tables))]
     (assoc floor-plan :return-async compiled-return-async)))
 
+(defn compile-keyword-type
+  [{:keys [root-keywords join-keywords column-keywords] :as floor-plan}]
+  (assoc floor-plan :keyword-type
+         (merge
+          (into {} (for [k root-keywords]
+                     [k :root]))
+          (into {} (for [k join-keywords]
+                     [k :join]))
+          (into {} (for [k column-keywords]
+                     [k :column])))))
+
 (def floor-plan-keys
   [:aggregator-keywords
    :batch-query
    :cardinality
    :clojuric-names
    :column-keywords
+   :compiled-aggregator-selection
    :compiled-extra-conditions
    :compiled-formulas
    :compiled-group-by
@@ -579,27 +591,27 @@
    :compiled-join-conditions
    :compiled-join-conditions-cte
    :compiled-join-selection
-   :compiled-aggregator-selection
+   :compiled-pagination-fallbacks
    :compiled-selection
+   :compiled-variable-getter-graphs
+   :compiled-variable-getters
+   :cte-keywords
    :emitter
    :ident-keywords
-   :joins
    :join-filter-subqueries
    :join-keywords
-   :cte-keywords
    :join-statements
-   :compiled-pagination-fallbacks
+   :joins
+   :keyword-type
    :required-columns
-   :reversed-joins
    :return
    :return-async
-   :compiled-variable-getters
-   :compiled-variable-getter-graphs
-   :variable->graph-index
+   :reversed-joins
    :root-keywords
    :source-columns
    :target-columns
-   :target-tables])
+   :target-tables
+   :variable->graph-index])
 
 (defn kmap [ks]
   (let [this-ns (namespace ::foo)]
@@ -626,7 +638,8 @@
     compile-join-selection
     compile-ident-conditions
     compile-formulas-with-aliases
-    compile-formulas))
+    compile-formulas
+    compile-keyword-type))
 
 (defn columns-in-joins
   [joins]
