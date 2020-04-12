@@ -570,11 +570,11 @@
   (assoc floor-plan :keyword-type
          (merge
           (into {} (for [k root-keywords]
-                     [k :root]))
+                     [k :roots]))
           (into {} (for [k join-keywords]
-                     [k :join]))
+                     [k :joins]))
           (into {} (for [k column-keywords]
-                     [k :column])))))
+                     [k :columns])))))
 
 (def floor-plan-keys
   [:aggregator-keywords
