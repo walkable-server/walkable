@@ -524,6 +524,21 @@
   {:params     (vec (apply concat (map :params compiled-expressions)))
    :raw-string (joiner (map :raw-string compiled-expressions))})
 
+(defn concat-with-and* [xs]
+  (clojure.string/join " AND "
+    (mapv (fn [x] (str "(" x ")")) xs)))
+
+(defn concat-with-and [xs]
+  (concatenate concat-with-and* xs))
+
+(defn concat-with-comma* [xs]
+  (clojure.string/join ", " xs))
+
+(def select-all {:raw-string "*" :params []})
+
+(defn concat-with-comma [xs]
+  (concatenate concat-with-comma* xs))
+
 (defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
