@@ -1,120 +1,121 @@
 (ns walkable.sql-query-builder.ast
   (:require [clojure.zip :as z]
             [walkable.sql-query-builder.pagination :as pagination]
+            [walkable.sql-query-builder.floor-plan :as floor-plan]
             [clojure.spec.alpha :as s]))
 
 (defn target-table
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/target-tables
+          [::floor-plan/target-tables
            dispatch-key]))
 
 (defn target-column
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/target-columns
+          [::floor-plan/target-columns
            dispatch-key]))
 
 (defn source-table
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/source-tables
+          [::floor-plan/source-tables
            dispatch-key]))
 
 (defn source-column
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/source-columns
+          [::floor-plan/source-columns
            dispatch-key]))
 
 (defn join-statement
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/join-statements
+          [::floor-plan/join-statements
            dispatch-key]))
 
 (defn compiled-extra-condition
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-extra-conditions
+          [::floor-plan/compiled-extra-conditions
            dispatch-key]))
 
 (defn compiled-ident-condition
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-ident-conditions
+          [::floor-plan/compiled-ident-conditions
            dispatch-key]))
 
 (defn compiled-join-condition
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-join-conditions
+          [::floor-plan/compiled-join-conditions
            dispatch-key]))
 
 (defn compiled-join-condition-cte
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-join-conditions-cte
+          [::floor-plan/compiled-join-conditions-cte
            dispatch-key]))
 
 (defn compiled-join-selection
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-join-selection
+          [::floor-plan/compiled-join-selection
            dispatch-key]))
 
 (defn compiled-aggregator-selection
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-aggregator-selection
+          [::floor-plan/compiled-aggregator-selection
            dispatch-key]))
 
 (defn compiled-group-by
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-group-by
+          [::floor-plan/compiled-group-by
            dispatch-key]))
 
 (defn compiled-having
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-having
+          [::floor-plan/compiled-having
            dispatch-key]))
 
 (defn pagination-fallbacks
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
+          [::floor-plan/compiled-pagination-fallbacks
            dispatch-key]))
 
 (defn pagination-default-fallbacks
   [floor-plan]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/compiled-pagination-fallbacks
+          [::floor-plan/compiled-pagination-fallbacks
            'walkable.sql-query-builder.pagination/default-fallbacks]))
 
 (defn return
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/return
+          [::floor-plan/return
            dispatch-key]))
 
 (defn return-async
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
-          [:walkable.sql-query-builder.floor-plan/return-async
+          [::floor-plan/return-async
            dispatch-key]))
 
 (defn aggregator?
   [floor-plan {:keys [dispatch-key]}]
   (let [aggregators (-> floor-plan
-                        :walkable.sql-query-builder.floor-plan/aggregator-keywords)]
+                        ::floor-plan/aggregator-keywords)]
     (contains? aggregators dispatch-key)))
 
 (defn cardinality-one?
   [floor-plan {:keys [dispatch-key]}]
   (= :one (get-in floor-plan
-                  [:walkable.sql-query-builder.floor-plan/cardinality
+                  [::floor-plan/cardinality
                    dispatch-key])))
 
 (defn supplied-offset [ast]
@@ -148,17 +149,17 @@
 (defn variable->graph-index
   [floor-plan]
   (-> floor-plan
-      :walkable.sql-query-builder.floor-plan/variable->graph-index))
+      ::floor-plan/variable->graph-index))
 
 (defn compiled-variable-getters
   [floor-plan]
   (-> floor-plan
-      :walkable.sql-query-builder.floor-plan/compiled-variable-getters))
+      ::floor-plan/compiled-variable-getters))
 
 (defn compiled-variable-getter-graphs
   [floor-plan]
   (-> floor-plan
-      :walkable.sql-query-builder.floor-plan/compiled-variable-getter-graphs))
+      ::floor-plan/compiled-variable-getter-graphs))
 
 (defn ast-zipper
   "Make a zipper to navigate an ast tree possibly with placeholder
