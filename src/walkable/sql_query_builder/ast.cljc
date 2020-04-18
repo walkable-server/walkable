@@ -151,3 +151,33 @@
   [floor-plan]
   (-> floor-plan
       :walkable.sql-query-builder.floor-plan/compiled-variable-getter-graphs))
+
+(defn ast-zipper
+  "Make a zipper to navigate an ast tree possibly with placeholder
+  subtrees."
+  [ast]
+  (->> ast
+       (z/zipper
+        (fn branch? [x] (and (map? x)
+                             (#{:root :join} (:type x))))
+        (fn children [x] (:children x))
+        (fn make-node [x xs] (assoc x :children (vec xs))))))
+
+(defn ast-map [f ast]
+  (loop [loc ast]
+    (if (z/end? loc)
+      (z/root loc)
+      (recur
+       (z/next
+        (let [node (z/node loc)]
+          (if (= :root (:type node))
+            loc
+            (z/edit loc f))))))))
+
+(defn prepare-query
+  [floor-plan ast-item])
+
+(defn prepared-ast
+  [floor-plan ast]
+  (ast-map (fn [ast-item] (assoc ast-item ::prepared-query (prepare-query floor-plan ast-item)))
+           (ast-zipper ast)))
