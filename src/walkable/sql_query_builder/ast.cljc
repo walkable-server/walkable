@@ -2,6 +2,7 @@
   (:require [clojure.zip :as z]
             [walkable.sql-query-builder.pagination :as pagination]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
+            [walkable.sql-query-builder.expressions :as expressions]
             [clojure.spec.alpha :as s]))
 
 (defn target-table
@@ -160,6 +161,17 @@
   [floor-plan]
   (-> floor-plan
       ::floor-plan/compiled-variable-getter-graphs))
+
+(defn process-supplied-condition
+  [{::floor-plan/keys [compiled-formulas join-filter-subqueries]}
+   ast]
+  (let [supplied-condition (get-in ast [:params :filters])]
+    (when supplied-condition
+      (->> supplied-condition
+           (expressions/compile-to-string
+            {:join-filter-subqueries join-filter-subqueries})
+           (expressions/substitute-atomic-variables
+            {:variable-values compiled-formulas})))))
 
 (defn ast-zipper
   "Make a zipper to navigate an ast tree possibly with placeholder
