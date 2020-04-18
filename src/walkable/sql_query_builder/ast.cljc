@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder.ast
   (:require [clojure.zip :as z]
+            [walkable.sql-query-builder.pagination :as pagination]
             [clojure.spec.alpha :as s]))
 
 (defn target-table
@@ -136,6 +137,13 @@
   {:offset   (supplied-offset ast)
    :limit    (supplied-limit ast)
    :order-by (supplied-order-by ast)})
+
+(defn process-pagination
+  [floor-plan ast]
+  (pagination/merge-pagination
+    (pagination-default-fallbacks floor-plan)
+    (pagination-fallbacks floor-plan ast)
+    (supplied-pagination ast)))
 
 (defn variable->graph-index
   [floor-plan]
