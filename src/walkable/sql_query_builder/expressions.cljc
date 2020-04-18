@@ -539,6 +539,11 @@
 (defn concat-with-comma [xs]
   (concatenate concat-with-comma* xs))
 
+(defn combine-params
+  [& compiled-exprs]
+  (into [] (comp (map :params) cat)
+        compiled-exprs))
+
 (defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
