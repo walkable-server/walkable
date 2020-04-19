@@ -218,9 +218,12 @@
             loc
             (z/edit loc f))))))))
 
-(defn combine-with-cte [])
+(defn combine-with-cte [{:keys [shared-query batched-individuals]}]
+  (expressions/concatenate #(apply str %)
+                           [shared-query batched-individuals]))
 
-(defn combine-without-cte [])
+(defn combine-without-cte [{:keys [batched-individuals]}]
+  batched-individuals)
 
 (defn prepare-query
   [floor-plan ast]
