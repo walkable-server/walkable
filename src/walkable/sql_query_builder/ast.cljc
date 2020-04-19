@@ -197,6 +197,152 @@
 
 (defmethod individual-query :default
   [& args])
+
+(defmethod individual-query
+  [false true]
+  [_dispatch-values {:keys [floor-plan ast pagination]}]
+  (let [selection expressions/select-all
+        conditions (compiled-join-condition-cte floor-plan ast)
+        {:keys [offset limit order-by]} pagination
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                    {:target-table "walkable_ungrouped_children"
+
+                     :selection (:raw-string selection)
+                     :conditions (:raw-string conditions)
+
+                     :offset offset
+                     :limit limit
+                     :order-by order-by})
+                   :params (expressions/combine-params selection conditions)}]
+    sql-query))
+
+(defn process-children [floor-plan ast])
+
+(defn process-selection [floor-plan columns-to-query])
+
+(defn all-conditions
+  [floor-plan ast]
+  (let [conditions
+        (->> [(compiled-join-condition floor-plan ast)
+              (process-supplied-condition floor-plan ast)
+              (compiled-extra-condition floor-plan ast)]
+             (into [] (remove nil?)))]
+    (expressions/concat-with-and conditions)))
+
+(defn shared-conditions
+  [floor-plan ast]
+  (let [conditions
+        (->> [(process-supplied-condition floor-plan ast)
+              (compiled-extra-condition floor-plan ast)]
+             (into [] (remove nil?)))]
+    (expressions/concat-with-and conditions)))
+
+(defmethod individual-query
+  [false false]
+  [_dispatch {:keys [floor-plan ast pagination]}]
+  (let [{:keys [columns-to-query]} (process-children floor-plan ast)
+        target-column              (target-column floor-plan ast)
+        {:keys [offset limit order-by order-by-columns]} pagination
+
+        columns-to-query
+        (-> (clojure.set/union columns-to-query order-by-columns)
+            (conj target-column))
+
+        selection
+        (process-selection floor-plan columns-to-query)
+
+        conditions (all-conditions floor-plan ast)
+
+        having    (compiled-having floor-plan ast)
+        sql-query {:raw-string
+                   (emitter/->query-string
+                    {:target-table   (target-table floor-plan ast)
+                     :join-statement (join-statement floor-plan ast)
+                     :selection      (:raw-string selection)
+                     :conditions     (:raw-string conditions)
+                     :group-by       (compiled-group-by floor-plan ast)
+                     :having         (:raw-string having)
+                     :offset         offset
+                     :limit          limit
+                     :order-by       order-by})
+                   :params (expressions/combine-params selection conditions having)}]
+    sql-query))
+
+(defmethod individual-query
+  [true true]
+  [_dispatch {:keys [floor-plan ast]}]
+  (let [selection  (compiled-aggregator-selection floor-plan ast)
+        conditions (compiled-join-condition-cte floor-plan ast)
+
+        sql-query {:raw-string
+                   (emitter/->query-string
+                    {:target-table "walkable_ungrouped_children"
+                     :selection    (:raw-string selection)
+                     :conditions   (:raw-string conditions)})
+                   :params (expressions/combine-params selection conditions)}]
+    sql-query))
+
+(defmethod individual-query
+  [true false]
+  [_dispatch {:keys [floor-plan ast]}]
+  (let [selection  (compiled-aggregator-selection floor-plan ast)
+        conditions (all-conditions floor-plan ast)
+        sql-query  {:raw-string
+                    (emitter/->query-string
+                     {:target-table   (target-table floor-plan ast)
+                      :join-statement (join-statement floor-plan ast)
+                      :selection      (:raw-string selection)
+                      :conditions     (:raw-string conditions)})
+                    :params (expressions/combine-params selection conditions)}]
+    sql-query))
+
+(defmethod shared-query
+  [false false]
+  [_dispatch {:keys [floor-plan ast]}]
+  (let [{:keys [columns-to-query]} (process-children floor-plan ast)
+        target-column (target-column floor-plan ast)
+        {:keys [order-by-columns]} (process-pagination floor-plan ast)
+        columns-to-query (-> (clojure.set/union columns-to-query order-by-columns)
+                             (conj target-column))
+        selection (process-selection floor-plan columns-to-query)
+        conditions (shared-conditions floor-plan ast)
+        having (compiled-having floor-plan ast)
+        sql-query {:raw-string
+                   (str "WITH walkable_ungrouped_children AS ("
+                        (emitter/->query-string
+                         {:target-table (target-table floor-plan ast)
+                          :join-statement (join-statement floor-plan ast)
+                          :selection (:raw-string selection)
+                          :conditions (:raw-string conditions)
+                          :group-by (compiled-group-by floor-plan ast)
+                          :having (:raw-string having)})
+                        ")\n")
+                   :params (expressions/combine-params selection conditions having)}]
+    sql-query))
+
+(defmethod shared-query
+  [true false]
+  [_dispatch {:keys [floor-plan ast]}]
+  (let [target-column    (target-column floor-plan ast)
+        columns-to-query #{target-column}
+        selection        (process-selection floor-plan columns-to-query)
+        conditions       (shared-conditions floor-plan ast)
+        having           (compiled-having floor-plan ast)
+        sql-query        {:raw-string
+                          (str "WITH walkable_ungrouped_children AS ("
+                               (emitter/->query-string
+                                {:target-table   (target-table floor-plan ast)
+                                 :join-statement (join-statement floor-plan ast)
+                                 :selection      (:raw-string selection)
+                                 :conditions     (:raw-string conditions)
+                                 :group-by       (compiled-group-by floor-plan ast)
+                                 :having         (:raw-string having)})
+                               ")\n")
+                          :params (expressions/combine-params selection conditions having)}]
+    sql-query))
+
 (defn ast-zipper
   "Make a zipper to navigate an ast tree."
   [ast]
