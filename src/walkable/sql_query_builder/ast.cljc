@@ -345,12 +345,12 @@
 
 (defn ast-zipper
   "Make a zipper to navigate an ast tree."
-  [ast]
+  [floor-plan ast]
   (->> ast
        (z/zipper
         (fn branch? [x] (and (map? x)
                              (#{:root :join} (:type x))))
-        (fn children [x] (:children x))
+        (fn children [x] (filterv #(#{:roots :joins} (keyword-type floor-plan %)) (:children x)))
         (fn make-node [x xs] (assoc x :children (vec xs))))))
 
 (defn ast-map [f ast]
@@ -387,4 +387,4 @@
 (defn prepared-ast
   [floor-plan ast]
   (ast-map (fn [ast-item] (assoc ast-item ::prepared-query (prepare-query floor-plan ast-item)))
-           (ast-zipper ast)))
+           (ast-zipper floor-plan ast)))
