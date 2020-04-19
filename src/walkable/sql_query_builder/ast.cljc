@@ -218,9 +218,32 @@
                    :params (expressions/combine-params selection conditions)}]
     sql-query))
 
-(defn process-children [floor-plan ast])
+(defn process-children*
+  "Infers which columns to include in SQL query from child keys in ast"
+  [floor-plan ast] 
+  (let [all-children (:children ast)
+        
+        {:keys [columns joins]}
+        (group-by #(keyword-type floor-plan %) all-children)
 
-(defn process-selection [floor-plan columns-to-query])
+        child-column-keys
+        (into #{} (map :dispatch-key) columns)
+
+        child-source-columns
+        (into #{} (map #(source-column floor-plan %)) joins)]
+    {:columns-to-query (clojure.set/union child-column-keys child-source-columns)}))
+
+(defn process-children
+  "Infers which columns to include in SQL query from child keys in env ast"
+  [floor-plan ast]
+  (if (aggregator? floor-plan ast)
+    {:columns-to-query #{(:dispatch-key ast)}}
+    (process-children* floor-plan ast)))
+
+(defn process-selection [floor-plan columns-to-query]
+  (let [{::floor-plan/keys [compiled-selection]} floor-plan
+        compiled-normal-selection (mapv compiled-selection columns-to-query)]
+    (expressions/concat-with-comma compiled-normal-selection)))
 
 (defn all-conditions
   [floor-plan ast]
