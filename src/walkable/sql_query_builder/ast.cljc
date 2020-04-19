@@ -3,6 +3,7 @@
             [walkable.sql-query-builder.pagination :as pagination]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.sql-query-builder.expressions :as expressions]
+            [walkable.sql-query-builder.emitter :as emitter]
             [clojure.spec.alpha :as s]))
 
 (defn target-table
@@ -113,6 +114,10 @@
                         ::floor-plan/aggregator-keywords)]
     (contains? aggregators dispatch-key)))
 
+(defn cte?
+  [{::floor-plan/keys [cte-keywords]} {:keys [dispatch-key]}]
+  (contains? cte-keywords dispatch-key))
+
 (defn cardinality-one?
   [floor-plan {:keys [dispatch-key]}]
   (= :one (get-in floor-plan
@@ -173,9 +178,21 @@
            (expressions/substitute-atomic-variables
             {:variable-values compiled-formulas})))))
 
+(defn query-dispatch
+  [{:keys [aggregator? cte?]} _main-args]
+  (mapv boolean [aggregator? cte?]))
+
+(defmulti shared-query query-dispatch)
+
+(defmulti individual-query query-dispatch)
+
+(defmethod shared-query :default
+  [& args])
+
+(defmethod individual-query :default
+  [& args])
 (defn ast-zipper
-  "Make a zipper to navigate an ast tree possibly with placeholder
-  subtrees."
+  "Make a zipper to navigate an ast tree."
   [ast]
   (->> ast
        (z/zipper
@@ -195,8 +212,22 @@
             loc
             (z/edit loc f))))))))
 
+(defn combine-with-cte [])
+
+(defn combine-without-cte [])
+
 (defn prepare-query
-  [floor-plan ast-item])
+  [floor-plan ast]
+  (let [dispatch {:aggregator? (aggregator? floor-plan ast)
+                  :cte? (cte? floor-plan ast)}
+        params [dispatch {:floor-plan floor-plan
+                          :ast ast
+                          :pagination (process-pagination floor-plan ast)}]]
+    {:shared-query (apply shared-query params)
+     :individual-query (apply individual-query params)
+     :combine-query (if (:cte? dispatch)
+                      combine-with-cte
+                      combine-without-cte)}))
 
 (defn prepared-ast
   [floor-plan ast]
