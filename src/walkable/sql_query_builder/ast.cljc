@@ -30,6 +30,12 @@
           [::floor-plan/source-columns
            dispatch-key]))
 
+(defn keyword-type
+  [floor-plan {:keys [dispatch-key]}]
+  (get-in floor-plan
+          [::floor-plan/keyword-type
+           dispatch-key]))
+
 (defn join-statement
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
