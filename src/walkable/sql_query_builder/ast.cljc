@@ -193,10 +193,10 @@
 (defmulti individual-query query-dispatch)
 
 (defmethod shared-query :default
-  [& args])
+  [& _args])
 
 (defmethod individual-query :default
-  [& args])
+  [& _args])
 
 (defmethod individual-query
   [false true]
