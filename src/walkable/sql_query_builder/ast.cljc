@@ -322,7 +322,7 @@
     sql-query))
 
 (defmethod shared-query
-  [false false]
+  [false true]
   [_dispatch {:keys [floor-plan ast]}]
   (let [{:keys [columns-to-query]} (process-children floor-plan ast)
         target-column (target-column floor-plan ast)
@@ -346,7 +346,7 @@
     sql-query))
 
 (defmethod shared-query
-  [true false]
+  [true true]
   [_dispatch {:keys [floor-plan ast]}]
   (let [target-column    (target-column floor-plan ast)
         columns-to-query #{target-column}
