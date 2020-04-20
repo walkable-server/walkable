@@ -569,12 +569,15 @@
   [{:keys [root-keywords join-keywords column-keywords] :as floor-plan}]
   (assoc floor-plan :keyword-type
          (merge
+          ;; Aggregators appear in both column-keywords and either
+          ;; root-keywords or join-keywords.
+          ;; We don't want them to have type `:columns` here
+          (into {} (for [k column-keywords]
+                     [k :columns]))
           (into {} (for [k root-keywords]
                      [k :roots]))
           (into {} (for [k join-keywords]
-                     [k :joins]))
-          (into {} (for [k column-keywords]
-                     [k :columns])))))
+                     [k :joins])))))
 
 (def floor-plan-keys
   [:aggregator-keywords
