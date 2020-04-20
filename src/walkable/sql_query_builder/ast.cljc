@@ -396,16 +396,17 @@
 
 (defn prepare-query
   [floor-plan ast]
-  (let [dispatch {:aggregator? (aggregator? floor-plan ast)
-                  :cte? (cte? floor-plan ast)}
-        params [dispatch {:floor-plan floor-plan
-                          :ast ast
-                          :pagination (process-pagination floor-plan ast)}]]
-    {:shared-query (apply shared-query params)
-     :individual-query (apply individual-query params)
-     :combine-query (if (:cte? dispatch)
-                      combine-with-cte
-                      combine-without-cte)}))
+  (when (#{:roots :joins} (keyword-type floor-plan ast))
+    (let [dispatch {:aggregator? (aggregator? floor-plan ast)
+                    :cte? (cte? floor-plan ast)}
+          params [dispatch {:floor-plan floor-plan
+                            :ast ast
+                            :pagination (process-pagination floor-plan ast)}]]
+      {:shared-query (apply shared-query params)
+       :individual-query (apply individual-query params)
+       :combine-query (if (:cte? dispatch)
+                        combine-with-cte
+                        combine-without-cte)})))
 
 (defn prepared-ast
   [floor-plan ast]
