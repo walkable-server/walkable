@@ -415,5 +415,7 @@
 
 (defn prepared-ast
   [floor-plan ast]
-  (ast-map (fn [ast-item] (assoc ast-item ::prepared-query (prepare-query floor-plan ast-item)))
+  (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
+                            (assoc ast-item ::prepared-query pq)
+                            ast-item))
            (ast-zipper ast)))
