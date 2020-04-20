@@ -262,6 +262,11 @@
              (into [] (remove nil?)))]
     (expressions/concat-with-and conditions)))
 
+(defn conj-some [coll x]
+  (if x
+    (conj coll x)
+    coll))
+
 (defmethod individual-query
   [false false]
   [_dispatch {:keys [floor-plan ast pagination]}]
@@ -271,7 +276,7 @@
 
         columns-to-query
         (-> (clojure.set/union columns-to-query order-by-columns)
-            (conj target-column))
+            (conj-some target-column))
 
         selection
         (process-selection floor-plan columns-to-query)
