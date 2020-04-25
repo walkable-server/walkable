@@ -399,23 +399,67 @@
 (defn combine-without-cte [{:keys [batched-individuals]}]
   batched-individuals)
 
+(defn source-column-variable-values
+  [v]
+  {:variable-values {`floor-plan/source-column-value
+                     (expressions/compile-to-string {} v)}})
+
+(defn individual-queries
+  [batch-query individual-query source-column-keyword]
+  (let [xform (comp (map #(get % source-column-keyword))
+                    (remove nil?)
+                    (map #(expressions/substitute-atomic-variables
+                           (source-column-variable-values %)
+                           individual-query)))]
+    (fn individual-queries* [entities]
+      (->> entities
+           (into [] xform)
+           batch-query))))
+
 (defn prepare-query
   [floor-plan ast]
-  (when (#{:roots :joins} (keyword-type floor-plan ast))
-    (let [dispatch {:aggregator? (aggregator? floor-plan ast)
-                    :cte? (cte? floor-plan ast)}
-          params [dispatch {:floor-plan floor-plan
-                            :ast ast
-                            :pagination (process-pagination floor-plan ast)}]]
-      {:shared-query (apply shared-query params)
-       :individual-query (apply individual-query params)
-       :combine-query (if (:cte? dispatch)
-                        combine-with-cte
-                        combine-without-cte)})))
+  (let [kt (keyword-type floor-plan ast)]
+    (when (#{:roots :joins} kt)
+      (let [dispatch         {:aggregator? (aggregator? floor-plan ast)
+                              :cte?        (cte? floor-plan ast)}
+            params           [dispatch {:floor-plan floor-plan
+                                        :ast        ast
+                                        :pagination (process-pagination floor-plan ast)}]
+            
+            shared-query     (apply shared-query params)
+            individual-query (apply individual-query params)
+
+            batched-individuals
+            (if (= :roots kt)
+              (constantly individual-query)
+              (individual-queries (::floor-plan/batch-query floor-plan)
+                                  individual-query
+                                  (source-column floor-plan ast)))
+
+            combine-query (if (:cte? dispatch)
+                            combine-with-cte
+                            combine-without-cte)]
+        (fn final-query [entities]
+          (combine-query {:shared-query shared-query
+                          :batched-individuals (batched-individuals entities)}))))))
+
+(defn prepare-merge-sub-entities
+  [floor-plan ast]
+  (let [k  (:dispatch-key ast)
+        sc (source-column floor-plan ast)]
+    (fn merge-sub-entities [entities sub-entities]
+      (if (empty? sub-entities)
+        entities
+        (let [groups (group-by sc sub-entities)]
+          (mapv #(let [source-column-value (get % sc)]
+                  (assoc % k
+                         (get groups source-column-value)))
+               entities))))))
 
 (defn prepared-ast
   [floor-plan ast]
   (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
-                            (assoc ast-item ::prepared-query pq)
+                            (assoc ast-item ::prepared-query pq
+                                   ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item))
                             ast-item))
            (ast-zipper ast)))
