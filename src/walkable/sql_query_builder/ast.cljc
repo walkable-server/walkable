@@ -404,16 +404,61 @@
   {:variable-values {`floor-plan/source-column-value
                      (expressions/compile-to-string {} v)}})
 
+(defn compute-graphs [env variables]
+  (let [variable->graph-index (variable->graph-index env)
+        graph-index->graph    (compiled-variable-getter-graphs env)]
+    (into {}
+      (comp (map variable->graph-index)
+        (remove nil?)
+        (distinct)
+        (map #(do [% (graph-index->graph %)]))
+        (map (fn [[index graph]] [index (graph env)])))
+      variables)))
+
+(defn compute-variables
+  [env {:keys [computed-graphs variables]}]
+  (let [getters (select-keys (compiled-variable-getters env) variables)]
+    (into {}
+      (map (fn [[k f]]
+             (let [v (f env computed-graphs)]
+               ;; wrap in single-raw-string to feed
+               ;; `expressions/substitute-atomic-variables`
+               [k (expressions/single-raw-string v)])))
+      getters)))
+
+(defn process-variables
+  [env {:keys [variables]}]
+  (compute-variables env
+                     {:computed-graphs (compute-graphs env variables)
+                      :variables       variables}))
+
+(defn process-query
+  [env query]
+  (expressions/substitute-atomic-variables
+   {:variable-values (process-variables env
+                                        {:variables (expressions/find-variables query)})}
+   query))
+
+(defn eliminate-unknown-variables [query]
+  (let [remaining-variables (expressions/find-variables query)]
+    (expressions/substitute-atomic-variables
+     {:variable-values (zipmap remaining-variables
+                               (repeat expressions/conformed-nil))}
+     query)))
+
 (defn individual-queries
   [batch-query individual-query source-column-keyword]
   (let [xform (comp (map #(get % source-column-keyword))
                     (remove nil?)
-                    (map #(expressions/substitute-atomic-variables
-                           (source-column-variable-values %)
-                           individual-query)))]
-    (fn individual-queries* [entities]
+                    (map #(-> (expressions/substitute-atomic-variables
+                               (source-column-variable-values %)
+                               individual-query)
+                              ;; attach source-column-value as meta data
+                              (with-meta {:source-column-value %}))))]
+    (fn individual-queries* [env entities]
       (->> entities
-           (into [] xform)
+           ;; TODO: substitue-atomic-variables per entity
+           (into [] (comp xform))
            batch-query))))
 
 (defn prepare-query
@@ -431,7 +476,7 @@
 
             batched-individuals
             (if (= :roots kt)
-              (constantly individual-query)
+              (fn [_env _entities] individual-query)
               (individual-queries (::floor-plan/batch-query floor-plan)
                                   individual-query
                                   (source-column floor-plan ast)))
@@ -439,9 +484,12 @@
             combine-query (if (:cte? dispatch)
                             combine-with-cte
                             combine-without-cte)]
-        (fn final-query [entities]
-          (combine-query {:shared-query shared-query
-                          :batched-individuals (batched-individuals entities)}))))))
+        (fn final-query [env entities]
+          (->> {:shared-query shared-query
+                :batched-individuals (batched-individuals env entities)}
+               combine-query
+               (process-query env)
+               eliminate-unknown-variables))))))
 
 (defn prepare-merge-sub-entities
   [floor-plan ast]
