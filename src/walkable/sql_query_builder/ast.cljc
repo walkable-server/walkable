@@ -504,7 +504,7 @@
                          (get groups source-column-value)))
                entities))))))
 
-(defn prepared-ast
+(defn prepare-ast
   [floor-plan ast]
   (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
                             (assoc ast-item ::prepared-query pq
