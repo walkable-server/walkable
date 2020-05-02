@@ -371,27 +371,6 @@
                           :params (expressions/combine-params selection conditions having)}]
     sql-query))
 
-(defn ast-zipper
-  "Make a zipper to navigate an ast tree."
-  [ast]
-  (->> ast
-       (z/zipper
-        (fn branch? [x] (and (map? x)
-                             (#{:root :join} (:type x))))
-        (fn children [x] (:children x))
-        (fn make-node [x xs] (assoc x :children (vec xs))))))
-
-(defn ast-map [f ast]
-  (loop [loc ast]
-    (if (z/end? loc)
-      (z/root loc)
-      (recur
-       (z/next
-        (let [node (z/node loc)]
-          (if (= :root (:type node))
-            loc
-            (z/edit loc f))))))))
-
 (defn combine-with-cte [{:keys [shared-query batched-individuals]}]
   (expressions/concatenate #(apply str %)
                            [shared-query batched-individuals]))
@@ -503,6 +482,27 @@
                   (assoc % k
                          (get groups source-column-value)))
                entities))))))
+
+(defn ast-zipper
+  "Make a zipper to navigate an ast tree."
+  [ast]
+  (->> ast
+       (z/zipper
+        (fn branch? [x] (and (map? x)
+                             (#{:root :join} (:type x))))
+        (fn children [x] (:children x))
+        (fn make-node [x xs] (assoc x :children (vec xs))))))
+
+(defn ast-map [f ast]
+  (loop [loc ast]
+    (if (z/end? loc)
+      (z/root loc)
+      (recur
+       (z/next
+        (let [node (z/node loc)]
+          (if (= :root (:type node))
+            loc
+            (z/edit loc f))))))))
 
 (defn prepare-ast
   [floor-plan ast]
