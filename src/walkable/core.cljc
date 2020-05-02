@@ -1,14 +1,40 @@
 (ns walkable.core
-  (:require
+  (:require [clojure.zip :as z]
             [walkable.sql-query-builder.expressions :as expressions]
-            [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.sql-query-builder.pathom-env :as env]
             [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.connect.planner :as pcp]))
+
+(defn ast-map-loc [f ast]
+  (loop [loc ast]
+    (if (z/end? loc)
+      (z/root loc)
+      (recur
+       (z/next
+        (let [node (z/node loc)]
+          (if (= :root (:type node))
+            loc
+            (f loc))))))))
+
+;; top-down process
+(defn fetch-data
+  [env ast]
+  (->> (ast/ast-zipper ast)
+       (ast-map-loc (fn [loc]
+                      (let [ast-item (z/node loc)
+                            {::ast/keys [prepared-query]} ast-item]
+                        (if prepared-query
+                          (let [parent (last (z/path loc))
+                                ;; TODO: partition entities and concat back
+                                q (->> (:entities parent)
+                                       (prepared-query env)
+                                       (expressions/build-parameterized-sql-query))
+                                entities ((:run env) (:db env) q)]
+                            (z/edit loc assoc :entities entities))
+                          loc))))))
 
 (defn dynamic-resolver
   [floor-plan env])
