@@ -558,3 +558,7 @@
   (into #{} (comp (filter atomic-variable?)
               (map :name))
     params))
+
+(defn build-parameterized-sql-query
+  [{:keys [raw-string params]}]
+  (vec (cons raw-string params)))
