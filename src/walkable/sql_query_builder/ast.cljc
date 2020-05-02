@@ -504,10 +504,26 @@
             loc
             (z/edit loc f))))))))
 
+(defn clean-up [ast]
+  (loop [loc ast]
+    (if (z/end? loc)
+      (z/root loc)
+      (recur
+       (z/next
+        (let [node (z/node loc)]
+          (if (or (= :root (:type node))
+                  (::prepared-query node))
+            loc
+            (z/next (z/remove loc)))))))))
+
 (defn prepare-ast
   [floor-plan ast]
-  (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
-                            (assoc ast-item ::prepared-query pq
-                                   ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item))
-                            ast-item))
-           (ast-zipper ast)))
+  (->> (ast-zipper ast)
+       (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
+                                 (-> ast-item
+                                     (dissoc :query)
+                                     (assoc ::prepared-query pq
+                                            ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item)))
+                                 ast-item)))
+       (ast-zipper)
+       (clean-up)))
