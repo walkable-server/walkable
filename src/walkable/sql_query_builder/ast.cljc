@@ -493,7 +493,7 @@
         (fn children [x] (:children x))
         (fn make-node [x xs] (assoc x :children (vec xs))))))
 
-(defn ast-map [f ast]
+(defn mapz [f ast]
   (loop [loc ast]
     (if (z/end? loc)
       (z/root loc)
@@ -504,26 +504,25 @@
             loc
             (z/edit loc f))))))))
 
-(defn clean-up [ast]
+(defn filterz [f ast]
   (loop [loc ast]
     (if (z/end? loc)
       (z/root loc)
       (recur
        (z/next
         (let [node (z/node loc)]
-          (if (or (= :root (:type node))
-                  (::prepared-query node))
+          (if (f node)
             loc
             (z/next (z/remove loc)))))))))
 
 (defn prepare-ast
   [floor-plan ast]
   (->> (ast-zipper ast)
-       (ast-map (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
+       (mapz (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
                                  (-> ast-item
                                      (dissoc :query)
                                      (assoc ::prepared-query pq
                                             ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item)))
                                  ast-item)))
        (ast-zipper)
-       (clean-up)))
+       (filterz #(or (= :root (:type %)) (::prepared-query %)))))
