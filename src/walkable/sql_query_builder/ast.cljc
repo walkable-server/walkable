@@ -30,6 +30,12 @@
           [::floor-plan/source-columns
            dispatch-key]))
 
+(defn result-key [ast]
+  (let [k (:pathom/as (:params ast))]
+    (if (keyword? k)
+      k
+      (:dispatch-key ast))))
+
 (defn keyword-type
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan
@@ -472,7 +478,7 @@
 
 (defn prepare-merge-sub-entities
   [floor-plan ast]
-  (let [k  (:dispatch-key ast)
+  (let [k  (result-key ast)
         tc (target-column floor-plan ast)
         sc (source-column floor-plan ast)]
     (fn merge-sub-entities [entities sub-entities]
