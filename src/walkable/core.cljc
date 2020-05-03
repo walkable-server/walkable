@@ -52,8 +52,7 @@
        (z/next
         (let [{:keys [children] :as node} (z/node loc)
               {::ast/keys [prepared-merge-sub-entities]} node]
-          (if (or (= :root (:type node))
-                  (not prepared-merge-sub-entities)
+          (if (or (not prepared-merge-sub-entities) ;; TODO: is it necessary to check this???
                   (not-empty children))
               loc
             (let [parent (z/up loc)
