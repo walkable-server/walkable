@@ -70,6 +70,14 @@
   [ast]
   (->> (merge-data-in-bottom-branches* ast)
        (ast/filterz #(not-empty (:children %)))))
+
+(defn merge-data
+  [ast]
+  (loop [{:keys [children] :as root} ast]
+    (if (empty? children)
+      (:entities root)
+      (recur (merge-data-in-bottom-branches root)))))
+
 (defn dynamic-resolver
   [floor-plan env])
 
