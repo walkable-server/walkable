@@ -36,6 +36,36 @@
                             (z/edit loc #(-> % (dissoc ::ast/prepared-query) (assoc :entities entities))))
                           loc))))))
 
+;; bottom-up process, start from lowest levels (ones without children)
+;; and go up using z/up and prepared-merge-sub-entities
+
+(defn move-to-nth-child
+  [loc n]
+  (nth (iterate z/right (z/down loc)) n))
+
+(defn merge-data-in-bottom-branches*
+  [ast]
+  (loop [loc (ast/ast-zipper ast)]
+    (if (z/end? loc)
+      (z/root loc)
+      (recur
+       (z/next
+        (let [{:keys [children] :as node} (z/node loc)
+              {::ast/keys [prepared-merge-sub-entities]} node]
+          (if (or (= :root (:type node))
+                  (not prepared-merge-sub-entities)
+                  (not-empty children))
+              loc
+            (let [parent (z/up loc)
+                  ;; save current position
+                  position-to-parent (count (z/lefts loc))
+
+                  merged-entities
+                  (prepared-merge-sub-entities (:entities (z/node parent))
+                                               (:entities node))]
+              (-> (z/edit parent assoc :entities merged-entities)
+                      ;; come back to previous position
+                  (move-to-nth-child position-to-parent))))))))))
 (defn dynamic-resolver
   [floor-plan env])
 
