@@ -516,10 +516,11 @@
 
 (defn prepare-ast
   [floor-plan ast]
-  (->> (mapz (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
-                                 (-> ast-item
-                                     (dissoc :query)
-                                     (assoc ::prepared-query pq
-                                            ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item)))
-                                 ast-item)))
+  (->> ast
+       (mapz (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
+                              (-> ast-item
+                                  (dissoc :query)
+                                  (assoc ::prepared-query pq
+                                         ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item)))
+                              ast-item)))
        (filterz #(or (= :root (:type %)) (::prepared-query %)))))
