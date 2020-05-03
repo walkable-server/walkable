@@ -493,7 +493,7 @@
         (fn make-node [x xs] (assoc x :children (vec xs))))))
 
 (defn mapz [f ast]
-  (loop [loc ast]
+  (loop [loc (ast-zipper ast)]
     (if (z/end? loc)
       (z/root loc)
       (recur
@@ -516,8 +516,7 @@
 
 (defn prepare-ast
   [floor-plan ast]
-  (->> (ast-zipper ast)
-       (mapz (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
+  (->> (mapz (fn [ast-item] (if-let [pq (prepare-query floor-plan ast-item)]
                                  (-> ast-item
                                      (dissoc :query)
                                      (assoc ::prepared-query pq
