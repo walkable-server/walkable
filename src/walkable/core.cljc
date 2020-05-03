@@ -52,9 +52,9 @@
        (z/next
         (let [{:keys [children] :as node} (z/node loc)
               {::ast/keys [prepared-merge-sub-entities]} node]
-          (if (or (not prepared-merge-sub-entities) ;; TODO: is it necessary to check this???
+          (if (or (not prepared-merge-sub-entities) ;; node can be nil
                   (not-empty children))
-              loc
+            loc
             (let [parent (z/up loc)
                   ;; save current position
                   position-to-parent (count (z/lefts loc))
@@ -63,7 +63,7 @@
                   (prepared-merge-sub-entities (:entities (z/node parent))
                                                (:entities node))]
               (-> (z/edit parent assoc :entities merged-entities)
-                      ;; come back to previous position
+                  ;; come back to previous position
                   (move-to-nth-child position-to-parent))))))))))
 
 (defn merge-data-in-bottom-branches
