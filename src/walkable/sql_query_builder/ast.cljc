@@ -479,15 +479,21 @@
 (defn prepare-merge-sub-entities
   [floor-plan ast]
   (let [k  (result-key ast)
-        tc (target-column floor-plan ast)
-        sc (source-column floor-plan ast)]
-    (fn merge-sub-entities [entities sub-entities]
-      (if (empty? sub-entities)
-        entities
-        (let [groups (group-by tc sub-entities)]
-          (mapv (fn [entity] (let [source-column-value (get entity sc)]
-                               (assoc entity k (get groups source-column-value))))
-                entities))))))
+        kt (keyword-type floor-plan ast)]
+    (if (= :roots kt)
+      (fn merge-root-entities [entities sub-entities]
+          (if (empty? sub-entities)
+            entities
+            (assoc entities k sub-entities)))
+      (let [tc (target-column floor-plan ast)
+            sc (source-column floor-plan ast)]
+        (fn merge-sub-entities [entities sub-entities]
+          (if (empty? sub-entities)
+            entities
+            (let [groups (group-by tc sub-entities)]
+              (mapv (fn [entity] (let [source-column-value (get entity sc)]
+                                   (assoc entity k (get groups source-column-value))))
+                    entities))))))))
 
 (defn ast-zipper
   "Make a zipper to navigate an ast tree."
