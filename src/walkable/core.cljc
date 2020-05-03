@@ -66,6 +66,11 @@
               (-> (z/edit parent assoc :entities merged-entities)
                       ;; come back to previous position
                   (move-to-nth-child position-to-parent))))))))))
+
+(defn merge-data-in-bottom-branches
+  [ast]
+  (->> (merge-data-in-bottom-branches* ast)
+       (ast/filterz #(not-empty (:children %)))))
 (defn dynamic-resolver
   [floor-plan env])
 
