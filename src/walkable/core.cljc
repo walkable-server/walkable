@@ -33,7 +33,7 @@
                                        (prepared-query env)
                                        (expressions/build-parameterized-sql-query))
                                 entities ((:run env) (:db env) q)]
-                            (z/edit loc assoc :entities entities))
+                            (z/edit loc #(-> % (dissoc ::ast/prepared-query) (assoc :entities entities))))
                           loc))))))
 
 (defn dynamic-resolver
