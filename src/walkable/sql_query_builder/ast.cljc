@@ -478,10 +478,9 @@
       (if (empty? sub-entities)
         entities
         (let [groups (group-by sc sub-entities)]
-          (mapv #(let [source-column-value (get % sc)]
-                  (assoc % k
-                         (get groups source-column-value)))
-               entities))))))
+          (mapv (fn [x] (let [source-column-value (get x sc)]
+                          (assoc x k (get groups source-column-value))))
+                entities))))))
 
 (defn ast-zipper
   "Make a zipper to navigate an ast tree."
@@ -505,7 +504,7 @@
             (z/edit loc f))))))))
 
 (defn filterz [f ast]
-  (loop [loc ast]
+  (loop [loc (ast-zipper ast)]
     (if (z/end? loc)
       (z/root loc)
       (recur
@@ -524,5 +523,4 @@
                                      (assoc ::prepared-query pq
                                             ::prepared-merge-sub-entities (prepare-merge-sub-entities floor-plan ast-item)))
                                  ast-item)))
-       (ast-zipper)
        (filterz #(or (= :root (:type %)) (::prepared-query %)))))
