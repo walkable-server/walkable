@@ -473,13 +473,14 @@
 (defn prepare-merge-sub-entities
   [floor-plan ast]
   (let [k  (:dispatch-key ast)
+        tc (target-column floor-plan ast)
         sc (source-column floor-plan ast)]
     (fn merge-sub-entities [entities sub-entities]
       (if (empty? sub-entities)
         entities
-        (let [groups (group-by sc sub-entities)]
-          (mapv (fn [x] (let [source-column-value (get x sc)]
-                          (assoc x k (get groups source-column-value))))
+        (let [groups (group-by tc sub-entities)]
+          (mapv (fn [entity] (let [source-column-value (get entity sc)]
+                               (assoc entity k (get groups source-column-value))))
                 entities))))))
 
 (defn ast-zipper
