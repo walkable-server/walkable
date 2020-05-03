@@ -9,7 +9,7 @@
             [com.wsscode.pathom.connect.planner :as pcp]))
 
 (defn ast-map-loc [f ast]
-  (loop [loc ast]
+  (loop [loc (ast/ast-zipper ast)]
     (if (z/end? loc)
       (z/root loc)
       (recur
@@ -22,7 +22,7 @@
 ;; top-down process
 (defn fetch-data
   [env ast]
-  (->> (ast/ast-zipper ast)
+  (->> ast
        (ast-map-loc (fn [loc]
                       (let [ast-item (z/node loc)
                             {::ast/keys [prepared-query]} ast-item]
