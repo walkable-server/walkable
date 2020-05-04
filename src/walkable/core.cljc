@@ -24,8 +24,7 @@
   [env ast]
   (->> ast
        (ast-map-loc (fn [loc]
-                      (let [ast-item (z/node loc)
-                            {::ast/keys [prepared-query]} ast-item]
+                      (let [{::ast/keys [prepared-query]} (z/node loc)]
                         (if prepared-query
                           (let [parent (last (z/path loc))
                                 ;; TODO: partition entities and concat back
