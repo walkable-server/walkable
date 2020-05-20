@@ -19,23 +19,19 @@
   {:inputs-outputs
    (let [farmer-out [:farmer/number
                      :farmer/name
-                     :farmer/house-index
-                     {:farmer/house [:house/index]}]
+                     :farmer/house-index]
          house-out  [:house/index
-                     :house/color
-                     {:house/owner [:farmer/number]}]]
+                     :house/color]] 
      [{::pc/output [{:farmers/farmers farmer-out}]}
 
       {::pc/input  #{:farmer/number}
        ::pc/output farmer-out}
 
-      {::pc/input  #{:house/owner}
-       ::pc/output farmer-out}
+      {::pc/output {:house/owner farmer-out}}
 
       {::pc/output [{:houses/houses house-out}]}
 
-      {::pc/input  #{:farmer/house}
-       ::pc/output house-out}
+      {::pc/output {:farmer/house house-out}}
 
       {::pc/input  #{:house/index}
        ::pc/output house-out}])})
@@ -43,23 +39,19 @@
 (def kid-toy-config
   {:inputs-outputs
    (let [kid-out [:kid/number
-                  :kid/name
-                  {:kid/toy [:toy/index]}]
+                  :kid/name]
          toy-out [:toy/index
-                  :toy/color
-                  {:toy/owner [:kid/number]}]]
+                  :toy/color]]
      [{::pc/output [{:kids/kids kid-out}]}
 
-      {::pc/input  #{:kid/number}
-       ::pc/output kid-out}
-
-      {::pc/input  #{:toy/owner}
-       ::pc/output kid-out}
+      {::pc/output {:toy/owner kid-out}}
 
       {::pc/output [{:toys/toys toy-out}]}
 
-      {::pc/input  #{:kid/toy}
-       ::pc/output toy-out}
+      {::pc/output {:kid/toy toy-out}}
+
+      {::pc/input  #{:kid/number}
+       ::pc/output kid-out}
 
       {::pc/input  #{:toy/index}
        ::pc/output toy-out}])})
