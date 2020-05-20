@@ -77,13 +77,26 @@
       (:entities root)
       (recur (merge-data-in-bottom-branches root)))))
 
+(defn ast-resolver
+  [floor-plan env ast]
+  (->> (ast/prepare-ast floor-plan ast)
+       (fetch-data env)
+       (merge-data)))
+
+(defn prepared-ast-resolver
+  [env prepared-ast]
+  (->> prepared-ast
+       (fetch-data env)
+       (merge-data)))
+
+(defn query-resolver
+  [floor-plan env query]
+  (ast-resolver floor-plan env (p/query->ast query)))
+
 (defn dynamic-resolver
   [floor-plan env]
   (let [ast (-> env ::pcp/node ::pcp/foreign-ast)]
-    {:houses/houses {:house/color ast}}
-    (->> (ast/prepare-ast floor-plan ast)
-         (fetch-data env)
-         (merge-data))))
+    (ast-resolver floor-plan env ast)))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
