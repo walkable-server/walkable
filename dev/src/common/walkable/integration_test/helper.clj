@@ -23,16 +23,14 @@
           :use-cte (when cte? {:default true})})})))
 
 (defn walkable-parser
-  [{:keys [db] :as config}]
+  [config]
   (p/parser
     {::p/env     {::p/reader               [p/map-reader
                                             pc/reader3
                                             pc/open-ident-reader
                                             p/env-placeholder-reader]}
      ::p/plugins [(pc/connect-plugin {::pc/register []})
-                  (walkable/connect-plugin (assoc (connect-config config)
-                                             :db db
-                                             :query jdbc/query))
+                  (walkable/connect-plugin (connect-config config))
                   p/elide-special-outputs-plugin
                   p/error-handler-plugin
                   p/trace-plugin]}))
@@ -44,18 +42,18 @@
           {:keys [message env query expected]}            test-suite]
       (testing (str "In scenario " scenario " for " db-type ", testing " message)
         (is (= expected
-              (let [parser (walkable-parser {:db db
-                                             :core-config core-config
+              (let [parser (walkable-parser {:core-config core-config
                                              :core-floor-plan core-floor-plan
                                              :db-type db-type})]
-                (parser env query)))
-          "without CTEs in joins")
+                (parser (assoc env ::walkable/db db ::walkable/run jdbc/query)
+                        query)))
+            "without CTEs in joins")
 
         (is (= expected
-              (let [parser (walkable-parser {:db db
-                                             :core-config core-config
+              (let [parser (walkable-parser {:core-config core-config
                                              :core-floor-plan core-floor-plan
                                              :db-type db-type
                                              :cte? true})]
-                (parser env query)))
-          "with CTEs in joins")))))
+                (parser (assoc env ::walkable/db db ::walkable/run jdbc/query)
+                        query)))
+            "with CTEs in joins")))))
