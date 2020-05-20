@@ -102,7 +102,7 @@
       dynamic-resolver)))
 
 (defn connect-plugin
-  [{:keys [resolver-sym db query floor-plan
+  [{:keys [resolver-sym floor-plan
            inputs-outputs autocomplete-ignore
            resolver]
     :or   {resolver     dynamic-resolver
@@ -110,9 +110,7 @@
   (let [provided-indexes    (compute-indexes resolver-sym inputs-outputs)
         compiled-floor-plan (floor-plan/compile-floor-plan
                              (assoc floor-plan :idents (::pc/idents provided-indexes)))
-        config              {::db           db
-                             ::query        query
-                             ::resolver-sym resolver-sym
+        config              {::resolver-sym resolver-sym
                              ::floor-plan   compiled-floor-plan}]
     {::p/intercept-output (fn [_env v] v)
      ::p/wrap-parser2
