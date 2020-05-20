@@ -108,6 +108,7 @@
   (let [farmer-out [:farmer/number
                     :farmer/name
                     :farmer/house-index
+                    :farmer/house-count
                     {:farmer/house [:house/index]}]
         house-out  [:house/index
                     :house/color
@@ -117,8 +118,7 @@
      {::pc/input  #{:farmer/number}
       ::pc/output farmer-out}
 
-     {::pc/input  #{:house/owner}
-      ::pc/output farmer-out}
+     {::pc/output [{:house/owner farmer-out}]}
 
      {::pc/output [{:houses/houses house-out}]}
 
@@ -143,8 +143,11 @@
       :idents           #{:house/index :farmer/number}
       :roots            {:farmers/farmers "farmer"
                          :houses/houses   "house"}
+      :aggregators      {:farmer/house-count [:count-*]}
+      :use-cte          {:default false}
       :extra-conditions {}
-      :joins            {:farmer/house [:farmer/house-index :house/index]}
+      :joins            {[:farmer/house :farmer/house-count]
+                         [:farmer/house-index :house/index]}
       :reversed-joins   {:house/owner :farmer/house}
       :cardinality      {;; :farmer/number :one
                          ;; :house/index :one
