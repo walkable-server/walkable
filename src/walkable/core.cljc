@@ -31,7 +31,7 @@
                                 q (->> (:entities parent)
                                        (prepared-query env)
                                        (expressions/build-parameterized-sql-query))
-                                entities ((:run env) (:db env) q)]
+                                entities ((::run env) (::db env) q)]
                             (z/edit loc #(-> % (dissoc ::ast/prepared-query) (assoc :entities entities))))
                           loc))))))
 
