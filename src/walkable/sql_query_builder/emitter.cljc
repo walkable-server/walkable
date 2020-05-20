@@ -132,21 +132,17 @@
            group-by having
            offset limit order-by]
     :as input}]
-  {:pre  [(s/valid? ::query-string-input input)]
+  {:pre [(s/valid? ::query-string-input input)]
    :post [string?]}
   (str "SELECT " selection
-    " FROM " target-table
-
-    join-statement
-
-    (when conditions
-      (str " WHERE "
-        conditions))
-    group-by
-    having
-    order-by
-    offset
-    limit))
+       " FROM " target-table
+       join-statement
+       (when conditions (str " WHERE " conditions))
+       group-by
+       having
+       order-by
+       offset
+       limit))
 
 (defn emitter->batch-query [emitter]
   (fn [parameterized-queries]
