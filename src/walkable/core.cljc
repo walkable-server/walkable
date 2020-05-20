@@ -78,7 +78,12 @@
       (recur (merge-data-in-bottom-branches root)))))
 
 (defn dynamic-resolver
-  [floor-plan env])
+  [floor-plan env]
+  (let [ast (-> env ::pcp/node ::pcp/foreign-ast)]
+    {:houses/houses {:house/color ast}}
+    (->> (ast/prepare-ast floor-plan ast)
+         (fetch-data env)
+         (merge-data))))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
