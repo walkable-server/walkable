@@ -389,20 +389,20 @@
   {:variable-values {`floor-plan/source-column-value
                      (expressions/compile-to-string {} v)}})
 
-(defn compute-graphs [env variables]
-  (let [variable->graph-index (variable->graph-index env)
-        graph-index->graph    (compiled-variable-getter-graphs env)]
+(defn compute-graphs [floor-plan env variables]
+  (let [variable->graph-index (variable->graph-index floor-plan)
+        graph-index->graph    (compiled-variable-getter-graphs floor-plan)]
     (into {}
-      (comp (map variable->graph-index)
-        (remove nil?)
-        (distinct)
-        (map #(do [% (graph-index->graph %)]))
-        (map (fn [[index graph]] [index (graph env)])))
-      variables)))
+          (comp (map variable->graph-index)
+                (remove nil?)
+                (distinct)
+                (map #(do [% (graph-index->graph %)]))
+                (map (fn [[index graph]] [index (graph env)])))
+          variables)))
 
 (defn compute-variables
-  [env {:keys [computed-graphs variables]}]
-  (let [getters (select-keys (compiled-variable-getters env) variables)]
+  [floor-plan env {:keys [computed-graphs variables]}]
+  (let [getters (select-keys (compiled-variable-getters floor-plan) variables)]
     (into {}
       (map (fn [[k f]]
              (let [v (f env computed-graphs)]
@@ -412,15 +412,17 @@
       getters)))
 
 (defn process-variables
-  [env {:keys [variables]}]
-  (compute-variables env
-                     {:computed-graphs (compute-graphs env variables)
+  [floor-plan env {:keys [variables]}]
+  (compute-variables floor-plan
+                     env
+                     {:computed-graphs (compute-graphs floor-plan env variables)
                       :variables       variables}))
 
 (defn process-query
-  [env query]
+  [floor-plan env query]
   (expressions/substitute-atomic-variables
-   {:variable-values (process-variables env
+   {:variable-values (process-variables floor-plan
+                                        env
                                         {:variables (expressions/find-variables query)})}
    query))
 
@@ -473,7 +475,7 @@
           (->> {:shared-query shared-query
                 :batched-individuals (batched-individuals env entities)}
                combine-query
-               (process-query env)
+               (process-query floor-plan env)
                eliminate-unknown-variables))))))
 
 (defn prepare-merge-sub-entities
