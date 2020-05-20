@@ -5,7 +5,7 @@
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]))
 
-(deftest process-children-test
+#_(deftest process-children-test
   (is (= (sut/process-children
            {:ast                     (p/query->ast [:pet/age
                                                     :pet/will-be-ignored
@@ -27,16 +27,16 @@
                               :key          :pet/owner}},
          :columns-to-query #{:pet/yob :person/number}})))
 
-(deftest combine-params-test
+#_(deftest combine-params-test
   (is (= (sut/combine-params {:params [1]} {:params [2 3]} {:params [4 5 6]})
-        [1 2 3 4 5 6]))
+         [1 2 3 4 5 6]))
   (is (= (sut/combine-params {:params [1]} {:params [2 3]} nil)
-        [1 2 3]))
+         [1 2 3]))
   (is (= (sut/combine-params {:params [1]} {:params []} {:params [4 5 6]})
-        [1 4 5 6]))
+         [1 4 5 6]))
   (is (= (sut/combine-params {:params [1]} nil {:params [4 5 6]})
-        [1 4 5 6]))
+         [1 4 5 6]))
   (is (= (sut/combine-params {:params [1]} nil nil)
-        [1]))
+         [1]))
   (is (= (sut/combine-params nil nil nil)
-        [])))
+         [])))
