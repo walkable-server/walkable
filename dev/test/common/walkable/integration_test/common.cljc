@@ -19,9 +19,12 @@
   {:inputs-outputs
    (let [farmer-out [:farmer/number
                      :farmer/name
-                     :farmer/house-index]
+                     :farmer/house-index
+                     :farmer/house
+                     :farmer/house-count]
          house-out  [:house/index
-                     :house/color]] 
+                     :house/color
+                     :house/owner]]
      [{::pc/output [{:farmers/farmers farmer-out}]}
 
       {::pc/input  #{:farmer/number}
@@ -39,9 +42,11 @@
 (def kid-toy-config
   {:inputs-outputs
    (let [kid-out [:kid/number
-                  :kid/name]
+                  :kid/name
+                  :kid/toy]
          toy-out [:toy/index
-                  :toy/color]]
+                  :toy/color
+                  :toy/owner]]
      [{::pc/output [{:kids/kids kid-out}]}
 
       {::pc/output {:toy/owner kid-out}}
@@ -61,15 +66,16 @@
    (let [human-out [:human/number
                     :human/name
                     :human/yob
+                    :human/follow
                     :human/follow-stats
-                    {:human/follow [:human/number]}]]
+                    :human/age
+                    :human/stats]]
      [{::pc/output [{:humans/humans human-out}]}
 
       {::pc/input  #{:human/number}
        ::pc/output human-out}
 
-      {::pc/input  #{:human/follow}
-       ::pc/output human-out}])})
+      {::pc/output {:human/follow human-out}}])})
 
 (def person-pet-config
   {:inputs-outputs
@@ -78,18 +84,12 @@
                      :person/age
                      :person/yob
                      :person/hidden
-                     :person/pet-count
-                     {:person/pet [:person-pet/person-number
-                                   :person-pet/pet-index
-                                   :pet/index
-                                   :person-pet/adoption-year
-                                   :pet/index
-                                   :pet/yob
-                                   :pet/color]}]
+                     :person/pet
+                     :person/pet-count]
          pet-out    [:pet/index
+                     :pet/yob
                      :pet/color
-                     {:pet/owner [:person/number
-                                  :person-pet/adoption-year]}]]
+                     :pet/owner]]
      [{::pc/output [{:people/people person-out}]}
 
       {::pc/output [{:pets/by-color [:pet/color :color/pet-count]}]}
@@ -99,13 +99,11 @@
       {::pc/input  #{:person/number}
        ::pc/output person-out}
 
-      {::pc/input  #{:pet/owner}
-       ::pc/output person-out}
+      {::pc/output {:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}}
 
       {::pc/output [{:pets/pets pet-out}]}
 
-      {::pc/input  #{:person/pet}
-       ::pc/output pet-out}
+      {::pc/output {:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}}
 
       {::pc/input  #{:pet/index}
        ::pc/output pet-out}])})
