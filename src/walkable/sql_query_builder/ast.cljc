@@ -404,12 +404,12 @@
   [floor-plan env {:keys [computed-graphs variables]}]
   (let [getters (select-keys (compiled-variable-getters floor-plan) variables)]
     (into {}
-      (map (fn [[k f]]
-             (let [v (f env computed-graphs)]
-               ;; wrap in single-raw-string to feed
-               ;; `expressions/substitute-atomic-variables`
-               [k (expressions/single-raw-string v)])))
-      getters)))
+          (map (fn [[k f]]
+                 (let [v (f env computed-graphs)]
+                   ;; wrap in single-raw-string to feed
+                   ;; `expressions/substitute-atomic-variables`
+                   [k (expressions/single-raw-string v)])))
+          getters)))
 
 (defn process-variables
   [floor-plan env {:keys [variables]}]
