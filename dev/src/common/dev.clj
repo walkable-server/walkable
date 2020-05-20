@@ -10,12 +10,14 @@
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.profile :as pp]
             [com.wsscode.pathom.connect :as pc]
+            [com.wsscode.pathom.connect.planner :as pcp]
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.core :as walkable]))
 
