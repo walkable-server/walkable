@@ -391,27 +391,35 @@
       (assoc :compiled-join-selection compiled-join-selection))))
 
 (defn compile-aggregator-selection
-  [{:keys [aggregator-keywords compiled-selection clojuric-names target-columns] :as floor-plan}]
+  [{:keys [keyword-type aggregator-keywords compiled-selection clojuric-names target-columns] :as floor-plan}]
   (let [compiled-aggregator-selection
         (reduce (fn [acc k]
-                  (let [target-column
-                        (get target-columns k)
+                  (assoc acc k
+                         (cond
+                           (= :roots (get keyword-type k))
+                           (get compiled-selection k)
 
-                        aggregator-selection
-                        (get compiled-selection k)
+                           (= :joins (get keyword-type k))
+                           (let [target-column
+                                 (get target-columns k)
 
-                        source-column-selection
-                        (compile-selection
-                          {:raw-string "?"
-                           :params     [(expressions/av `source-column-value)]}
-                          (get clojuric-names target-column))]
-                    (assoc acc k
-                      (expressions/concatenate #(clojure.string/join ", " %)
-                        [source-column-selection aggregator-selection]))))
+                                 aggregator-selection
+                                 (get compiled-selection k)
+
+                                 source-column-selection
+                                 (compile-selection
+                                  {:raw-string "?"
+                                   :params [(expressions/av `source-column-value)]}
+                                  (get clojuric-names target-column))]
+                             (expressions/concatenate #(clojure.string/join ", " %)
+                                                      [source-column-selection aggregator-selection]))
+                           :else
+                           (throw (ex-info (str "Unknown aggregator type for " k ". Please ensure " k " is declared in either :roots or :joins of the floor-plan.")
+                                           {:aggregator-keyword k})))))
           {}
           aggregator-keywords)]
     (-> floor-plan
-      (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
+        (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
 
 (defn compile-join-conditions
   [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
