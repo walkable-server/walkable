@@ -7,11 +7,11 @@
             :comments     "same as Clojure"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
-                 [org.clojure/clojurescript "1.10.597" :scope "provided"]
+                 [org.clojure/clojurescript "1.10.764" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.187"]
-                 [com.wsscode/pathom "2.3.0-alpha6"]
+                 [com.wsscode/pathom "2.3.0-alpha8"]
                  [prismatic/plumbing "0.5.5"]
-                 [org.clojure/core.async "1.0.567" :scope "provided"]]
+                 [org.clojure/core.async "1.2.603" :scope "provided"]]
   :resource-paths ["resources"]
   :test-selectors {:default     (complement :integration)
                    :integration :integration}
@@ -27,15 +27,15 @@
    :profiles/sqlite   {:source-paths   ["dev/src/common" "dev/src/sqlite"]
                        :test-paths     ["dev/test/common" "dev/test/sqlite"]
                        :resource-paths ["dev/resources/common" "dev/resources/sqlite"]
-                       :dependencies   [[org.xerial/sqlite-jdbc "3.30.1"]]}
+                       :dependencies   [[org.xerial/sqlite-jdbc "3.31.1"]]}
    :profiles/mysql    {:source-paths   ["dev/src/common" "dev/src/mysql"]
                        :test-paths     ["dev/test/common" "dev/test/mysql"]
                        :resource-paths ["dev/resources/common" "dev/resources/mysql"]
-                       :dependencies   [[mysql/mysql-connector-java "8.0.19"]]}
+                       :dependencies   [[mysql/mysql-connector-java "8.0.20"]]}
    :profiles/postgres {:source-paths   ["dev/src/common" "dev/src/postgres"]
                        :test-paths     ["dev/test/postgres" "dev/test/common"]
                        :resource-paths ["dev/resources/common" "dev/resources/postgres"]
-                       :dependencies   [[org.postgresql/postgresql "42.2.11"]]}
+                       :dependencies   [[org.postgresql/postgresql "42.2.12"]]}
    :project/common    {:plugins      [[duct/lein-duct "0.12.1"]]
                        :dependencies [[duct/core "0.8.0"]
                                       [duct/module.logging "0.5.0"]
