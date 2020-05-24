@@ -458,7 +458,6 @@
                                         :ast        ast
                                         :pagination (process-pagination floor-plan ast)}]
             
-            shared-query     (apply shared-query params)
             individual-query (apply individual-query params)
 
             batched-individuals
@@ -469,11 +468,12 @@
                                   (source-column floor-plan ast)))
 
             combine-query (if (:cte? dispatch)
-                            combine-with-cte
-                            combine-without-cte)]
+                            (let [shared-query (apply shared-query params)]
+                              #(combine-with-cte {:shared-query shared-query
+                                                  :batched-individuals %}))
+                            #(combine-without-cte {:batched-individuals %}))]
         (fn final-query [env entities]
-          (->> {:shared-query shared-query
-                :batched-individuals (batched-individuals env entities)}
+          (->> (batched-individuals env entities)
                combine-query
                (process-query floor-plan env)
                eliminate-unknown-variables))))))
