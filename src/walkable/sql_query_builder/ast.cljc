@@ -281,9 +281,10 @@
 (defmethod individual-query
   [false false]
   [_dispatch {:keys [floor-plan ast pagination]}]
-  (let [{:keys [columns-to-query]} (process-children floor-plan ast)
-        target-column              (target-column floor-plan ast)
-        {:keys [offset limit order-by order-by-columns]} pagination
+  (let [ident?                                           (vector? (:key ast))
+        {:keys [columns-to-query]}                       (process-children floor-plan ast)
+        target-column                                    (target-column floor-plan ast)
+        {:keys [offset limit order-by order-by-columns]} (when-not ident? pagination)
 
         columns-to-query
         (-> (clojure.set/union columns-to-query order-by-columns)
