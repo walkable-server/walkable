@@ -126,19 +126,15 @@
   (p/ast->query (wrap-with-ident (p/query->ast [:x/a :x/b {:x/c [:c/d]}]) [:x/i 1]))
   [{[:x/i 1] [:x/a :x/b #:x{:c [:c/d]}]}])
 
-(defn dynamic-resolver*
-  [resolver floor-plan env]
+(defn dynamic-resolver
+  [floor-plan env]
   (let [i (ident env)
         ast (-> env ::pcp/node ::pcp/foreign-ast
                 (wrap-with-ident i))
-        result (resolver floor-plan env ast)]
+        result (ast-resolver floor-plan env ast)]
     (if i
       (get result i)
       result)))
-
-(defn dynamic-resolver
-  [floor-plan env]
-  (dynamic-resolver* ast-resolver floor-plan env))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))

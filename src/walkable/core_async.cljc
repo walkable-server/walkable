@@ -25,7 +25,15 @@
 
 (defn dynamic-resolver
   [floor-plan env]
-  (core/dynamic-resolver* ast-resolver floor-plan env))
+  (let [i (ident env)
+        ast (-> env ::pcp/node ::pcp/foreign-ast
+                (wrap-with-ident i))
+        result (ast-resolver floor-plan env ast)]
+    (if i
+      (let [ch (async/promise-chan)]
+        (go (>! ch (get (<! result) i)))
+        ch)
+      result)))
 
 (defn connect-plugin
   [{:keys [resolver resolver-sym]
