@@ -55,10 +55,11 @@
            dispatch-key]))
 
 (defn compiled-ident-condition
-  [floor-plan {:keys [dispatch-key]}]
-  (get-in floor-plan
-          [::floor-plan/compiled-ident-conditions
-           dispatch-key]))
+  [floor-plan {:keys [dispatch-key key]}]
+  (when (vector? key)
+    (get-in floor-plan
+            [::floor-plan/compiled-ident-conditions
+             dispatch-key])))
 
 (defn compiled-join-condition
   [floor-plan {:keys [dispatch-key]}]
