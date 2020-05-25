@@ -254,10 +254,14 @@
 
 (defn all-conditions
   [floor-plan ast]
-  (let [conditions
-        (->> [(compiled-join-condition floor-plan ast)
-              (process-supplied-condition floor-plan ast)
-              (compiled-extra-condition floor-plan ast)]
+  (let [ident? (vector? (:key ast))
+        conditions
+        (->> (if ident?
+               [(compiled-ident-condition floor-plan ast)
+                (compiled-extra-condition floor-plan ast)]
+               [(compiled-join-condition floor-plan ast)
+                (process-supplied-condition floor-plan ast)
+                (compiled-extra-condition floor-plan ast)])
              (into [] (remove nil?)))]
     (expressions/concat-with-and conditions)))
 
