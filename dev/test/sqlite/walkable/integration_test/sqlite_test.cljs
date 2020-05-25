@@ -4,6 +4,7 @@
             [cljs.core.async :as async :refer [put! <! promise-chan]]
             [clojure.test :as t :refer [deftest testing is]]
             [com.wsscode.pathom.core :as p]
+            [com.wsscode.pathom.connect :as pc]
             [walkable.core-async :as walkable]
             [walkable.sql-query-builder.emitter :as emitter]
             ["sqlite3" :as sqlite3]
