@@ -670,21 +670,26 @@
   [{:keys [aggregators] :as floor-plan}]
   (update floor-plan :cardinality merge (zipmap (keys aggregators) (repeat :one))))
 
+(defn polulate-cardinality-with-idents
+  [{:keys [idents] :as floor-plan}]
+  (update floor-plan :cardinality merge (zipmap idents (repeat :one))))
+
 (defn expand-floor-plan-keys
   [{:keys [reversed-joins] :as floor-plan}]
   (-> floor-plan
-    (update :true-columns set)
-    (update :roots flatten-multi-keys)
-    (update :extra-conditions (fnil flatten-multi-keys {}))
-    (update :pagination-fallbacks (fnil flatten-multi-keys {}))
-    (update :aggregators (fnil flatten-multi-keys {}))
-    polulate-cardinality-with-aggregators
-    (update :cardinality flatten-multi-keys)
-    (update :joins (fnil flatten-multi-keys {}))
-    polulate-columns-with-joins
-    polulate-columns-with-idents
-    (update :joins expand-reversed-joins reversed-joins)
-    (update :required-columns expand-denpendencies)))
+      (update :true-columns set)
+      (update :roots flatten-multi-keys)
+      (update :extra-conditions (fnil flatten-multi-keys {}))
+      (update :pagination-fallbacks (fnil flatten-multi-keys {}))
+      (update :aggregators (fnil flatten-multi-keys {}))
+      polulate-cardinality-with-aggregators
+      polulate-cardinality-with-idents
+      (update :cardinality flatten-multi-keys)
+      (update :joins (fnil flatten-multi-keys {}))
+      polulate-columns-with-joins
+      polulate-columns-with-idents
+      (update :joins expand-reversed-joins reversed-joins)
+      (update :required-columns expand-denpendencies)))
 
 (defn prepare-keywords
   [{:keys [true-columns aggregators pseudo-columns
