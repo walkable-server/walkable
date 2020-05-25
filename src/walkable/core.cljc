@@ -93,10 +93,35 @@
   [floor-plan env query]
   (ast-resolver floor-plan env (p/query->ast query)))
 
+(defn ident-keyword [env]
+  (-> env ::pcp/node ::pcp/input ffirst))
+
+(defn ident
+  [env]
+  (when-let [k (ident-keyword env)]
+    [k (get (p/entity env) k)]))
+
+(defn wrap-with-ident
+  [ast ident]
+  (if ident
+    (let [main (assoc ast :type :join :key ident :dispatch-key (first ident))]
+      {:type :root
+       :children [main]})
+    ast))
+
+(comment
+  (p/ast->query (wrap-with-ident (p/query->ast [:x/a :x/b {:x/c [:c/d]}]) [:x/i 1]))
+  [{[:x/i 1] [:x/a :x/b #:x{:c [:c/d]}]}])
+
 (defn dynamic-resolver
   [floor-plan env]
-  (let [ast (-> env ::pcp/node ::pcp/foreign-ast)]
-    (ast-resolver floor-plan env ast)))
+  (let [i (ident env)
+        ast (-> env ::pcp/node ::pcp/foreign-ast
+                (wrap-with-ident i))
+        result (ast-resolver floor-plan env ast)]
+    (if i
+      (get result i)
+      result)))
 
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
