@@ -1,11 +1,15 @@
 (ns walkable.core-async
   (:require [walkable.core :as core]
-            [clojure.core.async :as async :refer [go go-loop <! >! put!]]))
+            [clojure.core.async :as async :refer [go <! >!]]))
 
 (defn wrap-merge
   [f]
   (fn wrapped-merge [entities sub-entites]
-    (go (f (<! entities) (<! sub-entites)))))
+    (let [ch (async/promise-chan)]
+      (go (let [e (<! entities)
+                se (<! sub-entites)]
+            (>! ch (f e se))))
+      ch)))
 
 (defn ast-resolver
   [floor-plan env ast]
