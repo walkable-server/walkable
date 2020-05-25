@@ -109,10 +109,10 @@
                     :farmer/name
                     :farmer/house-index
                     :farmer/house-count
-                    {:farmer/house [:house/index]}]
+                    :farmer/house]
         house-out  [:house/index
                     :house/color
-                    {:house/owner [:farmer/number]}]]
+                    :house/owner]]
     [{::pc/output [{:farmers/farmers farmer-out}]}
 
      {::pc/input  #{:farmer/number}
@@ -122,15 +122,16 @@
 
      {::pc/output [{:houses/houses house-out}]}
 
-     {::pc/input  #{:farmer/house}
-      ::pc/output house-out}
+     {::pc/output [{:farmer/house house-out}]}
 
      {::pc/input  #{:house/index}
       ::pc/output house-out}]))
 
+(require '[plumbing.core :refer [fnk]])
+
 (def core-config
   (let [resolver-sym `my-resolver]
-    {:resolver-sym resolver-sym
+    {:resolver-sym   resolver-sym
      :inputs-outputs inputs-outputs
 
      :floor-plan
