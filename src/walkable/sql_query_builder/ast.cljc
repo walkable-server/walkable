@@ -456,19 +456,34 @@
 
 (defn prepare-query
   [floor-plan ast]
-  (let [kt (keyword-type floor-plan ast)]
-    (when (#{:roots :joins} kt)
-      (let [dispatch         {:aggregator? (aggregator? floor-plan ast)
-                              :cte?        (cte? floor-plan ast)}
-            params           [dispatch {:floor-plan floor-plan
-                                        :ast        ast
-                                        :pagination (process-pagination floor-plan ast)}]
+  (let [ident? (let [i (:key ast)]
+                 (and (vector? i)
+                      (contains? (::floor-plan/ident-keywords floor-plan) (first i))))
+        kt     (keyword-type floor-plan ast)]
+    (when (or ident? (#{:roots :joins} kt))
+      (let [dispatch (when-not ident?
+                       {:aggregator? (aggregator? floor-plan ast)
+                        :cte?        (cte? floor-plan ast)})
+            params   [dispatch {:floor-plan floor-plan
+                                :ast        ast
+                                :pagination (process-pagination floor-plan ast)}]
             
             individual-query (apply individual-query params)
 
             batched-individuals
-            (if (= :roots kt)
+            (cond
+              ident?
+              (fn [_env _entities]
+                (expressions/substitute-atomic-variables
+                 {:variable-values {`floor-plan/ident-value
+                                    (expressions/compile-to-string {} (second (:key ast)))}}
+
+                 individual-query))
+
+              (= :roots kt)
               (fn [_env _entities] individual-query)
+
+              :else
               (individual-queries (::floor-plan/batch-query floor-plan)
                                   individual-query
                                   (source-column floor-plan ast)))
