@@ -30,11 +30,11 @@
       {::pc/input  #{:farmer/number}
        ::pc/output farmer-out}
 
-      {::pc/output {:house/owner farmer-out}}
+      {::pc/output [{:house/owner farmer-out}]}
 
       {::pc/output [{:houses/houses house-out}]}
 
-      {::pc/output {:farmer/house house-out}}
+      {::pc/output [{:farmer/house house-out}]}
 
       {::pc/input  #{:house/index}
        ::pc/output house-out}])})
@@ -49,11 +49,11 @@
                   :toy/owner]]
      [{::pc/output [{:kids/kids kid-out}]}
 
-      {::pc/output {:toy/owner kid-out}}
+      {::pc/output [{:toy/owner kid-out}]}
 
       {::pc/output [{:toys/toys toy-out}]}
 
-      {::pc/output {:kid/toy toy-out}}
+      {::pc/output [{:kid/toy toy-out}]}
 
       {::pc/input  #{:kid/number}
        ::pc/output kid-out}
@@ -99,11 +99,11 @@
       {::pc/input  #{:person/number}
        ::pc/output person-out}
 
-      {::pc/output {:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}}
+      {::pc/output [{:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
 
       {::pc/output [{:pets/pets pet-out}]}
 
-      {::pc/output {:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}}
+      {::pc/output [{:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
 
       {::pc/input  #{:pet/index}
        ::pc/output pet-out}])})
