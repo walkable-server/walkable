@@ -43,7 +43,7 @@
   (nth (iterate z/right (z/down loc)) n))
 
 (defn merge-data-in-bottom-branches*
-  [ast]
+  [wrap-merge ast]
   (loop [loc (ast/ast-zipper ast)]
     (if (z/end? loc)
       (z/root loc)
@@ -59,39 +59,52 @@
                   position-to-parent (count (z/lefts loc))
 
                   merged-entities
-                  (prepared-merge-sub-entities (:entities (z/node parent))
-                                               (:entities node))]
+                  ((wrap-merge prepared-merge-sub-entities)
+                   (:entities (z/node parent))
+                   (:entities node))]
               (-> (z/edit parent assoc :entities merged-entities)
                   ;; come back to previous position
                   (move-to-nth-child position-to-parent))))))))))
 
 (defn merge-data-in-bottom-branches
-  [ast]
-  (->> (merge-data-in-bottom-branches* ast)
+  [wrap-merge ast]
+  (->> (merge-data-in-bottom-branches* wrap-merge ast)
        (ast/filterz #(not-empty (:children %)))))
 
 (defn merge-data
-  [ast]
+  [wrap-merge ast]
   (loop [{:keys [children] :as root} ast]
     (if (empty? children)
       (:entities root)
-      (recur (merge-data-in-bottom-branches root)))))
+      (recur (merge-data-in-bottom-branches wrap-merge root)))))
+
+(defn ast-resolver*
+  [floor-plan env wrap-merge ast]
+  (->> (ast/prepare-ast floor-plan ast)
+       (fetch-data env)
+       (merge-data wrap-merge)))
+
+(defn prepared-ast-resolver*
+  [env wrap-merge prepared-ast]
+  (->> prepared-ast
+       (fetch-data env)
+       (merge-data wrap-merge)))
+
+(defn query-resolver*
+  [floor-plan env resolver query]
+  (resolver floor-plan env (p/query->ast query)))
 
 (defn ast-resolver
   [floor-plan env ast]
-  (->> (ast/prepare-ast floor-plan ast)
-       (fetch-data env)
-       (merge-data)))
+  (ast-resolver* floor-plan env identity ast))
 
 (defn prepared-ast-resolver
   [env prepared-ast]
-  (->> prepared-ast
-       (fetch-data env)
-       (merge-data)))
+  (prepared-ast-resolver* env identity prepared-ast))
 
 (defn query-resolver
   [floor-plan env query]
-  (ast-resolver floor-plan env (p/query->ast query)))
+  (query-resolver* floor-plan env ast-resolver query))
 
 (defn ident-keyword [env]
   (-> env ::pcp/node ::pcp/input ffirst))
@@ -113,20 +126,24 @@
   (p/ast->query (wrap-with-ident (p/query->ast [:x/a :x/b {:x/c [:c/d]}]) [:x/i 1]))
   [{[:x/i 1] [:x/a :x/b #:x{:c [:c/d]}]}])
 
-(defn dynamic-resolver
-  [floor-plan env]
+(defn dynamic-resolver*
+  [resolver floor-plan env]
   (let [i (ident env)
         ast (-> env ::pcp/node ::pcp/foreign-ast
                 (wrap-with-ident i))
-        result (ast-resolver floor-plan env ast)]
+        result (resolver floor-plan env ast)]
     (if i
       (get result i)
       result)))
 
+(defn dynamic-resolver
+  [floor-plan env]
+  (dynamic-resolver* ast-resolver floor-plan env))
+
 (defn compute-indexes [resolver-sym ios]
   (reduce (fn [acc x] (pc/add acc resolver-sym x))
-    {}
-    ios))
+          {}
+          ios))
 
 (defn internalize-indexes
   [indexes {::pc/keys [sym] :as dynamic-resolver}]
