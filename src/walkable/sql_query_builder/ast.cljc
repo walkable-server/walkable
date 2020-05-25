@@ -34,7 +34,7 @@
   (let [k (:pathom/as (:params ast))]
     (if (keyword? k)
       k
-      (:dispatch-key ast))))
+      (:key ast))))
 
 (defn keyword-type
   [floor-plan {:keys [dispatch-key]}]
