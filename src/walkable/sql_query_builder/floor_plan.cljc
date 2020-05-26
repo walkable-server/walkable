@@ -4,8 +4,7 @@
             [walkable.sql-query-builder.emitter :as emitter]
             [com.wsscode.pathom.core :as p]
             [clojure.spec.alpha :as s]
-            [plumbing.graph :as graph]
-            [clojure.core.async :as async]))
+            [plumbing.graph :as graph]))
 
 (defn column-names
   "Makes a hash-map of keywords and their equivalent column names"
@@ -557,22 +556,6 @@
           (keys target-tables))]
     (assoc floor-plan :return compiled-return)))
 
-(defn compile-return-async
-  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
-  (let [compiled-return-async
-        (reduce (fn [acc k]
-                  (let [aggregator? (contains? aggregator-keywords k)
-                        one?        (= :one (get cardinality k))
-                        f           (if aggregator?
-                                      #(async/go (get (first %) k))
-                                      (if one?
-                                        first
-                                        identity))]
-                    (assoc acc k f)))
-          {}
-          (keys target-tables))]
-    (assoc floor-plan :return-async compiled-return-async)))
-
 (defn compile-keyword-type
   [{:keys [root-keywords join-keywords column-keywords] :as floor-plan}]
   (assoc floor-plan :keyword-type
@@ -616,7 +599,6 @@
    :keyword-type
    :required-columns
    :return
-   :return-async
    :reversed-joins
    :root-keywords
    :source-columns
@@ -639,7 +621,6 @@
     compile-pagination-fallbacks
     compile-variable-getter-graphs
     compile-variable-getters
-    compile-return-async
     compile-return
     compile-extra-conditions
     compile-cte-keywords
