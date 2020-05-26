@@ -19,19 +19,23 @@
             loc
             (f loc))))))))
 
+(defn build-and-run-query
+  [env entities prepared-query]
+  (let [q (->> entities
+               (prepared-query env)
+               (expressions/build-parameterized-sql-query))]
+    ((::run env) (::db env) q)))
+
 ;; top-down process
 (defn fetch-data
-  [env ast]
+  [build-and-run-query env ast]
   (->> ast
        (ast-map-loc (fn [loc]
                       (let [{::ast/keys [prepared-query]} (z/node loc)]
                         (if prepared-query
                           (let [parent (last (z/path loc))
                                 ;; TODO: partition entities and concat back
-                                q (->> (:entities parent)
-                                       (prepared-query env)
-                                       (expressions/build-parameterized-sql-query))
-                                entities ((::run env) (::db env) q)]
+                                entities (build-and-run-query env (:entities parent) prepared-query)]
                             (z/edit loc #(-> % (dissoc ::ast/prepared-query) (assoc :entities entities))))
                           loc))))))
 
@@ -79,32 +83,43 @@
       (recur (merge-data-in-bottom-branches wrap-merge root)))))
 
 (defn ast-resolver*
-  [floor-plan env wrap-merge ast]
+  [{:keys [build-and-run-query floor-plan env wrap-merge ast]}]
   (->> (ast/prepare-ast floor-plan ast)
-       (fetch-data env)
+       (fetch-data build-and-run-query env)
        (merge-data wrap-merge)))
 
 (defn prepared-ast-resolver*
-  [env wrap-merge prepared-ast]
+  [{:keys [build-and-run-query env wrap-merge prepared-ast]}]
   (->> prepared-ast
-       (fetch-data env)
+       (fetch-data build-and-run-query env)
        (merge-data wrap-merge)))
 
 (defn query-resolver*
-  [floor-plan env resolver query]
+  [{:keys [build-and-run-query floor-plan env resolver query]}]
   (resolver floor-plan env (p/query->ast query)))
 
 (defn ast-resolver
   [floor-plan env ast]
-  (ast-resolver* floor-plan env identity ast))
+  (ast-resolver* {:floor-plan floor-plan
+                  :build-and-run-query build-and-run-query
+                  :env env
+                  :wrap-merge identity
+                  :ast ast}))
 
 (defn prepared-ast-resolver
   [env prepared-ast]
-  (prepared-ast-resolver* env identity prepared-ast))
+  (prepared-ast-resolver* {:env env
+                           :build-and-run-query build-and-run-query
+                           :wrap-merge identity
+                           :prepared-ast prepared-ast}))
 
 (defn query-resolver
   [floor-plan env query]
-  (query-resolver* floor-plan env ast-resolver query))
+  (query-resolver* {:floor-plan floor-plan
+                    :build-and-run-query build-and-run-query
+                    :env env
+                    :resolver ast-resolver
+                    :query query}))
 
 (defn ident-keyword [env]
   (-> env ::pcp/node ::pcp/input ffirst))
