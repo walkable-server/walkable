@@ -9,7 +9,7 @@
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
                  [org.clojure/clojurescript "1.10.764" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.187"]
-                 [com.wsscode/pathom "2.3.0-alpha8"]
+                 [com.wsscode/pathom "2.3.0-alpha9"]
                  [prismatic/plumbing "0.5.5"]
                  [org.clojure/core.async "1.2.603" :scope "provided"]]
   :resource-paths ["resources"]
