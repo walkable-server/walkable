@@ -115,12 +115,6 @@
           [::floor-plan/return
            dispatch-key]))
 
-(defn return-async
-  [floor-plan {:keys [dispatch-key]}]
-  (get-in floor-plan
-          [::floor-plan/return-async
-           dispatch-key]))
-
 (defn aggregator?
   [floor-plan {:keys [dispatch-key]}]
   (let [aggregators (-> floor-plan
