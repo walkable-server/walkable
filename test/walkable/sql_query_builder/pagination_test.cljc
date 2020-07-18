@@ -188,14 +188,14 @@
   (let [all-fallbacks     (sut/compile-fallbacks
                             emitter/default-emitter
                             {:x/a "`x/a`" :x/b "`x/b`" :x/random-key "`x/random-key`"}
-                            {:people/all
+                            {:people/people
                              {:offset   {:default  5
                                          :validate #(<= 2 % 4)}
                               :limit    {:default  10
                                          :validate #(<= 12 % 14)}
                               :order-by {:default  [:x/a]
                                          :validate #{:x/a :x/b}}}})
-        current-fallbacks (:people/all all-fallbacks)
+        current-fallbacks (:people/people all-fallbacks)
         default-fallbacks (get all-fallbacks `sut/default-fallbacks)]
     (is (= (sut/merge-pagination
              default-fallbacks

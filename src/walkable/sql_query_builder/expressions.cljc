@@ -524,16 +524,41 @@
   {:params     (vec (apply concat (map :params compiled-expressions)))
    :raw-string (joiner (map :raw-string compiled-expressions))})
 
+(defn concat-with-and* [xs]
+  (clojure.string/join " AND "
+    (mapv (fn [x] (str "(" x ")")) xs)))
+
+(defn concat-with-and [xs]
+  (when (not-empty xs)
+    (concatenate concat-with-and* xs)))
+
+(defn concat-with-comma* [xs]
+  (when (not-empty xs)
+    (clojure.string/join ", " xs)))
+
+(def select-all {:raw-string "*" :params []})
+
+(defn concat-with-comma [xs]
+  (when (not-empty xs)
+    (concatenate concat-with-comma* xs)))
+
+(defn combine-params
+  [& compiled-exprs]
+  (into [] (comp (map :params) cat)
+        compiled-exprs))
+
 (defn compile-to-string
   [env clauses]
   (let [form (s/conform ::expression clauses)]
     (assert (not (s/invalid? form))
-      (str "Invalid expression: " clauses))
-    ;;(println "clauses:" clauses)
-    ;;(println "form: " form)
+            (str "Invalid expression: " clauses))
     (process-expression env form)))
 
 (defn find-variables [{:keys [params]}]
   (into #{} (comp (filter atomic-variable?)
               (map :name))
     params))
+
+(defn build-parameterized-sql-query
+  [{:keys [raw-string params]}]
+  (vec (cons raw-string params)))

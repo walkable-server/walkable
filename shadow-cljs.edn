@@ -1,9 +1,9 @@
 {:dependencies
- [[org.clojure/clojurescript "1.10.439"]
-  [com.wsscode/pathom "2.1.1" :exclusions [org.clojure/clojurescript]]
+ [[org.clojure/clojurescript "1.10.764"]
+  [com.wsscode/pathom "2.3.0-alpha9" :exclusions [org.clojure/clojurescript]]
   [prismatic/plumbing "0.5.5"]
-  [org.clojure/test.check "0.10.0-alpha3"]
-  [org.clojure/spec.alpha "0.2.176"]]
+  [org.clojure/test.check "1.0.0"]
+  [org.clojure/spec.alpha "0.2.187"]]
 
  :source-paths
  ["src" "dev/src/common" "dev/test/common" "dev/test/sqlite" "test"]

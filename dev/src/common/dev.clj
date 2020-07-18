@@ -5,22 +5,21 @@
             [clojure.tools.namespace.repl :refer [set-refresh-dirs refresh]]
             [clojure.java.io :as io]
             [duct.core :as duct]
-            [duct.core.repl :as duct-repl]
             [eftest.runner :as eftest]
             [integrant.core :as ig]
-            [duct.database.sql :as sql]
-            [hikari-cp.core :as hikari-cp]
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.profile :as pp]
             [com.wsscode.pathom.connect :as pc]
+            [com.wsscode.pathom.connect.planner :as pcp]
             [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.sql-query-builder :as sqb]))
+            [walkable.core :as walkable]))
 
 ;; <<< Beginning of Duct framework helpers
 
@@ -95,21 +94,6 @@
       (put! c r))
     c))
 
-(def sync-parser
-  (p/parser
-    {::p/plugins
-     [(p/env-plugin
-        {::p/reader
-         [sqb/pull-entities p/map-reader
-          pc/all-readers]})]}))
-
-(def async-parser
-  (p/async-parser
-    {::p/plugins
-     [(p/env-plugin
-        {::p/reader
-         [sqb/async-pull-entities p/map-reader]})]}))
-
 (def emitter emitter/default-emitter)
 
 ;; Simple join examples
@@ -117,64 +101,135 @@
 ;; I named the primary columns "index" and "number" instead of "id" to
 ;; ensure arbitrary columns will work.
 
-;; Example: join column living in source table
+(defn now []
+  (.format (java.text.SimpleDateFormat. "HH:mm") (java.util.Date.)))
+
+(def inputs-outputs
+  (let [farmer-out [:farmer/number
+                    :farmer/name
+                    :farmer/house-index
+                    :farmer/house-count
+                    :farmer/house]
+        house-out  [:house/index
+                    :house/color
+                    :house/owner]]
+    [{::pc/output [{:farmers/farmers farmer-out}]}
+
+     {::pc/input  #{:farmer/number}
+      ::pc/output farmer-out}
+
+     {::pc/output [{:house/owner farmer-out}]}
+
+     {::pc/output [{:houses/houses house-out}]}
+
+     {::pc/output [{:farmer/house house-out}]}
+
+     {::pc/input  #{:house/index}
+      ::pc/output house-out}]))
+
+(require '[plumbing.core :refer [fnk]])
+
+(def core-config
+  (let [resolver-sym `my-resolver]
+    {:resolver-sym   resolver-sym
+     :inputs-outputs inputs-outputs
+
+     :floor-plan
+     {:emitter          emitter
+      ;; columns already declared in :joins are not needed
+      ;; here
+      :true-columns     [:house/color
+                         :farmer/number
+                         :farmer/name]
+      :idents           #{:house/index :farmer/number}
+      :roots            {:farmers/farmers "farmer"
+                         :houses/houses   "house"}
+      :aggregators      {:farmer/house-count [:count-*]}
+      :use-cte          {:default false}
+      :extra-conditions {}
+      :joins            {[:farmer/house :farmer/house-count]
+                         [:farmer/house-index :house/index]}
+      :reversed-joins   {:house/owner :farmer/house}
+      :cardinality      {;; :farmer/number :one
+                         ;; :house/index :one
+                         :house/owner  :one
+                         :farmer/house :one}}}))
+
 #_
 (let [eg-1
-      '[{(:farmers/all {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
-                                                 [:= :house/color "brown"]]}})
-         [:farmer/number :farmer/name
-          {:farmer/house [:house/index :house/color]}]}]
+      '[{(:farmers/farmers #_{:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
+                                                   [:= :house/color "brown"]]}})
+         [:farmer/number
+          :farmer/name
+          {:farmer/house [:house/index
+                          :house/color
+                          #_{:house/owner
+                           [:farmer/name
+                            :farmer/number
+                            {:farmer/house [:house/index
+                                            :house/color
+                                            {:house/owner [:farmer/number
+                                                           :farmer/name]}]}]}]}]}
 
-      parser
-      sync-parser]
-  (parser {::sqb/sql-db    (db)
-           ::sqb/run-query run-print-query
+        {#_:houses/houses
+         [:house/index "10"]
+         [:house/index
+          :house/color
 
-           ::sqb/floor-plan
-           (floor-plan/compile-floor-plan
-             {:emitter          emitter
-              ;; columns already declared in :joins are not needed
-              ;; here
-              :true-columns     [:house/color
-                                 :farmer/number
-                                 :farmer/name]
-              :idents           {:farmer/by-id :farmer/number
-                                 :farmers/all  "farmer"}
-              :extra-conditions {}
-              :joins            {:farmer/house [:farmer/house-index :house/index]}
-              :reversed-joins   {:house/owner :farmer/house}
-              :cardinality      {:farmer/by-id :one
-                                 :house/owner  :one
-                                 :farmer/house :one}})}
-    eg-1))
+          {:>/else [{:house/owner [:farmer/number
+                                   :farmer/name
+                                   #_{:farmer/house [:house/index
+                                                   :house/color
+                                                   {:house/owner [:farmer/name]}]}]}]}
+          #_
+          {:house/owner [:farmer/name
+                         {:farmer/house [;; :house/index
+                                         :house/color
+                                         {:house/owner [:farmer/name]}]}]}]}]
+      eg-2
+      '[{:houses/houses
+         #_[:house/index "20"]
+         [:house/index
+          :house/color
+          #_
+          {:>/else
+           [{:house/owner [:farmer/name
+                           :farmer/number
+                           {:farmer/house [:house/index
+                                           :house/color
+                                           {:house/owner [:farmer/number
+                                                          :farmer/name]}]}]}]}
 
-;; the same above, but using async version
-#_
-(let [eg-1
-      '[{[:farmer/by-id 1] [:farmer/number :farmer/name
-                            {:farmer/house [:house/index :house/color]}]}]
+          {:house/owner [:farmer/name
+                         :farmer/number ;; <----------- not automatically injected yet. Source column is there but not look up column
+                         :farmer/house-index
+                         {:farmer/house [:house/index
+                                         :house/color
+                                         {:house/owner [:farmer/name
+                                                        ;:farmer/house-index
+                                                        :farmer/number
+                                                        ]}]}]}]}]
 
-      parser
-      async-parser]
-  (async/go
-    (println "final result"
-      (<! (parser {::sqb/sql-db    (db)
-                   ::sqb/run-query async-run-print-query
+      config
+      (merge {:db    (db)
+              :query jdbc/query #_run-print-query}
+        core-config)
 
-                   ::sqb/floor-plan
-                   (floor-plan/compile-floor-plan
-                     {:emitter          emitter
-                      ;; columns already declared in :joins are not needed
-                      ;; here
-                      :true-columns     [:house/color
-                                         :farmer/number
-                                         :farmer/name]
-                      :idents           {:farmer/by-id :farmer/number
-                                         :farmers/all  "farmer"}
-                      :extra-conditions {}
-                      :joins            {:farmer/house [:farmer/house-index :house/index]}
-                      :reversed-joins   {:house/owner :farmer/house}
-                      :cardinality      {:farmer/by-id :one
-                                         :house/owner  :one
-                                         :farmer/house :one}})}
-            eg-1)))))
+      plg
+      (walkable/connect-plugin config)
+
+      the-parser
+      (p/parser
+        {::p/env     {::p/reader               [p/map-reader
+                                                pc/reader3
+                                                pc/open-ident-reader
+                                                p/env-placeholder-reader]
+                      ::p/placeholder-prefixes #{">"}}
+         ::p/mutate  pc/mutate
+         ::p/plugins [(pc/connect-plugin {::pc/register []})
+                      plg
+                      p/elide-special-outputs-plugin
+                      p/error-handler-plugin
+                      p/trace-plugin]})]
+  (println "running at " (now) "\n\n")
+  (the-parser {} eg-1))
