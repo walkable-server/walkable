@@ -24,20 +24,22 @@
                      :farmer/house-count]
          house-out  [:house/index
                      :house/color
-                     :house/owner]]
-     [{::pc/output [{:farmers/farmers farmer-out}]}
-
-      {::pc/input  #{:farmer/number}
-       ::pc/output farmer-out}
-
-      {::pc/output [{:house/owner farmer-out}]}
-
+                     :house/owner]] 
+     [ ;; roots
+      {::pc/output [{:farmers/farmers farmer-out}]}
       {::pc/output [{:houses/houses house-out}]}
 
-      {::pc/output [{:farmer/house house-out}]}
-
+      ;; idents
+      {::pc/input  #{:farmer/number}
+       ::pc/output farmer-out}
+      
       {::pc/input  #{:house/index}
-       ::pc/output house-out}])})
+       ::pc/output house-out}
+      ;; joins
+      {::pc/input  #{:house/index}
+       ::pc/output [{:house/owner farmer-out}]}
+      {::pc/input  #{:farmer/number}
+       ::pc/output [{:farmer/house house-out}]}])})
 
 (def kid-toy-config
   {:inputs-outputs
@@ -47,19 +49,23 @@
          toy-out [:toy/index
                   :toy/color
                   :toy/owner]]
-     [{::pc/output [{:kids/kids kid-out}]}
-
-      {::pc/output [{:toy/owner kid-out}]}
+     [ ;; roots
+      {::pc/output [{:kids/kids kid-out}]}
 
       {::pc/output [{:toys/toys toy-out}]}
 
-      {::pc/output [{:kid/toy toy-out}]}
+      ;; idents
 
-      {::pc/input  #{:kid/number}
+      {::pc/input #{:kid/number}
        ::pc/output kid-out}
+      {::pc/input #{:toy/index}
+       ::pc/output toy-out}
 
-      {::pc/input  #{:toy/index}
-       ::pc/output toy-out}])})
+      ;; joins
+      {::pc/input #{:toy/index}
+       ::pc/output [{:toy/owner kid-out}]}
+      {::pc/input #{:kid/number}
+       ::pc/output [{:kid/toy toy-out}]}])})
 
 (def human-follow-config
   {:inputs-outputs
@@ -70,12 +76,15 @@
                     :human/follow-stats
                     :human/age
                     :human/stats]]
-     [{::pc/output [{:humans/humans human-out}]}
+     [ ;; roots
+      {::pc/output [{:humans/humans human-out}]}
 
-      {::pc/input  #{:human/number}
+      ;; idents
+      {::pc/input #{:human/number}
        ::pc/output human-out}
-
-      {::pc/output {:human/follow human-out}}])})
+      ;; joins
+      {::pc/input #{:human/number}
+       ::pc/output {:human/follow human-out}}])})
 
 (def person-pet-config
   {:inputs-outputs
@@ -90,23 +99,24 @@
                      :pet/yob
                      :pet/color
                      :pet/owner]]
-     [{::pc/output [{:people/people person-out}]}
-
+     [ ;; roots
+      {::pc/output [{:people/people person-out}]}
+      {::pc/output [{:pets/pets pet-out}]}
       {::pc/output [{:pets/by-color [:pet/color :color/pet-count]}]}
-
       {::pc/output [:people/count]}
 
-      {::pc/input  #{:person/number}
+      ;; idents
+      {::pc/input #{:person/number}
        ::pc/output person-out}
+      {::pc/input #{:pet/index}
+       ::pc/output pet-out}
 
-      {::pc/output [{:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
+      ;; joins
+      {::pc/input #{:pet/index}
+       ::pc/output [{:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
 
-      {::pc/output [{:pets/pets pet-out}]}
-
-      {::pc/output [{:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
-
-      {::pc/input  #{:pet/index}
-       ::pc/output pet-out}])})
+      {::pc/input #{:person/number}
+       ::pc/output [{:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}])})
 
 ;; ends core-configs
 
