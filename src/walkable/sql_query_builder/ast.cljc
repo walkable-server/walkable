@@ -145,8 +145,8 @@
   (get-in ast [:params :order-by]))
 
 (defn supplied-pagination
-  "Processes :offset :limit and :order-by if provided in current
-   ast item params."
+  "Processes `:offset` `:limit` and `:order-by` if provided in current ast item
+  params."
   [ast]
   {:offset   (supplied-offset ast)
    :limit    (supplied-limit ast)
