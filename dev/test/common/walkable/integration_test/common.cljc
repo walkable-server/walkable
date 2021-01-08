@@ -1,7 +1,7 @@
 (ns walkable.integration-test.common
   (:require [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
-            [plumbing.core :refer [fnk defnk sum]]))
+            [plumbing.core :refer [fnk sum]]))
 
 (def farmer-house-floor-plan
   {:true-columns     [:house/color
