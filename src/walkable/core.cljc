@@ -21,10 +21,11 @@
 
 (defn build-and-run-query
   [env entities prepared-query]
-  (let [q (->> entities
-               (prepared-query env)
-               (expressions/build-parameterized-sql-query))]
-    ((::run env) (::db env) q)))
+  (let [q (-> (prepared-query env entities)
+            (expressions/build-parameterized-sql-query))]
+    (if q
+      ((::run env) (::db env) q)
+      [])))
 
 ;; top-down process
 (defn fetch-data

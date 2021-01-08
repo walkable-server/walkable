@@ -488,10 +488,12 @@
                                                   :batched-individuals %}))
                             #(combine-without-cte {:batched-individuals %}))]
         (fn final-query [env entities]
-          (->> (batched-individuals env entities)
-               combine-query
-               (process-query floor-plan env)
-               eliminate-unknown-variables))))))
+          (let [q (batched-individuals env entities)]
+            (when (not-empty (:raw-string q))
+              (->> q
+                combine-query
+                (process-query floor-plan env)
+                eliminate-unknown-variables))))))))
 
 (defn prepare-merge-sub-entities
   [floor-plan ast]
