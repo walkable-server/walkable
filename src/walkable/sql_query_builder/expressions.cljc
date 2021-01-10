@@ -3,8 +3,7 @@
                              :refer [def-simple-cast-types
                                      import-functions import-infix-operators]]))
   (:require [clojure.spec.alpha :as s]
-            [clojure.string :as string]
-            [clojure.set :as set]))
+            [clojure.string :as string]))
 
 (defrecord AtomicVariable [name])
 
@@ -234,7 +233,7 @@
 
 (defmethod process-operator :-
   [_env [_operator params]]
-  (assert (not (empty? params))
+  (assert (not-empty params)
     "There must be at least one parameter to `-`")
   (if (= 1 (count params))
     {:raw-string "0-(?)"
@@ -245,7 +244,7 @@
 
 (defmethod process-operator :/
   [_env [_operator params]]
-  (assert (not (empty? params))
+  (assert (not-empty params)
     "There must be at least one parameter to `/`")
   (if (= 1 (count params))
     {:raw-string "1/(?)"
@@ -496,9 +495,8 @@
   (let [n (count expressions)]
     (assert (= 2 n)
       "`when` must have exactly two arguments")
-    (let [else?           (= 3 n)]
-      {:raw-string "CASE WHEN (?) THEN (?) END"
-       :params     expressions})))
+    {:raw-string "CASE WHEN (?) THEN (?) END"
+     :params     expressions}))
 
 (defn substitute-atomic-variables
   [{:keys [variable-values] :as env} {:keys [raw-string params]}]
