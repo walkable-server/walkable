@@ -96,7 +96,7 @@
        (merge-data wrap-merge)))
 
 (defn query-resolver*
-  [{:keys [build-and-run-query floor-plan env resolver query]}]
+  [{:keys [floor-plan env resolver query]}]
   (resolver floor-plan env (p/query->ast query)))
 
 (defn ast-resolver
