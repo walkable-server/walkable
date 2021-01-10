@@ -179,14 +179,12 @@
                              (assoc floor-plan :idents (::pc/idents provided-indexes)))
         config              {::resolver-sym resolver-sym
                              ::floor-plan   compiled-floor-plan}]
-    {::p/intercept-output (fn [_env v] v)
-     ::p/wrap-parser2
+    {::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
        (let [resolve-fn  (fn [env _] (resolver compiled-floor-plan env))
              all-indexes (-> provided-indexes
                              (internalize-indexes
-                              {::config               config
-                               ::pc/sym               (gensym resolver-sym)
+                              {::pc/sym               (gensym resolver-sym)
                                ::pc/cache?            false
                                ::pc/dynamic-resolver? true
                                ::pc/resolve           resolve-fn})
