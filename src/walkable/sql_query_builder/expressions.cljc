@@ -95,9 +95,6 @@
 (defmulti process-operator
   (fn dispatcher [_env [operator _params]] operator))
 
-(defmulti process-unsafe-expression
-  (fn dispatcher [_env [operator _params]] operator))
-
 (defmulti process-expression
   (fn dispatcher [_env [kw _expression]] kw))
 
@@ -126,20 +123,6 @@
 
 (def-simple-cast-types {:upper-case? true}
   [:integer :text :date :datetime])
-
-(defmethod unsafe-expression? :cast [_operator] true)
-
-(defmethod process-unsafe-expression :cast
-  [env [_operator [expression type-kw type-params]]]
-  (let [expression (s/conform ::expression expression)
-        type-str   (cast-type type-kw type-params)]
-    (assert (not (s/invalid? expression))
-      (str "First argument to `cast` is not a valid expression."))
-    (assert type-str
-      (str "Invalid type to `cast`. You may want to implement `cast-type` for the given type."))
-    (inline-params env
-      {:raw-string (str "CAST (? AS " type-str ")")
-       :params     [(process-expression env expression)]})))
 
 (defmethod operator? :and [_operator] true)
 
@@ -403,14 +386,23 @@
      :params     params}))
 
 (defmethod process-expression :expression
-  [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (inline-params env
-    (process-operator env
-      [operator (mapv #(process-expression env %) params)])))
-
-(defmethod process-expression :unsafe-expression
-  [env [_kw {:keys [operator params] :or {operator :and}}]]
-  (process-unsafe-expression env [operator params]))
+  [{:keys [operators] :as env}
+   [_kw {:keys [operator params] :or {operator :and}}]]
+  (if-let [operator-config (get operators operator)]
+    (let [{:keys [compile-params? compile-fn]} operator-config]
+      (if compile-params?
+        (let [conformed-params (s/conform ::expressions params)]
+          (if (s/invalid? conformed-params)
+            (throw (ex-info (str "Invalid expression: " (pr-str params))
+                     {:type :invalid-expression
+                      :expression params}))
+            (let [compiled-params (mapv #(process-expression env %) conformed-params)]
+              (inline-params env
+                (compile-fn env [operator compiled-params])))))
+        (compile-fn env [operator params])))
+    (throw (ex-info (str "Unknow operator: " operator)
+             {:type :unknow-operator
+              :name operator}))))
 
 (defmethod process-expression :join-filter
   [env [_kw {:keys [join-key expression]}]]
