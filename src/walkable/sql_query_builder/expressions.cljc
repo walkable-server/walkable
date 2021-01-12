@@ -19,17 +19,18 @@
   [x]
   (and (keyword? x) (namespace x)))
 
+(defn unnamespaced-keyword?
+  [x]
+  (and (keyword? x) (not (namespace x))))
+
 (s/def ::namespaced-keyword namespaced-keyword?)
+
+(s/def ::unnamespaced-keyword unnamespaced-keyword?)
 
 (defmulti operator? identity)
 (defmethod operator? :default [_operator] false)
 
 (s/def ::operators operator?)
-
-(defmulti unsafe-expression? identity)
-(defmethod unsafe-expression? :default [_operator] false)
-
-(s/def ::unsafe-expression unsafe-expression?)
 
 (defprotocol EmittableAtom
   (emit [this]))
@@ -78,11 +79,7 @@
 
     :expression
     (s/and vector?
-      (s/cat :operator (s/? ::operators)
-        :params (s/* ::expression)))
-    :unsafe-expression
-    (s/and vector?
-      (s/cat :operator ::unsafe-expression
+      (s/cat :operator ::unnamespaced-keyword
         :params (s/* (constantly true))))
     :join-filters
     (s/coll-of
