@@ -432,14 +432,14 @@
                     :sql-name ">>"})])
 
 (defmethod process-expression :expression
-  [{:keys [operators] :as env}
-   [_kw {:keys [operator params] :or {operator :and}}]]
+  [{:keys [:operators] :as env}
+   [_kw {:keys [:operator :params] :or {operator :and}}]]
   (if-let [operator-config (get operators operator)]
-    (let [{:keys [compile-params? compile-fn]} operator-config]
-      (if compile-params?
-        (let [conformed-params (s/conform ::expressions params)]
-          (if (s/invalid? conformed-params)
-            (throw (ex-info (str "Invalid expression: " (pr-str params))
+    (let [{:keys [:compile-args :compile-fn]} operator-config]
+      (if compile-args
+        (let [conformed-params (mapv #(s/conform ::expression %) params)]
+          (if-let [failed (some s/invalid? conformed-params)]
+            (throw (ex-info (str "Invalid expression: " (pr-str failed))
                      {:type :invalid-expression
                       :expression params}))
             (let [compiled-params (mapv #(process-expression env %) conformed-params)]
