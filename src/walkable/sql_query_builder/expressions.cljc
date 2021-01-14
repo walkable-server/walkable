@@ -78,7 +78,9 @@
       (s/or :join-filter
         (s/cat :join-key ::namespaced-keyword
           :expression ::expression))
-      :kind map? :into [])))
+      :min-count 1
+      :kind map?
+      :into [])))
 
 ;; the rule for parentheses in :raw-string
 ;; outer raw string should provide them
