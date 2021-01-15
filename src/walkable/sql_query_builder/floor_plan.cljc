@@ -3,8 +3,20 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
             [com.wsscode.pathom.core :as p]
+            [weavejester.dependency :as dep]
             [clojure.spec.alpha :as s]
             [plumbing.graph :as graph]))
+
+(defn check-circular-dependency!
+  [graph]
+  (try
+    (reduce (fn [acc [x y]] (dep/depend acc x y))
+      (dep/graph)
+      graph)
+    (catch Exception e
+      (let [{:keys [node dependency] :as data} (ex-data e)]
+        (throw (ex-info (str "Circular dependency between;" node " and " dependency)
+                 data))))))
 
 (defn column-names
   "Makes a hash-map of keywords and their equivalent column names"
