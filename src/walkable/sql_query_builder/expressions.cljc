@@ -158,6 +158,16 @@
     {:raw-string (str "(?)" sql-name)
      :params     params}))
 
+(defn no-params-operator-fn
+  [{:keys [arity sql-name] :or {arity 0} operator :key}]
+  (assert (= 0 arity)
+    (str  "Postfix operators always have arity 0. Please check operator " operator "'s definition."))
+  (fn [_env [_operator params]]
+    (assert (= 0 (count params))
+      (str "There must be no argument to " operator))
+    {:raw-string sql-name
+     :params     params}))
+
 (defn prefix-operator-fn
   [{:keys [arity sql-name] operator :key}]
   (case arity
@@ -192,6 +202,8 @@
       (infix-operator-fn opts)
       :postfix
       (postfix-operator-fn opts)
+      :no-params
+      (no-params-operator-fn opts)
       ;; default
       (prefix-operator-fn opts))))
 
@@ -392,7 +404,7 @@
          :params     expressions}))}
    (plain-operator {:key :count-*
                     :sql-name "COUNT(*)"
-                    :arity 0})
+                    :params-position :no-params})
    (plain-operator {:key :sum
                     :arity 1})
    (plain-operator {:key :count
