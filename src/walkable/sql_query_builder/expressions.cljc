@@ -551,6 +551,11 @@
               (map :name))
     params))
 
+(defn selection [compiled-formula clojuric-name]
+  (inline-params {}
+    {:raw-string "(?) AS ?"
+     :params     [compiled-formula (verbatim-raw-string clojuric-name)]}))
+
 (defn build-parameterized-sql-query
   [{:keys [raw-string params]}]
   (vec (cons raw-string params)))
