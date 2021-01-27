@@ -20,18 +20,102 @@
         (throw (ex-info (str "Circular dependency between " node " and " dependency)
                  data))))))
 
-(defn column-names
-  "Makes a hash-map of keywords and their equivalent column names"
-  [emitter ks]
-  (zipmap ks
-    (map #(emitter/column-name emitter %) ks)))
+(defn build-index [k coll]
+  (into {} (for [o coll] [(get o k) o])))
 
-(defn clojuric-names
-  "Makes a hash-map of keywords and their Clojuric name (to be use as
-  sql's SELECT aliases"
-  [emitter ks]
-  (zipmap ks
-    (map #(emitter/clojuric-name emitter %) ks)))
+(expressions/compile-to-string
+  {:operators (build-index :key expressions/common-operators)}
+  [:* [:+ :a/b 3] 6])
+
+(expressions/compile-to-string
+  {:operators (build-index :key expressions/common-operators)}
+  [:cast :a/c :text])
+
+;; steps
+;; - compile joins
+;; - derive ident filter
+;; - compile formulas (aggretate + pseudo columns)
+;; - expand nested pseudo-columns
+;; - expand pseudo-columns in aggregator's formulas
+;; - expand pseudo-columns in conditions
+;; - compile group-by
+;; - compile filter/ident-filter/having with compiled pseudo-columns and joins
+;; - compile pagination
+
+;; - throw errors on:
+;;  + duplicate keys
+;;  + circular dependencies
+;;  + aggregators inside any formula (pseudo-columns or aggregator)
+;;  + joins in pseudo-columns/aggregators
+;;  + aggregators in pseudo-columns/aggregators
+
+;; - collect all columns in compiled-formula, compiled-filter, compiled-join-filter, compiled-having
+;; order-by, and output
+;; - derive true-columns = all columns - known pseudo columns
+;; - collect variables, check if all non-internal vars are defined
+;; - inline true-columns in all places
+;; - compile selection, join-selection and aggregator selection
+;; - build the rest of floor-plan: cte
+;; - compile cardinality
+;; - compile return
+;; - compile traverse-scheme
+;; - warn if some true/pseudo columns not shown in any output
+;; - generate connect graph for joins
+
+(def my-attributes
+  [{:key :people/list
+    :type :root
+    :table "person"
+    :filter [:= :person/hidden false]
+    :output [:person/id :person/name :person/yob]
+    :offset/default 3
+    :offset/on-invalid :return-empty
+    :offset/validate #(<= 0 % 100)
+    :limit/default 10
+    :limit/on-invalid :return-error
+    :limit/validate #(<= 1 % 20)
+    :order-by/default [:farmer/number :asc]
+    :order-by/on-invalid :return-default
+    :order-by/validate #{:farmer/number :farmer/yob}}
+   {:key :people/total
+    :type :root
+    :aggregate true
+    :formula [:count-*]
+    :table "person"
+    :filter [:= :person/hidden false]}
+   {:key :people/lied-age-sum
+    :type :root
+    :aggregate true
+    :formula [:sum :person/lied-age]
+    :table "person"
+    :filter [:= :person/hidden false]}
+   {:key :person/friend
+    :type :join
+    :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]
+    :filter [:= :person/hidden false]
+    :output []}
+   {:key :person/friends-count
+    :type :join
+    :aggregate true
+    :formula [:count-*]
+    :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]
+    :filter [:= :person/hidden false]
+    :output []}
+   {:key :person/age
+    :type :pseudo-column
+    :formula [:- 'current-year :person/yob]}
+   {:key :person/lied-age
+    :type :pseudo-column
+    :formula [:- :person/age 10]}
+   {:key :person/double-lied-age
+    :type :pseudo-column
+    :formula [:- :person/lied-age 10]}
+   {:key 'current-year
+    :type :variable
+    :compute (fn [env] 2021)}
+   {:key :person/id
+    :type :primary-key
+    :output []}])
 
 (s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
@@ -41,508 +125,501 @@
   (s/coll-of ::expressions/namespaced-keyword
     :count 4))
 
-(s/def ::join-seq
+(s/def ::join-path
   (s/or
    :without-join-table ::without-join-table
    :with-join-table    ::with-join-table))
 
-(defn join-statements
-  "Helper for compile-floor-plan. Generates JOIN statement strings for all
-  join keys given their join sequence."
-  [emitter join-seq]
-  {:pre  [(s/valid? ::join-seq join-seq)]
-   :post [string?]}
-  (let [[tag] (s/conform ::join-seq join-seq)]
+(defn join-statement*
+  [{:keys [emitter]} {:keys [join-path]}]
+  (let [[tag] (s/conform ::join-path join-path)]
     (when (= :with-join-table tag)
-      (let [[_source _join-source join-target target] join-seq]
+      (let [[_source _join-source join-target target] join-path]
         (str
+          ;; TODO: check if table-name/column-name for each attribute
+          ;; specified elsewhere before calling emitter fuctions
+          ;; => collect those and put in env's `:table-names` etc first
           " JOIN " (emitter/table-name emitter target)
           " ON " (emitter/column-name emitter join-target)
+          ;; TODO: what about other operators than `=`?
           " = " (emitter/column-name emitter target))))))
 
-(s/def ::join-specs
-  (s/coll-of (s/tuple ::expressions/namespaced-keyword ::join-seq)))
+(comment
+  (join-statement*
+    {:emitter emitter/default-emitter}
+    {:key :person/friend
+     :type :join
+     :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]})
 
-(defn source-column
-  [join-seq]
-  (first join-seq))
+  (join-statement*
+    {:emitter emitter/default-emitter}
+    {:key :person/house
+     :type :join
+     :join-path [:person/id :house/owner-id]}))
 
-(defn target-column
-  [join-seq]
-  (second join-seq))
+(defn conditionally-update* [x pred f]
+  (if (pred x)
+    (f x)
+    x))
 
-(defn target-table
-  [emitter join-seq]
-  (emitter/table-name emitter (target-column join-seq)))
+(comment
+  (conditionally-update* {:x 2 :y 3} #(= 1 (:x %)) #(update % :x inc))
+  (conditionally-update* {:x 2 :y 3}#(= 2 (:x %)) #(update % :x inc)))
 
-(defn join-filter-subquery
-  [emitter joins]
+(defn conditionally-update
+  [xs pred f]
+  (mapv #(conditionally-update* % pred f) xs))
+
+(comment
+  (conditionally-update [{:x 1 :y 1} {:x 2 :y 3}] #(= 2 (:x %)) #(update % :x inc))
+  )
+
+(defn derive-missing-key [m k f]
+  (if (contains? m k)
+    m
+    (assoc m k (f))))
+
+(comment
+  (derive-missing-key {:x 3} :x (constantly 4))
+  (derive-missing-key {:x nil} :x (constantly 4))
+  (derive-missing-key {} :x (constantly 4)))
+
+(defn join-statement
+  "Generate JOIN statement if not provided. Only for \"two-hop\" join paths."
+  [registry item]
+  (derive-missing-key item :join-statement #(join-statement* registry item)))
+
+(defn join-source-column
+  [_registry {:keys [join-path] :as item}]
+  (derive-missing-key item :source-column #(first join-path)))
+
+(defn join-target-column
+  [_registry {:keys [join-path] :as item}]
+  (derive-missing-key item :target-column #(second join-path)))
+
+(defn join-target-table
+  [{:keys [emitter]} {:keys [target-column] :as item}]
+  (derive-missing-key item :target-table #(emitter/table-name emitter target-column)))
+
+(defn join-filter-subquery*
+  [{:keys [emitter]} {:keys [join-statement target-table source-column target-column]}]
   (str
-    (emitter/column-name emitter (source-column joins))
+    (emitter/column-name emitter source-column)
     " IN ("
     (emitter/->query-string
-      {:selection      (emitter/column-name emitter (target-column joins))
-       :target-table   (target-table emitter joins)
-       :join-statement (join-statements emitter joins)})
+      {:selection      (emitter/column-name emitter target-column)
+       :target-table   target-table 
+       :join-statement join-statement})
     " WHERE ?)"))
 
-(defn joins->target-tables
-  "Produces map of join keys to their corresponding source table name."
-  [emitter joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (target-table emitter join-seq)))
-    {} joins))
+(defn join-filter-subquery
+  [registry item]
+  (derive-missing-key item :join-filter-subquery #(join-filter-subquery* registry item)))
 
-(defn joins->target-columns
-  "Produces map of join keys to their corresponding target column."
-  [joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (target-column join-seq)))
-    {} joins))
-
-(defn joins->source-columns
-  "Produces map of join keys to their corresponding source column."
-  [joins]
-  {:pre  [(s/valid? ::join-specs joins)]
-   :post [#(s/valid? ::keyword-keyword-map %)]}
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (source-column join-seq)))
-    {} joins))
-
-(defn roots->target-tables
-  "Produces map of root keys to their corresponding source table name."
-  [emitter roots]
-  {:post [#(s/valid? ::keyword-string-map %)]}
-  (reduce (fn [result [k raw-table-name]]
-            (assoc result k (emitter/table-name* emitter raw-table-name)))
-    {} roots))
-
-(defn idents->target-tables
-  "Produces map of ident keys to their corresponding source table name."
-  [emitter idents]
-  {:post [#(s/valid? ::keyword-string-map %)]}
-  (into {}
-    (map (fn [k] [k (emitter/table-name emitter k)]))
-    idents))
-
-(s/def ::multi-keys
-  (s/coll-of (s/tuple (s/or :single-key keyword?
-                        :multiple-keys (s/coll-of keyword))
-               (constantly true))))
-
-(s/def ::single-keys
-  (s/coll-of (s/tuple keyword? (constantly true))))
-
-(defn expand-multi-keys
-  "Expands a map where keys can be a vector of keywords to pairs where
-  each keyword has its own entry."
-  [m]
-  {:pre  [(s/valid? ::multi-keys m)]
-   :post [#(s/valid? ::single-keys %)]}
-  (reduce (fn [result [ks v]]
-            (if (sequential? ks)
-              (let [new-pairs (mapv (fn [k] [k v]) ks)]
-                (vec (concat result new-pairs)))
-              (conj result [ks v])))
-    [] m))
-
-(defn flatten-multi-keys
-  "Expands multiple keys then group values of the same key"
-  [m]
-  {:pre  [(s/valid? ::multi-keys m)]
-   :post [#(s/valid? ::single-keys %)]}
-  (let [expanded  (expand-multi-keys m)
-        key-set   (set (map first expanded))
-        keys+vals (mapv (fn [current-key]
-                          (let [current-vals (mapv second (filter (fn [[k v]] (= current-key k)) expanded))]
-                            [current-key (if (= 1 (count current-vals))
-                                           (first current-vals)
-                                           current-vals)]))
-                    key-set)]
-    (into {} keys+vals)))
-
-(defn compile-join-statements
-  [emitter joins]
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (join-statements emitter join-seq)))
-    {} joins))
-
-(defn compile-join-filter-subqueries
-  [emitter joins]
-  (reduce (fn [result [k join-seq]]
-            (assoc result k
-              (join-filter-subquery emitter join-seq)))
-    {} joins))
-
-(defn expand-reversed-joins [joins reversed-joins]
-  (let [more (reduce (fn [result [backward forward]]
-                       (assoc result backward
-                         (reverse (get joins forward))))
-               {} reversed-joins)]
-    ;; if a join exists in joins, keep it instead of
-    ;; reversing associated backward join
-    (merge more joins)))
-
-(defn expand-denpendencies* [m]
-  (reduce (fn [result [k vs]]
-            (assoc result k
-              (set (flatten (mapv #(if-let [deps (get m %)]
-                                     (vec deps)
-                                     %)
-                              vs)))))
-    {} m))
-
-(defn expand-denpendencies [m]
-  (let [m' (expand-denpendencies* m)]
-    (if (= m m')
-      m
-      (expand-denpendencies m'))))
-
-(defn process-joins
-  [{:keys [joins] :as floor-plan}]
-  (merge floor-plan
-    {:target-columns (joins->target-columns joins)
-     :source-columns (joins->source-columns joins)}))
-
-(defn unbound-expression?
-  [compiled-expression]
-  (boolean (some expressions/atomic-variable? (:params compiled-expression))))
-
-(defn rotate [coll]
-  (take (count coll) (drop 1 (cycle coll))))
-
-(defn compile-formulas-once [compiled-true-columns formulas]
-  (reduce-kv (fn [result k expression]
-               (let [compiled (expressions/compile-to-string {} expression)]
-                 (if (unbound-expression? compiled)
-                   (update result :unbound assoc k compiled)
-                   (update result :bound assoc k compiled))))
-    {:unbound {}
-     :bound   compiled-true-columns}
-    formulas))
-
-(defn compile-formulas-recursively [{:keys [unbound bound]}]
-  (loop [limit   100
-         unbound (seq unbound)
-         bound   bound]
-    (if-let [item (and (pos? limit) (first unbound))]
-      (let [[k compiled-expression] item
-
-            attempt  (expressions/substitute-atomic-variables
-                       {:variable-values bound}
-                       compiled-expression)
-            new-item [k attempt]]
-        (if (unbound-expression? attempt)
-          (recur (dec limit)
-            (rotate (cons new-item (rest unbound)))
-            bound)
-          (recur (dec limit)
-            (rest unbound)
-            (assoc bound k attempt))))
-      ;; no more work. Exiting loop...
-      {:unbound (into {} unbound)
-       :bound   bound})))
-
-(defn column-dependencies
-  [{:keys [bound unbound]}]
-  (let [all-columns    (set (concat (keys bound) (keys unbound)))]
-    (reduce-kv (fn [acc k compiled-expression]
-                 (let [p                  (-> compiled-expression :params)
-                       all-vars           (set (map :name (filter expressions/atomic-variable? p)))
-                       column-vars        (set (filter keyword? all-vars))
-                       undeclared-columns (clojure.set/difference column-vars all-columns)]
-                   (assert (not (contains? column-vars k))
-                     (str "Circular dependency: " k " depends on itself"))
-                   (assert (empty? undeclared-columns)
-                     (str "Missing definition for columns: " undeclared-columns
-                       ". You may want to add them to :columns or :pseudo-columns."))
-                   (assoc acc k column-vars)))
-      {}
-      unbound)))
-
-(defn compile-selection [compiled-formula clojuric-name]
-  (expressions/inline-params {}
-    {:raw-string "(?) AS ?"
-     :params     [compiled-formula
-                  (expressions/verbatim-raw-string clojuric-name)]}))
+(defn compile-join
+  [registry attribute]
+  (->> attribute
+    (join-statement registry)
+    (join-source-column registry)
+    (join-target-column registry)
+    (join-target-table registry)
+    (join-filter-subquery registry)))
 
 
-(defn compile-getter
-  [{function :fn k :key :keys [cached?]}]
-  (let [f (if cached?
-            (fn haha [env _computed-graphs]
-              (p/cached env [:walkable/variable-getter k]
-                (function env)))
-            (fn hihi [env _computed-graphs]
-              (function env)))]
-    [k f]))
+(comment
+  (compile-join {:emitter emitter/default-emitter}
+    {:key :person/friend
+     :type :join
+     :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]})
+  (compile-join {:emitter emitter/default-emitter}
+    {:key :person/house
+     :type :join
+     :join-path [:person/id :house/owner-id]}))
 
-(defn compile-variable-getters
-  [{:keys [variable-getters] :as env}]
-  (let [getters
-        (into {} (map compile-getter) variable-getters)]
-    (-> env
-      (assoc :compiled-variable-getters getters)
-      (dissoc :variable-getters))))
+(defn compile-joins
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    (fn [attr] (and (= :join (:type attr))
+                 (not (:aggregate attr))))
+    (fn [attr] (compile-join registry attr))))
 
-(defn member->graph-id
-  [graphs]
-  (->> graphs
-    (map-indexed
-      (fn [index {:keys [graph namespace]}]
-        (let [xs (keys graph)]
-          (mapv #(do [(symbol namespace (name %)) index]) xs))))
-    (apply concat)
-    (into {})))
+(comment
+  (compile-joins
+    {:emitter emitter/default-emitter
+     :attributes
+     [{:key :foo/bar
+       :type :root}
+      {:key :person/friend
+       :type :join
+       :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]}
+      {:key :person/house
+       :type :join
+       :join-path [:person/id :house/owner-id]}]}))
 
-(defn compile-graph
-  [index {:keys [graph cached? lazy?]}]
-  (let [compiled-graph
-        #?(:clj
-           (if lazy?
-             (graph/lazy-compile graph)
-             (graph/compile graph))
-           :cljs
-           (graph/compile graph))
-        function #(compiled-graph {:env %})]
-    [index
-     (if cached?
-       (fn [env]
-         (p/cached env [:walkable/variable-getter-graph index]
-           (function env)))
-       function)]))
+(defn check-duplicate-keys [attrs]
+  ;; TODO: implement with loop/recur to
+  ;; tell which key is duplicated 
+  (when-not (apply distinct? (map :key attrs))
+    (throw (ex-info "Duplicate keys" {}))))
 
-(defn compile-graph-member-getter
-  [result variable graph-index]
-  (let [k (keyword (name variable))]
-    (assoc result variable
-      (fn [_env computed-graphs]
-        (get-in computed-graphs [graph-index k])))))
+(comment
+  (check-duplicate-keys [{:key :a/b}
+                         {:key :a/c}])
+  (check-duplicate-keys [{:key :a/b}
+                         {:key :a/c}
+                         {:key :a/c}]))
 
-(defn compile-variable-getter-graphs
-  [{:keys [variable-getter-graphs] :as env}]
-  (let [compiled-graphs
-        (->> variable-getter-graphs
-          (into {} (map-indexed compile-graph)))
-
-        variable->graph-id
-        (member->graph-id variable-getter-graphs)
-
-        getters
-        (reduce-kv
-          compile-graph-member-getter
-          {}
-          variable->graph-id)]
-    (-> env
-      (assoc :compiled-variable-getter-graphs compiled-graphs)
-      (assoc :variable->graph-index variable->graph-id)
-      (update :compiled-variable-getters merge getters)
-      (dissoc :variable-getter-graphs))))
-
-(defn compile-true-columns
-  "Makes a hash-map of keywords and their equivalent compiled form."
-  [emitter ks]
-  (zipmap ks
-    (map #(expressions/verbatim-raw-string (emitter/column-name emitter %)) ks)))
+(defn compile-formula
+  [registry item]
+  ;; TODO: catch exception when joins are used inside formulas
+  (derive-missing-key item :compiled-formula
+    #(expressions/compile-to-string registry (:formula item))))
 
 (defn compile-formulas
-  [{:keys [true-columns pseudo-columns aggregators emitter] :as floor-plan}]
-  (let [compiled-formulas       (-> (compile-true-columns emitter true-columns)
-                                  (compile-formulas-once (merge pseudo-columns aggregators))
-                                  compile-formulas-recursively)
-        _ok?                    (column-dependencies compiled-formulas)
-        {:keys [bound unbound]} compiled-formulas
-        compiled-formulas       (merge bound unbound)]
-    (-> (dissoc floor-plan :true-columns :pseudo-columns :aggregators)
-      (assoc :compiled-formulas compiled-formulas))))
+  [{:keys [attributes] :as registry}]
+  (->> (conditionally-update attributes
+         (fn [attr] (or (:aggregate attr)
+                      (= :pseudo-column (:type attr))
+                      (= :primary-key (:type attr))))
+         (fn [attr] (compile-formula registry attr)))
+    (assoc registry :attributes)))
 
-(defn compile-formulas-with-aliases
-  [{:keys [compiled-formulas clojuric-names] :as floor-plan}]
-  (let [compiled-selection
-        (reduce-kv (fn [acc k f]
-                     (assoc acc k (compile-selection f (get clojuric-names k))))
-          {}
-          compiled-formulas)]
-    (assoc floor-plan :compiled-selection compiled-selection)))
+(comment
+  (->> {:emitter emitter/default-emitter
+        :operators (build-index :key expressions/common-operators)
+        :attributes my-attributes}
+    compile-formulas
+    :attributes
+    (filterv #(:formula %))))
 
-(defn compile-ident-conditions
-  [{:keys [idents compiled-formulas] :as floor-plan}]
-  (let [compiled-ident-conditions
-        (reduce (fn [acc ident-key]
-                  (assoc acc ident-key
-                    (expressions/substitute-atomic-variables
-                      {:variable-values compiled-formulas}
-                      (expressions/compile-to-string {}
-                        [:= ident-key (expressions/av `ident-value)]))))
-          {}
-          idents)]
-    (-> floor-plan
-      (assoc :compiled-ident-conditions compiled-ident-conditions)
-      (dissoc :idents :roots))))
+(defn find-aggregators
+  [attributes]
+  (into #{} (map :key (filter :aggregate attributes))))
 
-(defn compile-join-selection
-  [{:keys [joins clojuric-names target-columns] :as floor-plan}]
-  (let [compiled-join-selection
-        (reduce-kv (fn [acc k _join-seq]
-                     (let [target-column (get target-columns k)]
-                       (assoc acc k
-                         (compile-selection
-                           {:raw-string "?"
-                            :params [(expressions/av `source-column-value)]}
-                           (get clojuric-names target-column)))))
-          {}
-          joins)]
-    (-> floor-plan
-      (assoc :compiled-join-selection compiled-join-selection))))
+(comment
+  (find-aggregators my-attributes))
 
-(defn compile-aggregator-selection
-  [{:keys [keyword-type aggregator-keywords compiled-selection clojuric-names target-columns] :as floor-plan}]
-  (let [compiled-aggregator-selection
-        (reduce (fn [acc k]
-                  (assoc acc k
-                         (cond
-                           (= :roots (get keyword-type k))
-                           (get compiled-selection k)
+(defn find-pseudo-columns
+  [attributes]
+  (into #{} (map :key (filter #(= :pseudo-column (:type %)) attributes))))
 
-                           (= :joins (get keyword-type k))
-                           (let [target-column
-                                 (get target-columns k)
+(comment
+  (find-pseudo-columns my-attributes))
 
-                                 aggregator-selection
-                                 (get compiled-selection k)
+(defn collect-dependencies
+  [attributes]
+  ;; TODO: use clojure.core transducers
+  (reduce (fn [acc attr]
+            (let [k (:key attr)
+                  dependencies (->> attr :compiled-formula :params
+                                 (filter expressions/atomic-variable?)
+                                 (map :name)
+                                 distinct
+                                 (map #(vector k %)))]
+              (concat acc dependencies)))
+    ()
+    (filter :compiled-formula attributes)))
 
-                                 source-column-selection
-                                 (compile-selection
-                                  {:raw-string "?"
-                                   :params [(expressions/av `source-column-value)]}
-                                  (get clojuric-names target-column))]
-                             (expressions/concatenate #(clojure.string/join ", " %)
-                                                      [source-column-selection aggregator-selection]))
-                           :else
-                           (throw (ex-info (str "Unknown aggregator type for " k ". Please ensure " k " is declared in either :roots or :joins of the floor-plan.")
-                                           {:aggregator-keyword k})))))
-          {}
-          aggregator-keywords)]
-    (-> floor-plan
-        (assoc :compiled-aggregator-selection compiled-aggregator-selection))))
+(defn check-dependency-on-aggregators
+  [aggregators dependencies]
+  (when-let [[dependent dependency]
+             (some (fn [[dependent dependency]]
+                     (and (contains? aggregators dependency)
+                       ;; returned by some:
+                       [dependent dependency]))
+               dependencies)]
+    (throw (ex-info (str  "Please check `" dependent "`'s formula which contains an aggregator (`"
+                      dependency "`)")
+             {:formula dependent
+              :dependency dependency}))))
 
-(defn compile-join-conditions
-  [{:keys [joins compiled-formulas target-columns] :as floor-plan}]
-  (let [compiled-join-conditions
-        (reduce-kv (fn [acc k _join-seq]
-                     (let [target-column (get target-columns k)]
-                       (assoc acc k
+(comment
+  (check-dependency-on-aggregators
+    #{:a :b}
+    [[:x :y]
+     [:x :a]])
+  (check-dependency-on-aggregators
+    #{:b}
+    [[:x :y]
+     [:x :a]]))
+
+(comment
+  (check-circular-dependency!
+    (collect-dependencies
+      (:attributes
+       (compile-formulas
+         {:emitter emitter/default-emitter
+          :operators (build-index :key expressions/common-operators)
+          :attributes my-attributes}))))
+  (check-dependency-on-aggregators
+    (find-aggregators my-attributes)
+    (collect-dependencies
+      (:attributes
+       (compile-formulas
+         {:emitter emitter/default-emitter
+          :operators (build-index :key expressions/common-operators)
+          :attributes my-attributes})))))
+
+(defn collect-independent-pseudo-columns
+  [pseudo-columns dependencies]
+  (let [deps
+        (filter (fn [[x y]]
+                  (and (contains? pseudo-columns x)
+                    (contains? pseudo-columns y)))
+          dependencies)
+        Xs (into #{} (map first deps))
+        Ys (into #{} (map second deps))]
+    (set/difference Ys Xs)))
+
+(comment
+  (collect-independent-pseudo-columns #{:a/b :a/c :a/d :a/e}
+   [[:a/b :a/c]
+    [:a/b :a/e]
+    [:a/c :a/d]])
+  (collect-independent-pseudo-columns #{}
+   [[:a/b :a/c]
+    [:a/b :a/e]
+    [:a/c :a/d]]))
+
+(defn get-key [attrs id k]
+  (let [x (some #(and (= id (:key %)) %) attrs)]
+    (get x k)))
+
+(comment
+  (get-key [{:key :foo/item :x 1}] :foo/item :x))
+
+(defn direct-dependents [dependencies independents]
+  (->> dependencies
+    (filter (fn [[_ y]] (contains? independents y)))
+    (map first)
+    (into #{})))
+
+(defn get-compiled-formula [attrs ks]
+  (->> (for [k ks]
+         [k (get-key attrs k :compiled-formula)])
+    (into {})))
+
+(defn build-key-index [attrs pred k]
+  (into {} (map (juxt :key k) (filter pred attrs))))
+
+(comment
+  (build-key-index [{:key :a/x :show 1}
+                    {:key :a/y :show 2}]
+    #(#{:a/x :a/y} (:key %))
+    :show))
+
+(defn expand-nested-pseudo-columns*
+  [attrs]
+  (loop [attrs attrs]
+    (let [dependencies (collect-dependencies attrs)
+          pseudo-columns (find-pseudo-columns attrs)
+          independents (collect-independent-pseudo-columns pseudo-columns dependencies)]
+      (if (empty? independents)
+        attrs
+        (let [realized-formulas (get-compiled-formula attrs independents)]
+          (recur (conditionally-update attrs
+                   (fn [attr] (contains? (direct-dependents dependencies independents)
+                                (:key attr)))
+                   (fn [attr]
+                     (update attr :compiled-formula
+                       (fn [cf]
                          (expressions/substitute-atomic-variables
-                           {:variable-values compiled-formulas}
-                           (expressions/compile-to-string {}
-                             [:= target-column (expressions/av `source-column-value)])))))
-          {}
-          joins)]
-    (-> floor-plan
-      (assoc :compiled-join-conditions compiled-join-conditions))))
+                           {:variable-values realized-formulas}
+                           cf)))))))))))
 
-(defn compile-join-conditions-cte
-  [{:keys [joins compiled-formulas target-columns clojuric-names] :as floor-plan}]
-  (let [compiled-join-conditions
-        (reduce-kv (fn [acc k _join-seq]
-                     (let [target-column (get target-columns k)
-                           clojuric-name (get clojuric-names target-column)]
-                       (assoc acc k
-                         (expressions/substitute-atomic-variables
-                           {:variable-values compiled-formulas}
-                           {:raw-string (str clojuric-name "=?")
-                            :params     [(expressions/av `source-column-value)]}))))
-          {}
-          joins)]
-    (-> floor-plan
-      (assoc :compiled-join-conditions-cte compiled-join-conditions))))
+(defn expand-nested-pseudo-columns
+  [registry]
+  (update registry :attributes expand-nested-pseudo-columns*))
 
-(defn compile-cte-keywords
-  [{:keys [joins use-cte] :as floor-plan}]
-  (let [join-keys (keys joins)
-        {:keys [default]} use-cte
-        cte-keywords (reduce (fn [acc k]
-                               (if (get use-cte k default)
-                                 (conj acc k)
-                                 acc))
-                       #{}
-                       join-keys)]
-    (-> floor-plan
-      (assoc :cte-keywords cte-keywords)
-      (dissoc :use-cte))))
+(comment
+  (->> (compile-formulas
+         {:emitter emitter/default-emitter
+          :operators (build-index :key expressions/common-operators)
+          :attributes my-attributes})
+    (expand-nested-pseudo-columns)
+    :attributes
+    (filter #(= :pseudo-column (:type %)))
+    (mapv #(select-keys % [:compiled-formula :key]))))
 
-(defn compile-extra-conditions
-  [{:keys [extra-conditions compiled-formulas join-filter-subqueries] :as floor-plan}]
-  (let [compiled-extra-conditions
-        (reduce-kv (fn [acc k extra-condition]
-                     (assoc acc k
-                       (->> extra-condition
-                         (expressions/compile-to-string
-                           {:join-filter-subqueries join-filter-subqueries})
-                         (expressions/substitute-atomic-variables
-                           {:variable-values compiled-formulas}))))
-          {}
-          extra-conditions)]
-    (-> floor-plan
-      (assoc :compiled-extra-conditions compiled-extra-conditions)
-      (dissoc :extra-conditions))))
+(comment
+  (expressions/substitute-atomic-variables
+    {:variable-values {:person/age {:raw-string "(?)-(?)"
+                                    :params [(expressions/av 'current-year)
+                                             (expressions/av :person/yob)]}}}
+    {:raw-string "(?)-10"
+     :params [(expressions/av :person/age)]}))
+
+(defn expand-pseudo-columns-in-aggregators*
+  [attrs]
+  (let [compiled-pseudo-columns (get-compiled-formula attrs (find-pseudo-columns attrs))]
+    (conditionally-update attrs
+      #(:aggregate %)
+      #(update % :compiled-formula
+         (fn [cf]
+           (expressions/substitute-atomic-variables
+             {:variable-values compiled-pseudo-columns}
+             cf))))))
+
+(defn expand-pseudo-columns-in-aggregators
+  [registry]
+  (update registry :attributes expand-pseudo-columns-in-aggregators*))
 
 (defn prefix-having [compiled-having]
   (expressions/inline-params {}
     {:raw-string " HAVING (?)"
      :params     [compiled-having]}))
 
-(defn compile-having
-  [{:keys [compiled-formulas join-filter-subqueries]} having-condition]
-  (->> having-condition
-    (expressions/compile-to-string
-      {:join-filter-subqueries join-filter-subqueries})
-    (expressions/substitute-atomic-variables
-      {:variable-values compiled-formulas})
-    prefix-having))
+(defn join-filter-subqueries
+  [{:keys [:attributes] :as registry}]
+  (let [jfs (build-key-index attributes #(and (= :join (:type %)) (not (:aggregate %)))
+              :join-filter-subquery)]
+    (assoc registry :join-filter-subqueries jfs)))
 
+(defn compile-filters
+  ;; TODO: just extracted join-filter-subqueries above, not checked calling of compile-filters yet
+  [{:keys [:attributes] :as registry}]
+  (let [compiled-pseudo-columns (get-compiled-formula attributes (find-pseudo-columns attributes))]
+    (assoc registry :attributes
+      (-> attributes
+        (conditionally-update
+          #(and (:filter %) (not (:compiled-filter %)))
+          (fn [{condition :filter :as attr}]
+            (->> condition
+              (expressions/compile-to-string registry)
+              (expressions/substitute-atomic-variables
+                {:variable-values compiled-pseudo-columns})
+              (assoc attr :compiled-filter))))
+        (conditionally-update
+          #(and (:ident-filter %) (not (:compiled-ident-filter %)))
+          (fn [{condition :ident-filter :as attr}]
+            (->> condition
+              (expressions/compile-to-string registry)
+              ;; `ident-value variable is only available here
+              (expressions/substitute-atomic-variables
+                {:variable-values {`ident-value (expressions/av `ident-value)}})
+              (expressions/substitute-atomic-variables
+                {:variable-values compiled-pseudo-columns})
+              (assoc attr :compiled-ident-filter))))
+        (conditionally-update
+          #(and (:join-filter %) (not (:compiled-join-filter %)))
+          (fn [{condition :join-filter :as attr}]
+            (->> condition
+              (expressions/compile-to-string registry)
+              ;; `source-column-value variable is only available here
+              (expressions/substitute-atomic-variables
+                {:variable-values {`source-column-value (expressions/av `source-column-value)}})
+              (expressions/substitute-atomic-variables
+                {:variable-values compiled-pseudo-columns})
+              (assoc attr :compiled-join-filter))))
+        (conditionally-update
+          #(and (:having %) (not (:compiled-having %)))
+          (fn [{condition :having :as attr}]
+            (->> condition
+              (expressions/compile-to-string registry)
+              (expressions/substitute-atomic-variables
+                {:variable-values compiled-pseudo-columns})
+              (prefix-having)
+              (assoc attr :compiled-having))))))))
+
+(comment
+  (let [registry {:emitter emitter/default-emitter
+             :operators (build-index :key expressions/common-operators)
+             :attributes my-attributes}]
+    (->> registry
+      (compile-formulas)
+      (expand-nested-pseudo-columns)
+      (expand-pseudo-columns-in-aggregators)
+      (compile-joins)
+      (join-filter-subqueries)
+      (compile-filters)
+      :attributes
+      #_(filter #(= :pseudo-column (:type %)))
+      (filter #(:compiled-filter %))
+      (mapv #(select-keys % [:compiled-filter :key])))))
+
+(defn compile-variable
+  [{k :key :keys [cached? compute] :as attr}]
+  (let [f (if cached?
+            (fn haha [env _computed-graphs]
+              (p/cached env [:walkable/variable-getter k]
+                (compute env)))
+            (fn hihi [env _computed-graphs]
+              (compute env)))]
+    (assoc attr :compiled-compute f)))
+
+(defn compile-variables*
+  [attrs]
+  (conditionally-update attrs
+    #(= :variable (:type %))
+    compile-variable))
+
+(defn compile-variables
+  [registry]
+  (update registry :attributes compile-variables*))
+
+(defn compile-pagination-fallback
+  [{:keys [emitter clojuric-names]} attr]
+  (merge attr
+    {:offset-fallback (pagination/order-by-fallback emitter
+                        {:default (:default-offset attr)
+                         :validate (:validate-offset attr)
+                         :throw? (= :error (:on-invalid-offset attr))})
+     :limit-fallback (pagination/order-by-fallback emitter
+                       {:default (:default-limit attr)
+                        :validate (:validate-limit attr)
+                        :throw? (= :error (:on-invalid-limit attr))})
+     :order-by-fallback (pagination/order-by-fallback emitter clojuric-names
+                          {:default (:default-order-by attr)
+                           :validate (:validate-order-by attr)
+                           :throw? (= :error (:on-invalid-order-by attr))})}))
+
+(defn compile-pagination-fallbacks
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    #(#{:root :join} (:type %))
+    #(compile-pagination-fallback registry %)))
+
+(defn ident-filter
+  [_registry item]
+  (derive-missing-key item :ident-filter (constantly [:= (:key item) (expressions/av `ident-value)])))
+
+(defn derive-ident-cardinality
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    (fn [attr] (= :primary-key (:type attr)))
+    (fn [attr] (assoc attr :cardinality :one))))
+
+(defn derive-ident-filters
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    (fn [attr] (= :primary-key (:type attr)))
+    (fn [attr] (ident-filter registry attr))))
+
+(defn join-filter
+  ;; TODO: :target-column must exist => derive it first
+  [_registry {:keys [:target-column] :as item}]
+  ;; TODO: (if (:use-cte item))
+  (derive-missing-key item :join-filter (constantly [:= target-column (expressions/av `source-column-value)])))
+
+(defn derive-join-filters
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    (fn [attr] (= :join (:type attr)))
+    (fn [attr] (join-filter registry attr))))
+
+;; FIXME
 (defn compile-group-by
   [compiled-formulas group-by-keys]
   (->> group-by-keys
     (map compiled-formulas)
     (map :raw-string)
-    (clojure.string/join ", ")
+    (string/join ", ")
     (str " GROUP BY ")))
-
-(defn compile-grouping
-  [{:keys [grouping compiled-formulas] :as floor-plan}]
-  (let [compiled-grouping
-        (reduce-kv (fn [acc k {group-by-keys :group-by having-condition :having}]
-                     (let [compiled-group-by
-                           (compile-group-by compiled-formulas group-by-keys)
-                           compiled-having
-                           (when having-condition
-                             (compile-having floor-plan having-condition))]
-                       (-> acc
-                         (assoc-in [:compiled-group-by k] compiled-group-by)
-                         (assoc-in [:compiled-having k] compiled-having))))
-          {:compiled-group-by {}
-           :compiled-having   {}}
-          grouping)]
-    (-> floor-plan
-      (merge compiled-grouping)
-      (dissoc :grouping))))
-
-(defn compile-pagination-fallbacks
-  [{:keys [emitter clojuric-names pagination-fallbacks] :as floor-plan}]
-  (let [compiled-pagination-fallbacks
-        (pagination/compile-fallbacks emitter clojuric-names pagination-fallbacks)]
-    (-> floor-plan
-      (assoc :compiled-pagination-fallbacks compiled-pagination-fallbacks)
-      (dissoc :pagination-fallbacks))))
 
 (defn return-one [entities]
   (if (not-empty entities)
@@ -554,177 +631,156 @@
     entities
     []))
 
-(defn compile-return
-  [{:keys [target-tables aggregator-keywords cardinality] :as floor-plan}]
-  (let [compiled-return
-        (reduce (fn [acc k]
-                  (let [aggregator? (contains? aggregator-keywords k)
-                        one?        (= :one (get cardinality k))
-                        f           (if aggregator?
-                                      #(get (first %) k)
-                                      (if one?
-                                        return-one
-                                        return-many))]
-                    (assoc acc k f)))
-          {}
-          (keys target-tables))]
-    (assoc floor-plan :return compiled-return)))
+(defn compile-return-function
+  [{:keys [:cardinality :aggregate] k :key :as attr}]
+  (let [f (if aggregate
+            #(get (first %) k)
+            (if (= :one (get cardinality k))
+              return-one
+              return-many))]
+    (assoc attr :return f)))
 
-(defn compile-keyword-type
-  [{:keys [root-keywords join-keywords column-keywords] :as floor-plan}]
-  (assoc floor-plan :keyword-type
-         (merge
-          ;; Aggregators appear in both column-keywords and either
-          ;; root-keywords or join-keywords.
-          ;; We don't want them to have type `:columns` here
-          (into {} (for [k column-keywords]
-                     [k :columns]))
-          (into {} (for [k root-keywords]
-                     [k :roots]))
-          (into {} (for [k join-keywords]
-                     [k :joins])))))
+(defn compile-return-functions
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    #(#{:root :join} (:type %))
+    compile-return-function))
 
-(def floor-plan-keys
-  [:aggregator-keywords
-   :batch-query
-   :cardinality
-   :clojuric-names
-   :column-keywords
-   :compiled-aggregator-selection
-   :compiled-extra-conditions
-   :compiled-formulas
-   :compiled-group-by
-   :compiled-having
-   :compiled-ident-conditions
-   :compiled-join-conditions
-   :compiled-join-conditions-cte
-   :compiled-join-selection
-   :compiled-pagination-fallbacks
-   :compiled-selection
-   :compiled-variable-getter-graphs
-   :compiled-variable-getters
-   :cte-keywords
-   :emitter
-   :ident-keywords
-   :join-filter-subqueries
-   :join-keywords
-   :join-statements
-   :joins
-   :keyword-type
-   :required-columns
-   :return
-   :reversed-joins
-   :root-keywords
-   :source-columns
-   :target-columns
-   :target-tables
-   :variable->graph-index])
+(defn group-registry
+  [flat-registry]
+  ;; FIXME
+  {:emitter emitter/default-emitter
+   :operators (build-index :key expressions/common-operators)
+   :attributes flat-registry})
 
-(defn kmap [ks]
-  (let [this-ns (namespace ::foo)]
-    (zipmap ks (map #(keyword this-ns (name %)) ks))))
+(defn collect-outputs [attrs]
+  (into #{} (mapcat :output) attrs))
 
-(defn internalize-keywords
-  [floor-plan]
-  (-> floor-plan
-    (select-keys floor-plan-keys)
-    (clojure.set/rename-keys (kmap floor-plan-keys))))
+(defn collect-under-key [k]
+  (comp (map k) (remove nil?) (mapcat :params) (filter expressions/atomic-variable?) (map :name)))
 
-(def compile-floor-plan*
-  (comp compile-grouping
-    compile-pagination-fallbacks
-    compile-variable-getter-graphs
-    compile-variable-getters
-    compile-return
-    compile-extra-conditions
-    compile-cte-keywords
-    compile-join-conditions-cte
-    compile-join-conditions
-    compile-aggregator-selection
-    compile-join-selection
-    compile-ident-conditions
-    compile-formulas-with-aliases
-    compile-formulas
-    compile-keyword-type))
+(defn collect-atomic-variables*
+  [attrs]
+  (set/union
+    (into #{} (collect-under-key :compiled-formula)
+      attrs)
+    (into #{} (collect-under-key :compiled-filter)
+      attrs)
+    (into #{} (collect-under-key :compiled-ident-filter)
+      attrs)
+    (into #{} (collect-under-key :compiled-join-filter)
+      attrs)
+    (into #{} (collect-under-key :compiled-having)
+      attrs)))
 
-(defn columns-in-joins
-  [joins]
-  (set (apply concat (vals joins))))
+(defn group-atomic-variables [coll]
+  (set/rename-keys  (group-by symbol? coll) {true :found-variables false :found-columns}))
 
-(defn polulate-columns-with-joins
-  [{:keys [joins] :as floor-plan}]
-  (update floor-plan :true-columns
-    clojure.set/union (columns-in-joins joins)))
+(defn collect-atomic-variables
+  [attrs]
+  (group-atomic-variables (collect-atomic-variables* attrs)))
 
-(defn polulate-columns-with-idents
-  [{:keys [idents] :as floor-plan}]
-  (update floor-plan :true-columns
-    clojure.set/union idents))
+(defn variables-and-true-columns
+  [{:keys [:attributes] :as registry}]
+  (let [{:keys [:found-variables :found-columns]} (collect-atomic-variables attributes)
+        non-true-columns (into #{} (filter #(#{:root :join :pseudo-column} (:type %))) attributes)
+        all-columns (set/union (collect-outputs attributes) found-columns)
+        true-columns (set/difference all-columns non-true-columns)]
+    (merge registry
+      {:true-columns true-columns
+       :found-variables found-variables})))
 
-(defn polulate-cardinality-with-aggregators
-  [{:keys [aggregators] :as floor-plan}]
-  (update floor-plan :cardinality merge (zipmap (keys aggregators) (repeat :one))))
+(defn fill-true-column-attributes [registry])
 
-(defn polulate-cardinality-with-idents
-  [{:keys [idents] :as floor-plan}]
-  (update floor-plan :cardinality merge (zipmap idents (repeat :one))))
+(defn compile-clojuric-names
+  [{:keys [:emitter] :as registry}]
+  )
 
-(defn expand-floor-plan-keys
-  [{:keys [reversed-joins] :as floor-plan}]
-  (-> floor-plan
-      (update :true-columns set)
-      (update :roots flatten-multi-keys)
-      (update :extra-conditions (fnil flatten-multi-keys {}))
-      (update :pagination-fallbacks (fnil flatten-multi-keys {}))
-      (update :aggregators (fnil flatten-multi-keys {}))
-      polulate-cardinality-with-aggregators
-      polulate-cardinality-with-idents
-      (update :cardinality flatten-multi-keys)
-      (update :joins (fnil flatten-multi-keys {}))
-      polulate-columns-with-joins
-      polulate-columns-with-idents
-      (update :joins expand-reversed-joins reversed-joins)
-      (update :required-columns expand-denpendencies)))
+(defn compile-true-columns
+  [{:keys [:emitter] :as registry}]
+  )
 
-(defn prepare-keywords
-  [{:keys [true-columns aggregators pseudo-columns
-           idents roots joins] :as floor-plan}]
-  (-> floor-plan
-    (assoc :aggregator-keywords (set (keys aggregators)))
+(defn collect-true-columns [registry])
 
-    (assoc :column-keywords
-      (clojure.set/union true-columns
-        (set (keys (merge aggregators pseudo-columns)))))
+(defn inline-into
+  [k true-column-names]
+  (fn [attr]
+    (update attr k
+      #(expressions/substitute-atomic-variables
+         {:variable-values true-column-names} %))))
 
-    (assoc :root-keywords (set (keys roots)))
-    (assoc :ident-keywords idents)
-    (assoc :join-keywords (set (keys joins)))))
+(defn inline-true-columns
+  [{:keys [:attributes] :as registry}]
+  (let [column-names (collect-true-columns registry)]
+    (assoc registry :attributes
+      (-> attributes
+        (conditionally-update
+          #(:compiled-filter %)
+          (inline-into :compiled-filter column-names))
+        (conditionally-update
+          #(:compiled-ident-filter %)
+          (inline-into :compiled-ident-filter column-names))
+        (conditionally-update
+          #(:compiled-join-filter %)
+          (inline-into :compiled-join-filter column-names))
+        (conditionally-update
+          #(:compiled-having %)
+          (inline-into :compiled-having column-names))
+        (conditionally-update
+          #(:compiled-formula %)
+          (inline-into :compiled-formula column-names))))))
 
-(defn prepare-clojuric-names
-  [{:keys [emitter column-keywords] :as floor-plan}]
-  (-> floor-plan
-    (assoc :clojuric-names (clojuric-names emitter column-keywords))))
+(defn compile-selection
+  [registry]
+  ;; selection for true columns and formulas
+  )
 
-(defn separate-floor-plan-keys
-  [floor-plan]
-  (-> floor-plan
-    process-joins
-    prepare-keywords
-    prepare-clojuric-names))
+(defn compile-join-selection
+  [registry])
 
-(defn precompile-floor-plan
-  [{:keys [joins emitter idents roots] :as floor-plan}]
-  (-> floor-plan
-    (assoc :batch-query (emitter/emitter->batch-query emitter))
-    (assoc :join-statements (compile-join-statements emitter joins))
-    (assoc :target-tables (merge (idents->target-tables emitter idents)
-                            (roots->target-tables emitter roots)
-                            (joins->target-tables emitter joins)))
-    (assoc :join-filter-subqueries (compile-join-filter-subqueries emitter joins))))
+(defn compile-traverse-scheme [registry]
+  ;; FIXME
+  #{:traverse-scheme/roots
+    :traverse-scheme/joins
+    :traverse-scheme/columns})
 
-(def compile-floor-plan
-  (comp internalize-keywords
-    compile-floor-plan*
-    precompile-floor-plan
-    separate-floor-plan-keys
-    expand-floor-plan-keys))
+(defn ident-source-table*
+  [{:keys [emitter]} item]
+  (derive-missing-key item :table #(emitter/table-name emitter (:key item))))
+
+(defn join-source-table [])
+
+(defn root-source-table [])
+
+(defn rotate [coll]
+  (take (count coll) (drop 1 (cycle coll))))
+
+(defn build-indexes [registry])
+
+(defn compile-floor-plan [flat-attributes]
+  (let [registry (group-registry flat-attributes)]
+    (->> registry
+      (compile-formulas)
+      (expand-nested-pseudo-columns)
+      (expand-pseudo-columns-in-aggregators)
+      (compile-joins)
+      (join-filter-subqueries)
+      (derive-ident-filters)
+      (derive-join-filters)
+      (derive-ident-cardinality)
+      (compile-filters)
+      (compile-variables)
+      (compile-return-functions)
+      (variables-and-true-columns)
+      (fill-true-column-attributes)
+      (compile-true-columns)
+      (compile-clojuric-names)
+      (inline-true-columns)
+      (compile-pagination-fallbacks)
+      (compile-selection)
+      (compile-join-selection)
+      #_(compile-cte-keyword)
+      (compile-traverse-scheme)
+      #_(compile-group-by)
+      (build-indexes))))
