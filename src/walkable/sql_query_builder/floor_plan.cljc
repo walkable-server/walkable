@@ -10,12 +10,12 @@
 (defn check-circular-dependency!
   [graph]
   (try
-    (reduce (fn [acc [x y]] (dep/depend acc x y))
+    (reduce (fn [acc [x y]] (dep/depend acc y x))
       (dep/graph)
       graph)
     (catch Exception e
       (let [{:keys [node dependency] :as data} (ex-data e)]
-        (throw (ex-info (str "Circular dependency between;" node " and " dependency)
+        (throw (ex-info (str "Circular dependency between " node " and " dependency)
                  data))))))
 
 (defn column-names
