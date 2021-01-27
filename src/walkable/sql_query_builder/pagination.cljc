@@ -115,30 +115,6 @@
                     :wrap-validate (:wrap-validate-limit emitter)}
     limit-config))
 
-(defn compile-fallbacks*
-  [emitter clojuric-names pagination-fallbacks]
-  (reduce (fn [acc [k {offset-config   :offset
-                       limit-config    :limit
-                       order-by-config :order-by}]]
-            (let [v {:offset-fallback
-                     (offset-fallback emitter offset-config)
-
-                     :limit-fallback
-                     (limit-fallback emitter limit-config)
-
-                     :order-by-fallback
-                     (order-by-fallback emitter clojuric-names order-by-config)}]
-              (assoc acc k v)))
-    {}
-    pagination-fallbacks))
-
-(defn compile-fallbacks
-  [emitter clojuric-names pagination-fallbacks]
-  (->> (clojure.set/rename-keys pagination-fallbacks {:default `default-fallbacks})
-    (merge {`default-fallbacks {:offset   {}
-                                :limit    {}
-                                :order-by {}}})
-    (compile-fallbacks* emitter clojuric-names)))
 
 (defn merge-pagination
   [default-fallbacks
