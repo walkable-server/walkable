@@ -3,6 +3,8 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.emitter :as emitter]
             [com.wsscode.pathom.core :as p]
+            [clojure.set :as set]
+            [clojure.string :as string]
             [weavejester.dependency :as dep]
             [clojure.spec.alpha :as s]
             [plumbing.graph :as graph]))
