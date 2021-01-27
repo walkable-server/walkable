@@ -154,7 +154,7 @@
     (str  "Postfix operators always have arity 1. Please check operator " operator "'s definition."))
   (fn [_env [_operator params]]
     (assert (= 1 (count params))
-      (str "There must exactly one argument to " operator))
+      (str "There must be exactly one argument to " operator))
     {:raw-string (str "(?)" sql-name)
      :params     params}))
 
