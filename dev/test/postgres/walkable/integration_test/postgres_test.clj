@@ -6,8 +6,7 @@
             [integrant.core :as ig]
             [duct.core :as duct]
             [com.wsscode.pathom.connect :as pc]
-            [clojure.test :as t :refer [deftest]]
-            [walkable.sql-query-builder.impl.postgres]))
+            [clojure.test :as t :refer [deftest]]))
 
 (duct/load-hierarchy)
 

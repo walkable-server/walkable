@@ -5,8 +5,7 @@
             [clojure.java.io :as io]
             [integrant.core :as ig]
             [duct.core :as duct]
-            [clojure.test :refer [deftest]]
-            [walkable.sql-query-builder.impl.sqlite]))
+            [clojure.test :refer [deftest]]))
 
 (duct/load-hierarchy)
 

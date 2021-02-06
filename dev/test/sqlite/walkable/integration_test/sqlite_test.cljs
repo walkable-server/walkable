@@ -7,8 +7,7 @@
             [com.wsscode.pathom.connect :as pc]
             [walkable.core-async :as walkable]
             [walkable.sql-query-builder.emitter :as emitter]
-            ["sqlite3" :as sqlite3]
-            [walkable.sql-query-builder.impl.sqlite]))
+            ["sqlite3" :as sqlite3]))
 
 (def db-specific-emitter
   {:sqlite emitter/sqlite-emitter})
