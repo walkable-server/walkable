@@ -115,6 +115,9 @@
                     :wrap-validate (:wrap-validate-limit emitter)}
     limit-config))
 
+(comment
+  ;; key for default of defaults
+  `default-fallbacks)
 
 (defn merge-pagination
   [default-fallbacks
@@ -124,8 +127,8 @@
         limit-fallback    (or limit-fallback (get default-fallbacks :limit-fallback))
         order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))
 
-        {:keys [string columns]} (order-by-fallback order-by)]
-    {:offset           (offset-fallback offset)
-     :limit            (limit-fallback limit)
+        {:keys [string columns]} (when order-by-fallback (order-by-fallback order-by))]
+    {:offset           (when offset-fallback (offset-fallback offset))
+     :limit            (when limit-fallback (limit-fallback limit))
      :order-by         string
      :order-by-columns columns}))

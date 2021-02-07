@@ -120,6 +120,18 @@
 
      :stringify-offset #(str " OFFSET " % " ROWS")}))
 
+(def predefined-emitters
+  {:mysql mysql-emitter
+   :postgres postgres-emitter
+   :sqlite sqlite-emitter
+   :oracle oracle-emitter})
+
+(defn build-emitter
+  [{:keys [:base] :or {base :postgres} :as attr}]
+  (let [custom-props (select-keys attr (keys default-emitter))]
+    (merge (get predefined-emitters base)
+      custom-props)))
+
 (s/def ::target-table string?)
 
 (s/def ::query-string-input

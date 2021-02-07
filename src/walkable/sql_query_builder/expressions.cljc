@@ -443,6 +443,16 @@
                     :params-position :infix
                     :sql-name ">>"})])
 
+(def predefined-operator-sets
+  ;; TODO: should be slightly different
+  {:postgres common-operators
+   :mysql common-operators
+   :sqlite common-operators})
+
+(defn build-operator-set
+  [{:keys [:base :except] :or {base :postgres}}]
+  (remove #((set except) (:key %)) (get predefined-operator-sets base)))
+
 (defmethod process-expression :expression
   [{:keys [:operators] :as env}
    [_kw {:keys [:operator :params] :or {operator :and}}]]
