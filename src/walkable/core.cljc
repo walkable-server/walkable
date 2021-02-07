@@ -169,16 +169,13 @@
       dynamic-resolver)))
 
 (defn connect-plugin
-  [{:keys [resolver-sym floor-plan
-           inputs-outputs autocomplete-ignore
-           resolver]
+  [{:keys [resolver-sym registry resolver autocomplete-ignore]
     :or   {resolver     dynamic-resolver
            resolver-sym `walkable-resolver}}]
-  (let [provided-indexes    (compute-indexes resolver-sym inputs-outputs)
-        compiled-floor-plan (floor-plan/compile-floor-plan
-                             (assoc floor-plan :idents (::pc/idents provided-indexes)))
-        config              {::resolver-sym resolver-sym
-                             ::floor-plan   compiled-floor-plan}]
+  (let [{:keys [:inputs-outputs] compiled-floor-plan :floor-plan}
+        (floor-plan/compile-floor-plan registry)
+
+        provided-indexes (compute-indexes resolver-sym inputs-outputs)]
     {::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
        (let [resolve-fn  (fn [env _] (resolver compiled-floor-plan env))
