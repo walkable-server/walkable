@@ -136,7 +136,8 @@
     :type :variable
     :compute (fn [_env] 2021)}
    {:key :person/id
-    :type :primary-key
+    :type :true-column
+    :primary-key true
     :output []}])
 
 (s/def ::without-join-table
@@ -327,7 +328,7 @@
   [attr]
   (or (:aggregate attr)
     (= :pseudo-column (:type attr))
-    (= :primary-key (:type attr))))
+    (:primary-key attr)))
 
 (defn compile-formulas
   [registry]
@@ -547,9 +548,6 @@
           (fn [{condition :ident-filter :as attr}]
             (->> condition
               (expressions/compile-to-string registry)
-              ;; `ident-value variable is only available here
-              (expressions/substitute-atomic-variables
-                {:variable-values {`ident-value (expressions/av `ident-value)}})
               (expressions/substitute-atomic-variables
                 {:variable-values compiled-pseudo-columns})
               (assoc attr :compiled-ident-filter))))
@@ -576,11 +574,14 @@
   (assoc registry :attributes
     (-> attributes
       (conditionally-update
-        #(= :primary-key (:type %))
+        :primary-key
         (fn [{:keys [:compiled-filter :compiled-ident-filter] :as attr}]
           (assoc attr :all-filters
-            (expressions/concat-with-and
-              (into [] (remove nil?) [compiled-filter compiled-ident-filter])))))
+            (let [without-supplied-filter
+                  (expressions/concat-with-and
+                    (into [] (remove nil?) [compiled-filter compiled-ident-filter]))]
+              (fn [_supplied-filter]
+                without-supplied-filter)))))
       (conditionally-update
         #(#{:join :root} (:type %))
         (fn [{:keys [:compiled-filter :compiled-join-filter] :as attr}]
@@ -665,14 +666,14 @@
   [registry]
   (update registry :attributes
     conditionally-update
-    (fn [attr] (= :primary-key (:type attr)))
+    :primary-key
     (fn [attr] (assoc attr :cardinality :one))))
 
 (defn derive-ident-filters
   [registry]
   (update registry :attributes
     conditionally-update
-    (fn [attr] (= :primary-key (:type attr)))
+    :primary-key
     (fn [attr] (ident-filter registry attr))))
 
 (defn join-filter
@@ -720,7 +721,7 @@
   [registry]
   (update registry :attributes
     conditionally-update
-    #(#{:root :join} (:type %))
+    #(or (#{:root :join} (:type %)) (:primary-key %))
     compile-return-function))
 
 (defn group-registry
@@ -768,9 +769,9 @@
   [{:keys [:attributes] :as registry}]
   (let [{:keys [:found-variables :found-columns]} (collect-atomic-variables attributes)
         non-true-columns (into #{} (comp (filter #(#{:root :join :pseudo-column} (:type %))) (map :key)) attributes)
-        all-columns (set/union found-columns
-                      (collect-outputs attributes)
-                      (collect-join-paths attributes))
+        all-columns (set (set/union found-columns
+                           (collect-outputs attributes)
+                           (collect-join-paths attributes)))
         true-columns (set/difference all-columns non-true-columns)]
     (merge registry
       {:true-columns true-columns
@@ -830,14 +831,10 @@
           (inline-into :compiled-having inline-forms))
         (conditionally-update
           #(and (:compiled-formula %) (not (= :true-column (:type %))))
-          (inline-into :compiled-formula inline-forms))
-        #_(conditionally-update
-          #(= :true-column (:type %))
-          (fn [{:keys [:inline-form] :as attr}]
-            (assoc attr :compiled-formula {:raw-string inline-form :params []})))))))
+          (inline-into :compiled-formula inline-forms))))))
 
 (defn compile-selection
-  [{:keys [:emitter] :as registry}]
+  [registry]
   (update registry :attributes
     conditionally-update
     #(#{:true-column :pseudo-column} (:type %))
@@ -916,7 +913,7 @@
   [registry]
   (update registry :attributes
     conditionally-update
-    #(#{:root :primary-key} (:type %))
+    #(or (= :root (:type %)) (:primary-key %))
     (fn [{:keys [:return] :as attr}]
       (assoc attr :merge-sub-entities
         (fn ->merge-sub-entities [result-key]
@@ -951,56 +948,88 @@
                 (into [] (comp xform))
                 batch-query))))))))
 
-(defn ident-target-table*
+(defn ident-table*
   [registry item]
   (derive-missing-key item :table #(keyword-prop registry (:key item) :table-name)))
 
+(defn derive-ident-table
+  [registry]
+  (update registry :attributes
+    conditionally-update
+    :primary-key
+    (fn [attr] (ident-table* registry attr))))
+
 (defn inputs-outputs
   [{:keys [:attributes]}]
-  (let [roots (->> attributes
-                (filter #(and (= :root (:type %)) (not (:aggregate %))))
-                (mapv (fn [{k :key :keys [:output]}]
-                        {::pc/input #{}
-                         ::pc/output {k output}})))
-        
-        joins (->> attributes
-                (filter #(and (= :join (:type %)) (not (:aggregate %))))
-                (mapv (fn [{k :key :keys [:output :source-column]}]
-                        {::pc/input #{source-column}
-                         ::pc/output {k output}})))
+  (let [plain-roots
+        (->> attributes
+          (filter #(and (= :root (:type %)) (not (:aggregate %))))
+          (mapv (fn [{k :key :keys [:output]}]
+                  {::pc/input #{}
+                   ::pc/output [{k output}]})))
+
+        root-aggregators
+        (->> attributes
+          (filter #(and (= :root (:type %)) (:aggregate %)))
+          (mapv (fn [{k :key}]
+                  {::pc/input #{}
+                   ::pc/output [k]})))
+
+        plain-joins
+        (->> attributes
+          (filter #(and (= :join (:type %)) (not (:aggregate %))))
+          (mapv (fn [{k :key :keys [:output :source-column]}]
+                  {::pc/input #{source-column}
+                   ::pc/output [{k output}]})))
+
+        join-aggregators
+        (->> attributes
+          (filter #(and (= :join (:type %)) (:aggregate %)))
+          (mapv (fn [{k :key :keys [:source-column]}]
+                  {::pc/input #{source-column}
+                   ::pc/output [k]})))
 
         idents (->> attributes
-                 (filter #(= :primary-key (:type %)))
+                 (filter :primary-key)
                  (mapv (fn [{k :key :keys [:output]}]
                          {::pc/input #{k}
                           ::pc/output output})))]
-    (concat roots joins idents)))
+    (concat plain-roots root-aggregators plain-joins join-aggregators idents)))
 
 (defn floor-plan [{:keys [:attributes]}]
   ;; build a compact version suitable for expressions/compile-to-string
   (merge
     {:target-table (merge (build-index-of :target-table (filter #(= :join (:type %)) attributes))
-                     (build-index-of :table (filter #(#{:root :primary-key} (:type %)) attributes)))}
+                     (build-index-of :table (filter #(or (= :root (:type %)) (:primary-key %)) attributes)))}
     {:target-column (build-index-of :target-column (filter #(= :join (:type %)) attributes))}
     {:source-column (build-index-of :source-column (filter #(= :join (:type %)) attributes))}
-    {:merge-sub-entities (build-index-of :merge-sub-entities (filter #(#{:root :join} (:type %)) attributes))}
-    {:query-multiplier (build-index-of :query-multiplier (filter #(:query-multiplier %) attributes))}
-    {:join-statement (build-index-of :join-statement (filter #(:join-statement %) attributes))}
-    {:compiled-join-selection (build-index-of :compiled-join-selection (filter #(:compiled-join-selection %) attributes))}
-    {:compiled-join-aggregator-selection (build-index-of :compiled-join-aggregator-selection (filter #(:compiled-join-aggregator-selection %) attributes))}
-    {:keyword-type (build-index-of :traverse-scheme (filter #(#{:root :primary-key :join :true-column :pseudo-column} (:type %)) attributes))} 
-    #_{:compiled-pagination-fallbacks (build-index-of :compiled-pagination-fallbacks (filter ))}
-    {:return (build-index-of :return (filter #(#{:root :primary-key :join} (:type %)) attributes))}
+    {:merge-sub-entities (build-index-of :merge-sub-entities (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
+    {:query-multiplier (build-index-of :query-multiplier (filter :query-multiplier attributes))}
+    {:join-statement (build-index-of :join-statement (filter :join-statement attributes))}
+    {:compiled-join-selection (build-index-of :compiled-join-selection (filter :compiled-join-selection attributes))}
+    {:compiled-join-aggregator-selection (build-index-of :compiled-join-aggregator-selection (filter :compiled-join-aggregator-selection attributes))}
+    {:keyword-type (build-index-of :traverse-scheme (filter #(#{:root :join :true-column :pseudo-column} (:type %)) attributes))} 
+    {:compiled-pagination-fallbacks (build-index-of :compiled-pagination-fallbacks (filter :compiled-pagination-fallbacks attributes))}
+    {:return (build-index-of :return (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
     {:aggregator-keywords (into #{} (comp (filter #(:aggregate %)) (map :key)) attributes)}
-    {:compiled-variable-getter (build-index-of :compiled-variable-getter (filter #(:compiled-variable-getter %) attributes))}
-    {:all-filters (build-index-of :all-filters (filter #(:all-filters %) attributes))}
-    {:compiled-selection (build-index-of :compiled-selection (filter #(:compiled-selection %) attributes))})
+    {:compiled-variable-getter (build-index-of :compiled-variable-getter (filter :compiled-variable-getter attributes))}
+    {:all-filters (build-index-of :all-filters (filter :all-filters attributes))}
+    {:ident-keywords (into #{} (comp (filter #(:primary-key %)) (map :key)) attributes)}
+    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))})
   )
 
 (defn compact [registry]
   (merge (select-keys registry [:emitter :operators :batch-query])
     {:floor-plan (floor-plan registry)
      :inputs-outputs (inputs-outputs registry)}))
+
+(defn with-db-type
+  [db-type registry]
+  (concat registry
+    [{:key `emitter
+      :base db-type}
+     {:key `operator-set
+      :base db-type}]))
 
 (defn compile-floor-plan*
   [flat-attributes]
@@ -1010,6 +1039,7 @@
       (expand-nested-pseudo-columns)
       (expand-pseudo-columns-in-aggregators)
       (compile-joins)
+      (derive-ident-table)
       (join-filter-subqueries)
       (derive-ident-filters)
       (derive-join-filters)

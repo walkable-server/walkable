@@ -24,6 +24,7 @@
   (let [q (-> (prepared-query env entities)
             (expressions/build-parameterized-sql-query))]
     (if q
+      ;; TODO: custom keywords
       ((::run env) (::db env) q)
       [])))
 
@@ -169,23 +170,25 @@
       dynamic-resolver)))
 
 (defn connect-plugin
-  [{:keys [resolver-sym registry resolver autocomplete-ignore]
+  [{:keys [resolver-sym registry resolver autocomplete-ignore db-type]
     :or   {resolver     dynamic-resolver
            resolver-sym `walkable-resolver}}]
   (let [{:keys [:inputs-outputs] compiled-floor-plan :floor-plan}
-        (floor-plan/compile-floor-plan registry)
-
-        provided-indexes (compute-indexes resolver-sym inputs-outputs)]
+        (floor-plan/compile-floor-plan (if db-type
+                                         (floor-plan/with-db-type db-type registry)
+                                         registry))]
     {::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
-       (let [resolve-fn  (fn [env _] (resolver compiled-floor-plan env))
-             all-indexes (-> provided-indexes
-                             (internalize-indexes
-                              {::pc/sym               (gensym resolver-sym)
-                               ::pc/cache?            false
-                               ::pc/dynamic-resolver? true
-                               ::pc/resolve           resolve-fn})
-                             (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
+       (let [resolve-fn  (fn [env _]
+
+                           (resolver compiled-floor-plan env))
+             all-indexes (-> (compute-indexes resolver-sym inputs-outputs)
+                           (internalize-indexes
+                             {::pc/sym               (gensym resolver-sym)
+                              ::pc/cache?            false
+                              ::pc/dynamic-resolver? true
+                              ::pc/resolve           resolve-fn})
+                           (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
              idx-atoms   (keep ::pc/indexes plugins)]
          (doseq [idx* idx-atoms]
            (swap! idx* pc/merge-indexes all-indexes))

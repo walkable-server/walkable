@@ -127,9 +127,8 @@
             {:variable-values compiled-formulas})))))
 
 (defn all-filters
-  [floor-plan {:keys [dispatch-key key] :as ast}]
-  (let [k (if (vector? key) key dispatch-key)
-        f (get-in floor-plan [:all-filters k])]
+  [floor-plan {:keys [dispatch-key] :as ast}]
+  (let [f (get-in floor-plan [:all-filters dispatch-key])]
     (f (process-supplied-filter floor-plan ast))))
 
 (defn query-dispatch
