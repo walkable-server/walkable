@@ -116,15 +116,16 @@
   (-> floor-plan :compiled-variable-getter-graph))
 
 (defn process-supplied-filter
-  [{:keys [compiled-formulas join-filter-subqueries]}
+  [{:keys [compiled-formulas operators join-filter-subqueries]}
    ast]
-  (let [supplied-condition (get-in ast [:params :filters])]
+  (let [supplied-condition (get-in ast [:params :filter])]
     (when supplied-condition
       (->> supplied-condition
-           (expressions/compile-to-string
-            {:join-filter-subqueries join-filter-subqueries})
-           (expressions/substitute-atomic-variables
-            {:variable-values compiled-formulas})))))
+        (expressions/compile-to-string
+          {:operators operators
+           :join-filter-subqueries join-filter-subqueries})
+        (expressions/substitute-atomic-variables
+          {:variable-values compiled-formulas})))))
 
 (defn all-filters
   [floor-plan {:keys [dispatch-key] :as ast}]
