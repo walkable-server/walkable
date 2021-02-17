@@ -1017,7 +1017,8 @@
     {:compiled-variable-getter (build-index-of :compiled-variable-getter (filter :compiled-variable-getter attributes))}
     {:all-filters (build-index-of :all-filters (filter :all-filters attributes))}
     {:ident-keywords (into #{} (comp (filter #(:primary-key %)) (map :key)) attributes)}
-    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))})
+    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))}
+    {:compiled-formulas (build-index-of :compiled-formula (filter #(#{:true-column :pseudo-column} (:type %)) attributes))})
   )
 
 (defn compact [registry]
