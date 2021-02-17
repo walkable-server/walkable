@@ -590,13 +590,15 @@
                   (into [] (remove nil?) [compiled-filter compiled-join-filter]))
                 with-supplied-filter
                 (expressions/concat-with-and
-                  (into [] (remove nil?) [compiled-filter compiled-join-filter (expressions/av `supplied-filter)]))]
+                  (into [] (remove nil?) [compiled-filter
+                                          compiled-join-filter
+                                          (expressions/compile-to-string {} (expressions/av `supplied-filter))]))]
             (assoc attr :all-filters
               (fn [supplied-filter]
                 (if supplied-filter
                   (expressions/substitute-atomic-variables
-                    with-supplied-filter
-                    {:variable-values {`supplied-filter supplied-filter}})
+                    {:variable-values {`supplied-filter supplied-filter}}
+                    with-supplied-filter)
                   without-supplied-filter)))))))))
 
 (comment
