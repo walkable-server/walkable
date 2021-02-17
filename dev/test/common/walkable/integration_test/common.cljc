@@ -88,7 +88,8 @@
     :join-path
     [:person/number :person-pet/person-number
      :person-pet/pet-index :pet/index]
-    :output [:person-pet/adoption-year
+    :output [:pet/index
+             :person-pet/adoption-year
              :pet/name
              :pet/yob
              :pet/color]}
