@@ -1022,8 +1022,10 @@
   )
 
 (defn compact [registry]
-  (merge (select-keys registry [:emitter :operators :batch-query])
-    {:floor-plan (floor-plan registry)
+  ;; TODO: clean up
+  (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas])
+    {:floor-plan (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas])
+                   (floor-plan registry))
      :inputs-outputs (inputs-outputs registry)}))
 
 (defn with-db-type
