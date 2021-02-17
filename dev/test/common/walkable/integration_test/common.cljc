@@ -1,7 +1,6 @@
 (ns walkable.integration-test.common
   (:require [com.wsscode.pathom.core :as p]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [com.wsscode.pathom.connect :as pc]
             [plumbing.core :refer [fnk sum]]))
 
 (def farmer-house-registry
@@ -299,17 +298,17 @@
 
      {:message "aggregate should work"
       :query
-      `[(:people/count {:filters [:and {:person/pet [:or [:= :pet/color "white"]
-                                                     [:= :pet/color "yellow"]]}
-                                  [:< :person/number 10]]})]
+      `[(:people/count {:filter [:and {:person/pet [:or [:= :pet/color "white"]
+                                                    [:= :pet/color "yellow"]]}
+                                 [:< :person/number 10]]})]
       :expected
       #:people {:count 1}}
 
      {:message "filters should work"
       :query
-      `[{(:people/people {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
-                                                        [:= :pet/color "yellow"]]}
-                                     [:< :person/number 10]]
+      `[{(:people/people {:filter [:and {:person/pet [:or [:= :pet/color "white"]
+                                                      [:= :pet/color "yellow"]]}
+                                   [:< :person/number 10]]
                           :order-by [:person/name]})
          [:person/number :person/name
           :person/pet-count
