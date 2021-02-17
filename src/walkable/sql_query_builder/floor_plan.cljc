@@ -639,7 +639,7 @@
 
 (defn compile-pagination-fallback
   [{:keys [emitter clojuric-names]} attr]
-  (merge attr
+  (assoc attr :compiled-pagination-fallbacks
     {:offset-fallback (pagination/offset-fallback emitter
                         {:default (:default-offset attr)
                          :validate (:validate-offset attr)
@@ -657,7 +657,8 @@
   [registry]
   (update registry :attributes
     conditionally-update
-    #(and (#{:root :join} (:type %)) (not (:aggregate %)))
+    #(or (and (#{:root :join} (:type %)) (not (:aggregate %)))
+       (= pagination/default-fallbacks (:key %)))
     #(compile-pagination-fallback registry %)))
 
 (defn ident-filter
@@ -795,6 +796,11 @@
     conditionally-update
     selectable?
     #(assoc % :clojuric-name (emitter/clojuric-name emitter (:key %)))))
+
+(defn collect-clojuric-names
+  [{:keys [:attributes] :as registry}]
+  (assoc registry :clojuric-names
+    (build-index-of :clojuric-name (filter :clojuric-name attributes))))
 
 (defn compile-true-columns
   [{:keys [:emitter] :as registry}]
@@ -1022,11 +1028,9 @@
   )
 
 (defn compact [registry]
-  ;; TODO: clean up
-  (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas])
-    {:floor-plan (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas])
-                   (floor-plan registry))
-     :inputs-outputs (inputs-outputs registry)}))
+  {:floor-plan (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas :clojuric-names])
+                 (floor-plan registry))
+   :inputs-outputs (inputs-outputs registry)})
 
 (defn with-db-type
   [db-type registry]
@@ -1056,6 +1060,7 @@
       (fill-true-column-attributes)
       (compile-true-columns)
       (compile-clojuric-names)
+      (collect-clojuric-names)
       (inline-true-columns)
       (compile-pagination-fallbacks)
       (compile-selection)
