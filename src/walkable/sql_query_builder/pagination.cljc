@@ -115,8 +115,8 @@
                     :wrap-validate (:wrap-validate-limit emitter)}
     limit-config))
 
-(comment
-  ;; key for default of defaults
+(def default-fallbacks
+  "Key for default of defaults."
   `default-fallbacks)
 
 (defn merge-pagination
