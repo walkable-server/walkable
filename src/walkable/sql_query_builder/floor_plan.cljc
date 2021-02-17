@@ -845,7 +845,7 @@
   [registry]
   (update registry :attributes
     conditionally-update
-    #(#{:true-column :pseudo-column} (:type %))
+    #(or (#{:true-column :pseudo-column} (:type %)) (:aggregate %))
     (fn [{:keys [:compiled-formula :clojuric-name] :as attr}]
       (let [selection (expressions/selection compiled-formula clojuric-name)]
         (assoc attr :compiled-selection selection)))))
