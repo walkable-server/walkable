@@ -17,6 +17,7 @@
             [integrant.repl :refer [clear halt go init prep reset]]
             [integrant.repl.state :refer [config system]]
             [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
             [walkable.core :as walkable]))
@@ -35,29 +36,13 @@
   (-> (duct/read-config (config-by-db db))
     (duct/prep-config profiles)))
 
+(integrant.repl/set-prep! #(prepare-system :postgres))
+
 (defn test []
   (eftest/run-tests (eftest/find-tests "test")))
 
 (when (io/resource "local.clj")
   (load "local"))
-
-(defn set-target-db! [db]
-  (assert (#{:postgres :mysql :sqlite} db))
-  (set-refresh-dirs
-    "dev/src/common"
-    (str "dev/src/" ({:postgres "postgres" :mysql "mysql"} db "sqlite"))
-    "src" "test")
-  (case db
-    :postgres (require '[walkable.sql-query-builder.impl.postgres])
-    :sqlite   (require '[walkable.sql-query-builder.impl.sqlite])
-    true)
-  (integrant.repl/set-prep! #(prepare-system db)))
-
-;; automatically set target db
-(cond
-  (config-by-db :postgres) (set-target-db! :postgres)
-  (config-by-db :sqlite)   (set-target-db! :sqlite)
-  (config-by-db :mysql)    (set-target-db! :mysql))
 
 (defn db []
   (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
@@ -94,8 +79,6 @@
       (put! c r))
     c))
 
-(def emitter emitter/default-emitter)
-
 ;; Simple join examples
 
 ;; I named the primary columns "index" and "number" instead of "id" to
@@ -104,132 +87,46 @@
 (defn now []
   (.format (java.text.SimpleDateFormat. "HH:mm") (java.util.Date.)))
 
-(def inputs-outputs
-  (let [farmer-out [:farmer/number
-                    :farmer/name
-                    :farmer/house-index
-                    :farmer/house-count
-                    :farmer/house]
-        house-out  [:house/index
-                    :house/color
-                    :house/owner]]
-    [{::pc/output [{:farmers/farmers farmer-out}]}
+(require '[walkable.integration-test.helper :refer [walkable-parser]])
 
-     {::pc/input  #{:farmer/number}
-      ::pc/output farmer-out}
+(require '[walkable.integration-test.common :as common :refer [farmer-house-registry]])
 
-     {::pc/output [{:house/owner farmer-out}]}
+(def reg (floor-plan/conditionally-update
+           farmer-house-registry
+           #(= :farmers/farmers (:key %))
+           #(merge % {:default-order-by [:farmer/name :desc]
+                      :validate-order-by #{:farmer/name :farmer/number}})))
 
-     {::pc/output [{:houses/houses house-out}]}
+(def w* (walkable-parser :postgres common/person-pet-registry))
 
-     {::pc/output [{:farmer/house house-out}]}
+(defn w [q]
+  (w* {::walkable/db (db) ::walkable/run run-print-query}
+    q))
 
-     {::pc/input  #{:house/index}
-      ::pc/output house-out}]))
+(comment
+  (->> (floor-plan/compile-floor-plan* common/person-pet-registry)
+    :attributes
+    (filter #(= :people/count (:key %)))
+    first
+    )
+    
+  (let [f (->> (floor-plan/compile-floor-plan* reg)
+            :attributes
+            (filter #(= :farmers/farmers (:key %)))
+            first
+            :compiled-pagination-fallbacks
+            :limit-fallback)]
+    (f 2))
+  
+  (w `[{:farmers/farmers
+        [:farmer/number :farmer/name
+         {:farmer/house [:house/index :house/color]}]}])
 
-(require '[plumbing.core :refer [fnk]])
+  (w `[{(:farmers/farmers {:limit 1})
+        [:farmer/number :farmer/name
+         {:farmer/house [:house/index :house/color]}]}])
 
-(def core-config
-  (let [resolver-sym `my-resolver]
-    {:resolver-sym   resolver-sym
-     :inputs-outputs inputs-outputs
-
-     :floor-plan
-     {:emitter          emitter
-      ;; columns already declared in :joins are not needed
-      ;; here
-      :true-columns     [:house/color
-                         :farmer/number
-                         :farmer/name]
-      :idents           #{:house/index :farmer/number}
-      :roots            {:farmers/farmers "farmer"
-                         :houses/houses   "house"}
-      :aggregators      {:farmer/house-count [:count-*]}
-      :use-cte          {:default false}
-      :extra-conditions {}
-      :joins            {[:farmer/house :farmer/house-count]
-                         [:farmer/house-index :house/index]}
-      :reversed-joins   {:house/owner :farmer/house}
-      :cardinality      {;; :farmer/number :one
-                         ;; :house/index :one
-                         :house/owner  :one
-                         :farmer/house :one}}}))
-
-#_
-(let [eg-1
-      '[{(:farmers/farmers #_{:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}
-                                                   [:= :house/color "brown"]]}})
-         [:farmer/number
-          :farmer/name
-          {:farmer/house [:house/index
-                          :house/color
-                          #_{:house/owner
-                           [:farmer/name
-                            :farmer/number
-                            {:farmer/house [:house/index
-                                            :house/color
-                                            {:house/owner [:farmer/number
-                                                           :farmer/name]}]}]}]}]}
-
-        {#_:houses/houses
-         [:house/index "10"]
-         [:house/index
-          :house/color
-
-          {:>/else [{:house/owner [:farmer/number
-                                   :farmer/name
-                                   #_{:farmer/house [:house/index
-                                                   :house/color
-                                                   {:house/owner [:farmer/name]}]}]}]}
-          #_
-          {:house/owner [:farmer/name
-                         {:farmer/house [;; :house/index
-                                         :house/color
-                                         {:house/owner [:farmer/name]}]}]}]}]
-      eg-2
-      '[{:houses/houses
-         #_[:house/index "20"]
-         [:house/index
-          :house/color
-          #_
-          {:>/else
-           [{:house/owner [:farmer/name
-                           :farmer/number
-                           {:farmer/house [:house/index
-                                           :house/color
-                                           {:house/owner [:farmer/number
-                                                          :farmer/name]}]}]}]}
-
-          {:house/owner [:farmer/name
-                         :farmer/number ;; <----------- not automatically injected yet. Source column is there but not look up column
-                         :farmer/house-index
-                         {:farmer/house [:house/index
-                                         :house/color
-                                         {:house/owner [:farmer/name
-                                                        ;:farmer/house-index
-                                                        :farmer/number
-                                                        ]}]}]}]}]
-
-      config
-      (merge {:db    (db)
-              :query jdbc/query #_run-print-query}
-        core-config)
-
-      plg
-      (walkable/connect-plugin config)
-
-      the-parser
-      (p/parser
-        {::p/env     {::p/reader               [p/map-reader
-                                                pc/reader3
-                                                pc/open-ident-reader
-                                                p/env-placeholder-reader]
-                      ::p/placeholder-prefixes #{">"}}
-         ::p/mutate  pc/mutate
-         ::p/plugins [(pc/connect-plugin {::pc/register []})
-                      plg
-                      p/elide-special-outputs-plugin
-                      p/error-handler-plugin
-                      p/trace-plugin]})]
-  (println "running at " (now) "\n\n")
-  (the-parser {} eg-1))
+  (w `[(:people/count {:filter [:and {:person/pet [:or [:= :pet/color "white"]
+                                                   [:= :pet/color "yellow"]]}
+                                [:< :person/number 10]]})])
+  )
