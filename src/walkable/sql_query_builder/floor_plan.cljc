@@ -603,8 +603,8 @@
 
 (comment
   (let [registry {:emitter emitter/default-emitter
-             :operators (build-index :key expressions/common-operators)
-             :attributes my-attributes}]
+                  :operators (build-index :key expressions/common-operators)
+                  :attributes my-attributes}]
     (->> registry
       (compile-formulas)
       (expand-nested-pseudo-columns)
