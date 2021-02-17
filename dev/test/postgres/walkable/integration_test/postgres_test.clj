@@ -21,30 +21,27 @@
 (deftest common-scenarios-test
   (run-scenario-tests db :postgres common-scenarios))
 
-(def planet-inhabitant-floor-plan
-  {:true-columns #{:land.animal/id :land.animal/name
-                   :ocean.animal/id :ocean.animal/name}
-   :roots        {:land.animal/animals  "land.animal"
-                  :ocean.animal/animals "ocean.animal"}
-   :cardinality  {:land.animal/id  :one
-                  :ocean.animal/id :one}})
-
-(def planet-inhabitant-config
-  {:inputs-outputs
-   [{::pc/output [{:land.animal/animals [:land.animal/id :land.animal/name]}]}
-
-    {::pc/output [{:ocean.animal/animals [:ocean.animal/id :ocean.animal/name]}]}
-
-    {::pc/input  #{:land.animal/id}
-     ::pc/output [:land.animal/name]}
-
-    {::pc/input  #{:ocean.animal/id}
-     ::pc/output [:ocean.animal/name]}]})
+(def planet-inhabitant-registry
+  [{:key :land.animal/animals
+    :type :root
+    :table "land.animal"
+    :output [:land.animal/id :land.animal/name]}
+   {:key :ocean.animal/animals
+    :type :root
+    :table "ocean.animal"
+    :output [:ocean.animal/id :ocean.animal/name]}
+   {:key :land.animal/id
+    :type :true-column
+    :primary-key true
+    :output [:land.animal/name]}
+   {:key :ocean.animal/id
+    :type :true-column
+    :primary-key true
+    :output [:ocean.animal/name]}])
 
 (def postgres-scenarios
   {:planet-species
-   {:core-floor-plan planet-inhabitant-floor-plan
-    :core-config     planet-inhabitant-config
+   {:registry planet-inhabitant-registry
     :test-suite
     [{:message "postgres schema should work"
       :query
@@ -54,7 +51,7 @@
       :expected
       {:ocean.animal/animals [#:ocean.animal{:id 10, :name "whale"}
                               #:ocean.animal{:id 20, :name "shark"}]
-       [:land.animal/id 1]   #:land.animal {:id 1, :name "elephant"}}}]}})
+       [:land.animal/id 1] #:land.animal{:id 1, :name "elephant"}}}]}})
 
 (deftest postgres-specific-scenarios-test
   (run-scenario-tests db :postgres postgres-scenarios))
