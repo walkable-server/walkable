@@ -63,7 +63,7 @@
 (defn pagination-default-fallbacks
   [floor-plan]
   (get-in floor-plan
-          [:compiled-pagination-fallbacks 'walkable.sql-query-builder.pagination/default-fallbacks]))
+          [:compiled-pagination-fallbacks pagination/default-fallbacks]))
 
 (defn return
   [floor-plan {:keys [dispatch-key]}]
