@@ -210,6 +210,7 @@
                  {:key 'current-year
                   :type :variable
                   :compute (fn [env] (:current-year env))}
+                 ;; TODO: convention for variable-graph's :key
                  {:key [:graph :hello]
                   :type :variable-graph
                   :graph
@@ -239,7 +240,7 @@
                                         #:human{:number 3, :name "peter", :age 30}]}
                        #:human{:number 3, :name "peter", :age 30, :follow []}
                        #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
-     {:message "variable-getter-graphs should work"
+     #_{:message "variable-getter-graphs should work"
       ;; choose this sequence so stats values are integers
       ;; therefore the output string is the same in all sql dbs
       :env     {:xs [2 4 6 8]}
