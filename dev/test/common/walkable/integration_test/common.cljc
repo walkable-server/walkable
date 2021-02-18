@@ -47,11 +47,11 @@
   [{:key :humans/humans
     :type :root
     :table "human"
-    :output [:human/number :human/name :human/yob]}
+    :output [:human/number :human/name :human/yob :human/age]}
    {:key :human/follow
     :type :join
     :join-path [:human/number :follow/human-1 :follow/human-2 :human/number]
-    :output [:human/number :human/name :human/yob]}])
+    :output [:human/number :human/name :human/yob :human/age]}])
 
 (def person-pet-registry
   [{:key :people/people
