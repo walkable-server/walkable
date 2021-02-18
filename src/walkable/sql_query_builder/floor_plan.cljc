@@ -692,14 +692,26 @@
     (fn [attr] (= :join (:type attr)))
     (fn [attr] (join-filter registry attr))))
 
-(defn compile-group-by
+(defn collect-compiled-formulas
+  [{:keys [:attributes] :as registry}]
+  (assoc registry :compiled-formulas
+    (build-index-of :compiled-formula (filter #(#{:true-column :pseudo-column} (:type %)) attributes))))
+
+(defn compile-group-by*
   [compiled-formulas group-by-keys]
-  ;; FIXME
   (->> group-by-keys
     (map compiled-formulas)
     (map :raw-string)
     (string/join ", ")
     (str " GROUP BY ")))
+
+(defn compile-group-by
+  [{:keys [:compiled-formulas] :as registry}]
+  (update registry :attributes
+    conditionally-update
+    (fn [attr] (and (= :root (:type attr)) (:group-by attr)))
+    (fn [attr] (derive-missing-key attr :compiled-group-by
+                 #(compile-group-by* compiled-formulas (:group-by attr))))))
 
 (defn return-one [entities]
   (if (not-empty entities)
@@ -969,6 +981,7 @@
 
 (defn inputs-outputs
   [{:keys [:attributes]}]
+  ;; TODO: expand joins in outputs to their source column
   (let [plain-roots
         (->> attributes
           (filter #(and (= :root (:type %)) (not (:aggregate %))))
@@ -1022,10 +1035,10 @@
     {:aggregator-keywords (into #{} (comp (filter #(:aggregate %)) (map :key)) attributes)}
     {:compiled-variable-getter (build-index-of :compiled-variable-getter (filter :compiled-variable-getter attributes))}
     {:all-filters (build-index-of :all-filters (filter :all-filters attributes))}
+    {:compiled-having (build-index-of :compiled-having (filter :compiled-having attributes))}
+    {:compiled-group-by (build-index-of :compiled-group-by (filter :compiled-group-by attributes))}
     {:ident-keywords (into #{} (comp (filter #(:primary-key %)) (map :key)) attributes)}
-    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))}
-    {:compiled-formulas (build-index-of :compiled-formula (filter #(#{:true-column :pseudo-column} (:type %)) attributes))})
-  )
+    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))}))
 
 (defn compact [registry]
   {:floor-plan (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas :clojuric-names])
@@ -1071,8 +1084,8 @@
       (compile-root-sub-entities)
       (compile-query-multiplier)
       (compile-all-filters)
-      #_ (compile-group-by)
-      )))
+      (collect-compiled-formulas)
+      (compile-group-by))))
 
 (defn compile-floor-plan
   [flat-attributes]
