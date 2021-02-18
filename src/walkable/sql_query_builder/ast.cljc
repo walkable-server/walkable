@@ -208,6 +208,8 @@
                       :join-statement (join-statement floor-plan ast)
                       :selection (:raw-string selection)
                       :conditions (:raw-string conditions)
+                      ;; TODO:
+                      ;; use :raw-string/:params here in case there are variables in group-by columns
                       :group-by (compiled-group-by floor-plan ast)
                       :having (:raw-string having)
                       :offset offset
