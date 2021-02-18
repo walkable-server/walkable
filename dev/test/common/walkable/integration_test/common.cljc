@@ -107,7 +107,7 @@
    {:key :pets/by-color
     :type :root
     :table "pet"
-    :output [:pet/yob :pet/name :pet/color]
+    :output [:pet/color :color/pet-count]
     :group-by [:pet/color]
     :having [:< 1 :color/pet-count]}
    {:key :color/pet-count
