@@ -12,29 +12,18 @@
 (def db-specific-emitter
   {:sqlite emitter/sqlite-emitter})
 
-(defn connect-config
-  [{:keys [db-type core-config core-floor-plan cte?]}]
-  (let [resolver-sym `test-resolver]
-    (merge core-config
-           {:resolver-sym resolver-sym
-
-            :floor-plan
-            (merge core-floor-plan
-                   {:emitter (db-specific-emitter db-type)
-                    :use-cte (when cte? {:default true})})})))
-
 (defn walkable-parser
-  [config]
-  (p/async-parser
-   {::p/env {::p/reader [p/map-reader
-                         pc/reader3
-                         pc/open-ident-reader
-                         p/env-placeholder-reader]}
-    ::p/plugins [(pc/connect-plugin {::pc/register []})
-                 (walkable/connect-plugin (connect-config config))
-                 p/elide-special-outputs-plugin
-                 p/error-handler-plugin
-                 p/trace-plugin]}))
+  [db-type registry]
+  (p/parser
+    {::p/env {::p/reader [p/map-reader
+                          pc/reader3
+                          pc/open-ident-reader
+                          p/env-placeholder-reader]}
+     ::p/plugins [(pc/connect-plugin {::pc/register []})
+                  (walkable/connect-plugin {:db-type db-type :registry registry})
+                  p/elide-special-outputs-plugin
+                  p/error-handler-plugin
+                  p/trace-plugin]}))
 
 (defn async-run-query
   [db [q & params]]
@@ -49,26 +38,15 @@
 
 (defn run-scenario-tests*
   [db db-type scenarios]
-  (apply concat
-    (for [[scenario {:keys [core-floor-plan core-config test-suite]}] scenarios
-          {:keys [message env query expected]}            test-suite]
-      [{:msg      (str "In scenario " scenario " for " db-type ", testing "
-                    message " without CTEs in joins")
-        :result   (let [parser (walkable-parser {:core-config core-config
-                                                 :core-floor-plan core-floor-plan
-                                                 :db-type db-type})]
-                    (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
-                            query))
-        :expected expected}
-       {:msg      (str "In scenario " scenario " for " db-type ", testing "
-                    message " with CTEs in joins")
-        :result   (let [parser (walkable-parser {:core-config core-config
-                                                 :core-floor-plan core-floor-plan
-                                                 :db-type db-type
-                                                 :cte? true})]
-                    (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
-                            query))
-        :expected expected}])))
+  (into []
+    (for [[scenario {:keys [:registry :test-suite]}] scenarios
+          {:keys [:message :env :query :expected]} test-suite]
+      {:msg (str "In scenario " scenario " for " db-type ", testing " message) 
+       :expected expected
+       :result
+       (let [parser (walkable-parser db-type registry)]
+         (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
+           query))})))
 
 (defn run-scenario-tests
   [db db-type scenarios]
