@@ -1,4 +1,4 @@
-(defproject walkable "1.3.0-SNAPSHOT"
+(defproject walkable "1.3.0-alpha0"
   :description "A Clojure(script) SQL library for building APIs"
   :url "https://walkable.gitlab.io"
   :license {:name         "Eclipse Public License - v 1.0"
@@ -10,6 +10,7 @@
                  [org.clojure/clojurescript "1.10.764" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.187"]
                  [com.wsscode/pathom "2.3.0"]
+                 [weavejester/dependency "0.2.1"]
                  [prismatic/plumbing "0.5.5"]
                  [org.clojure/core.async "1.2.603" :scope "provided"]]
   :resource-paths ["resources"]
