@@ -7,10 +7,10 @@
     (reduce (fn [acc [x y]] (dep/depend acc y x))
       (dep/graph)
       graph)
-    (catch Exception e
-      (let [{:keys [node dependency] :as data} (ex-data e)]
-        (throw (ex-info (str "Circular dependency between " node " and " dependency)
-                 data))))))
+    (catch #?(:clj Exception :cljs js/Error) e
+        (let [{:keys [node dependency] :as data} (ex-data e)]
+          (throw (ex-info (str "Circular dependency between " node " and " dependency)
+                   data))))))
 
 (defn build-index [k coll]
   (into {} (for [o coll] [(get o k) o])))
