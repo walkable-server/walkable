@@ -1,144 +1,14 @@
 (ns walkable.sql-query-builder.floor-plan
-  (:require [walkable.sql-query-builder.pagination :as pagination]
-            [walkable.sql-query-builder.expressions :as expressions]
-            [walkable.sql-query-builder.emitter :as emitter]
-            [com.wsscode.pathom.core :as p]
-            [com.wsscode.pathom.connect :as pc]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
+            [clojure.spec.alpha :as s]
             [clojure.string :as string]
-            [weavejester.dependency :as dep]
-            [clojure.spec.alpha :as s]))
-
-(defn check-circular-dependency!
-  [graph]
-  (try
-    (reduce (fn [acc [x y]] (dep/depend acc y x))
-      (dep/graph)
-      graph)
-    (catch Exception e
-      (let [{:keys [node dependency] :as data} (ex-data e)]
-        (throw (ex-info (str "Circular dependency between " node " and " dependency)
-                 data))))))
-
-(defn build-index [k coll]
-  (into {} (for [o coll] [(get o k) o])))
-
-(comment
-  (= (build-index :key [{:key :foo :a 1}
-                        {:key :bar :b 2}])
-    {:foo {:key :foo, :a 1}
-     :bar {:key :bar, :b 2}}))
-
-(defn build-index-of [k coll]
-  (into {} (for [x coll
-                 :let [i (:key x)
-                       j (get x k)]]
-             [i j])))
-(comment
-  (= (build-index-of :a [{:key :foo :a 1}
-                         {:key :bar :a 2}])
-    {:foo 1, :bar 2}))
-
-(comment
-  (->> [:* [:+ :a/b 3] 6]
-    (expressions/compile-to-string
-      {:operators (build-index :key expressions/common-operators)})
-    (expressions/substitute-atomic-variables
-      {:variable-values {:a/b {:raw-string "a.b" :params []}}}))
-  (expressions/compile-to-string
-    {:operators (build-index :key expressions/common-operators)}
-    [:* [:+ :a/b 3] 6])
-
-  (expressions/compile-to-string
-    {:operators (build-index :key expressions/common-operators)}
-    [:cast :a/c :text]))
-
-;; steps
-;; - compile joins
-;; - derive ident filter
-;; - compile formulas (aggretate + pseudo columns)
-;; - expand nested pseudo-columns
-;; - expand pseudo-columns in aggregator's formulas
-;; - expand pseudo-columns in conditions
-;; - compile group-by
-;; - compile filter/ident-filter/having with compiled pseudo-columns and joins
-;; - compile pagination
-
-;; - throw errors on:
-;;  + duplicate keys
-;;  + circular dependencies
-;;  + aggregators inside any formula (pseudo-columns or aggregator)
-;;  + joins in pseudo-columns/aggregators
-;;  + aggregators in pseudo-columns/aggregators
-
-;; - collect all columns in compiled-formula, compiled-filter, compiled-join-filter, compiled-having
-;; order-by, and output
-;; - derive true-columns = all columns - known pseudo columns
-;; - collect variables, check if all non-internal vars are defined
-;; - inline true-columns in all places
-;; - compile selection, join-selection and aggregator selection
-;; - build the rest of floor-plan: cte
-;; - compile cardinality
-;; - compile return
-;; - compile traverse-scheme
-;; - warn if some true/pseudo columns not shown in any output
-;; - generate connect graph for joins
-
-(def my-attributes
-  [{:key :people/list
-    :type :root
-    :table "person"
-    :filter [:= :person/hidden false]
-    :output [:person/id :person/name :person/yob]
-    :offset/default 3
-    :offset/on-invalid :return-empty
-    :offset/validate #(<= 0 % 100)
-    :limit/default 10
-    :limit/on-invalid :return-error
-    :limit/validate #(<= 1 % 20)
-    :order-by/default [:farmer/number :asc]
-    :order-by/on-invalid :return-default
-    :order-by/validate #{:farmer/number :farmer/yob}}
-   {:key :people/total
-    :type :root
-    :aggregate true
-    :formula [:count-*]
-    :table "person"
-    :filter [:= :person/hidden false]}
-   {:key :people/lied-age-sum
-    :type :root
-    :aggregate true
-    :formula [:sum :person/lied-age]
-    :table "person"
-    :filter [:= :person/hidden false]}
-   {:key :person/friend
-    :type :join
-    :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]
-    :filter [:= :person/hidden false]
-    :output []}
-   {:key :person/friends-count
-    :type :join
-    :aggregate true
-    :formula [:count-*]
-    :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]
-    :filter [:= :person/hidden false]
-    :output []}
-   {:key :person/age
-    :type :pseudo-column
-    :formula [:- 'current-year :person/yob]}
-   {:key :person/lied-age
-    :type :pseudo-column
-    :formula [:- :person/age 10]}
-   {:key :person/double-lied-age
-    :type :pseudo-column
-    :formula [:- :person/lied-age 10]}
-   {:key 'current-year
-    :type :variable
-    :compute (fn [_env] 2021)}
-   {:key :person/id
-    :type :true-column
-    :primary-key true
-    :output []}])
+            [com.wsscode.pathom.connect :as pc]
+            [com.wsscode.pathom.core :as p]
+            [walkable.sql-query-builder.emitter :as emitter]
+            [walkable.sql-query-builder.expressions :as expressions]
+            [walkable.sql-query-builder.helper :as helper
+             :refer [check-circular-dependency!]]
+            [walkable.sql-query-builder.pagination :as pagination]))
 
 (s/def ::without-join-table
   (s/coll-of ::expressions/namespaced-keyword
@@ -164,23 +34,13 @@
 (defn known-true-columns [attributes]
   (->> attributes
     (filterv true-column?)
-    (build-index :key)))
+    (helper/build-index :key)))
 
 (defn keyword-prop
   [{:keys [:emitter :attributes]} k prop]
   (or (get-in (known-true-columns attributes) [k prop])
     (let [f (prop->func prop)]
       (f emitter k))))
-
-(comment
-  (keyword-prop
-    {:emitter emitter/default-emitter :attributes []}
-    :a/b :table-name)
-  (keyword-prop
-    {:emitter emitter/default-emitter :attributes [{:key :a/b
-                                                    :type :true-column
-                                                    :table-name "z"}]}
-    :a/b :table-name))
 
 (defn join-statement*
   [registry {:keys [:join-path]}]
@@ -193,45 +53,19 @@
           ;; TODO: what about other operators than `=`?
           " = " (keyword-prop registry target :column-name))))))
 
-(comment
-  (join-statement*
-    {:emitter emitter/default-emitter}
-    {:key :person/friend
-     :type :join
-     :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]})
-
-  (join-statement*
-    {:emitter emitter/default-emitter}
-    {:key :person/house
-     :type :join
-     :join-path [:person/id :house/owner-id]}))
-
 (defn conditionally-update* [x pred f]
   (if (pred x)
     (f x)
     x))
 
-(comment
-  (conditionally-update* {:x 2 :y 3} #(= 1 (:x %)) #(update % :x inc))
-  (conditionally-update* {:x 2 :y 3}#(= 2 (:x %)) #(update % :x inc)))
-
 (defn conditionally-update
   [xs pred f]
   (mapv #(conditionally-update* % pred f) xs))
-
-(comment
-  (conditionally-update [{:x 1 :y 1} {:x 2 :y 3}] #(= 2 (:x %)) #(update % :x inc))
-  )
 
 (defn derive-missing-key [m k f]
   (if (contains? m k)
     m
     (assoc m k (f))))
-
-(comment
-  (derive-missing-key {:x 3} :x (constantly 4))
-  (derive-missing-key {:x nil} :x (constantly 4))
-  (derive-missing-key {} :x (constantly 4)))
 
 (defn join-statement
   "Generate JOIN statement if not provided. Only for \"two-hop\" join paths."
@@ -275,16 +109,6 @@
     (join-target-table registry)
     (join-filter-subquery registry)))
 
-(comment
-  (compile-join {:emitter emitter/default-emitter}
-    {:key :person/friend
-     :type :join
-     :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]})
-  (compile-join {:emitter emitter/default-emitter}
-    {:key :person/house
-     :type :join
-     :join-path [:person/id :house/owner-id]}))
-
 (defn compile-joins
   [registry]
   (update registry :attributes
@@ -292,31 +116,11 @@
     (fn [attr] (= :join (:type attr)))
     (fn [attr] (compile-join registry attr))))
 
-(comment
-  (compile-joins
-    {:emitter emitter/default-emitter
-     :attributes
-     [{:key :foo/bar
-       :type :root}
-      {:key :person/friend
-       :type :join
-       :join-path [:person/id :friendship/first-person :friendship/second-person :person/id]}
-      {:key :person/house
-       :type :join
-       :join-path [:person/id :house/owner-id]}]}))
-
 (defn check-duplicate-keys [attrs]
   ;; TODO: implement with loop/recur to
   ;; tell which key is duplicated 
   (when-not (apply distinct? (map :key attrs))
     (throw (ex-info "Duplicate keys" {}))))
-
-(comment
-  (check-duplicate-keys [{:key :a/b}
-                         {:key :a/c}])
-  (check-duplicate-keys [{:key :a/b}
-                         {:key :a/c}
-                         {:key :a/c}]))
 
 (defn compile-formula
   [registry item]
@@ -337,14 +141,6 @@
     has-formula?
     #(compile-formula registry %)))
 
-(comment
-  (->> {:emitter emitter/default-emitter
-        :operators (build-index :key expressions/common-operators)
-        :attributes my-attributes}
-    compile-formulas
-    :attributes
-    (filterv #(:formula %))))
-
 (defn keyset [coll]
   (->> coll
     (map :key)
@@ -356,17 +152,11 @@
     (filter :aggregate)
     (keyset)))
 
-(comment
-  (find-aggregators my-attributes))
-
 (defn find-pseudo-columns
   [attributes]
   (->> attributes
     (filter #(= :pseudo-column (:type %)))
     (keyset)))
-
-(comment
-  (find-pseudo-columns my-attributes))
 
 (defn collect-dependencies
   [attributes]
@@ -395,33 +185,6 @@
              {:formula dependent
               :dependency dependency}))))
 
-(comment
-  (check-dependency-on-aggregators
-    #{:a :b}
-    [[:x :y]
-     [:x :a]])
-  (check-dependency-on-aggregators
-    #{:b}
-    [[:x :y]
-     [:x :a]]))
-
-(comment
-  (check-circular-dependency!
-    (collect-dependencies
-      (:attributes
-       (compile-formulas
-         {:emitter emitter/default-emitter
-          :operators (build-index :key expressions/common-operators)
-          :attributes my-attributes}))))
-  (check-dependency-on-aggregators
-    (find-aggregators my-attributes)
-    (collect-dependencies
-      (:attributes
-       (compile-formulas
-         {:emitter emitter/default-emitter
-          :operators (build-index :key expressions/common-operators)
-          :attributes my-attributes})))))
-
 (defn collect-independent-pseudo-columns
   [pseudo-columns dependencies]
   (let [deps
@@ -433,22 +196,9 @@
         Ys (into #{} (map second deps))]
     (set/difference Ys Xs)))
 
-(comment
-  (collect-independent-pseudo-columns #{:a/b :a/c :a/d :a/e}
-   [[:a/b :a/c]
-    [:a/b :a/e]
-    [:a/c :a/d]])
-  (collect-independent-pseudo-columns #{}
-   [[:a/b :a/c]
-    [:a/b :a/e]
-    [:a/c :a/d]]))
-
 (defn get-prop [attrs k prop]
   (let [x (some #(and (= k (:key %)) %) attrs)]
     (get x prop)))
-
-(comment
-  (get-prop [{:key :foo/item :x 1}] :foo/item :x))
 
 (defn direct-dependents [dependencies independents]
   (->> dependencies
@@ -484,24 +234,6 @@
   [registry]
   (update registry :attributes expand-nested-pseudo-columns*))
 
-(comment
-  (->> (compile-formulas
-         {:emitter emitter/default-emitter
-          :operators (build-index :key expressions/common-operators)
-          :attributes my-attributes})
-    (expand-nested-pseudo-columns)
-    :attributes
-    (filter #(= :pseudo-column (:type %)))
-    (mapv #(select-keys % [:compiled-formula :key]))))
-
-(comment
-  (expressions/substitute-atomic-variables
-    {:variable-values {:person/age {:raw-string "(?)-(?)"
-                                    :params [(expressions/av 'current-year)
-                                             (expressions/av :person/yob)]}}}
-    {:raw-string "(?)-10"
-     :params [(expressions/av :person/age)]}))
-
 (defn expand-pseudo-columns-in-aggregators*
   [attrs]
   (let [compiled-pseudo-columns (get-compiled-formula attrs (find-pseudo-columns attrs))]
@@ -526,7 +258,7 @@
   [{:keys [:attributes] :as registry}]
   (let [jfs (->> attributes
               (filter #(and (= :join (:type %)) (not (:aggregate %))))
-              (build-index-of :join-filter-subquery))]
+              (helper/build-index-of :join-filter-subquery))]
     (assoc registry :join-filter-subqueries jfs)))
 
 (defn compile-filters
@@ -600,22 +332,6 @@
                     {:variable-values {`supplied-filter supplied-filter}}
                     with-supplied-filter)
                   without-supplied-filter)))))))))
-
-(comment
-  (let [registry {:emitter emitter/default-emitter
-                  :operators (build-index :key expressions/common-operators)
-                  :attributes my-attributes}]
-    (->> registry
-      (compile-formulas)
-      (expand-nested-pseudo-columns)
-      (expand-pseudo-columns-in-aggregators)
-      (compile-joins)
-      (join-filter-subqueries)
-      (compile-filters)
-      :attributes
-      #_(filter #(= :pseudo-column (:type %)))
-      (filter #(:compiled-filter %))
-      (mapv #(select-keys % [:compiled-filter :key])))))
 
 (defn compile-variable
   [{k :key :keys [cached? compute] :as attr}]
@@ -695,7 +411,7 @@
 (defn collect-compiled-formulas
   [{:keys [:attributes] :as registry}]
   (assoc registry :compiled-formulas
-    (build-index-of :compiled-formula (filter #(#{:true-column :pseudo-column} (:type %)) attributes))))
+    (helper/build-index-of :compiled-formula (filter #(#{:true-column :pseudo-column} (:type %)) attributes))))
 
 (defn compile-group-by*
   [compiled-formulas group-by-keys]
@@ -747,7 +463,7 @@
                        expressions/common-operators)]
     {:emitter emitter
      :batch-query (emitter/emitter->batch-query emitter)
-     :operators (build-index :key operator-set)
+     :operators (helper/build-index :key operator-set)
      :attributes flat-registry}))
 
 (defn collect-outputs [attrs]
@@ -812,7 +528,7 @@
 (defn collect-clojuric-names
   [{:keys [:attributes] :as registry}]
   (assoc registry :clojuric-names
-    (build-index-of :clojuric-name (filter :clojuric-name attributes))))
+    (helper/build-index-of :clojuric-name (filter :clojuric-name attributes))))
 
 (defn compile-true-columns
   [{:keys [:emitter] :as registry}]
@@ -834,7 +550,7 @@
   [{:keys [:attributes] :as registry}]
   (let [inline-forms (->> attributes
                        (filterv true-column?)
-                       (build-index-of :compiled-formula))]
+                       (helper/build-index-of :compiled-formula))]
     (assoc registry :attributes
       (-> attributes
         (conditionally-update
@@ -1020,25 +736,25 @@
 (defn floor-plan [{:keys [:attributes]}]
   ;; build a compact version suitable for expressions/compile-to-string
   (merge
-    {:target-table (merge (build-index-of :target-table (filter #(= :join (:type %)) attributes))
-                     (build-index-of :table (filter #(or (= :root (:type %)) (:primary-key %)) attributes)))}
-    {:target-column (build-index-of :target-column (filter #(= :join (:type %)) attributes))}
-    {:source-column (build-index-of :source-column (filter #(= :join (:type %)) attributes))}
-    {:merge-sub-entities (build-index-of :merge-sub-entities (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
-    {:query-multiplier (build-index-of :query-multiplier (filter :query-multiplier attributes))}
-    {:join-statement (build-index-of :join-statement (filter :join-statement attributes))}
-    {:compiled-join-selection (build-index-of :compiled-join-selection (filter :compiled-join-selection attributes))}
-    {:compiled-join-aggregator-selection (build-index-of :compiled-join-aggregator-selection (filter :compiled-join-aggregator-selection attributes))}
-    {:keyword-type (build-index-of :traverse-scheme (filter #(#{:root :join :true-column :pseudo-column} (:type %)) attributes))} 
-    {:compiled-pagination-fallbacks (build-index-of :compiled-pagination-fallbacks (filter :compiled-pagination-fallbacks attributes))}
-    {:return (build-index-of :return (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
+    {:target-table (merge (helper/build-index-of :target-table (filter #(= :join (:type %)) attributes))
+                     (helper/build-index-of :table (filter #(or (= :root (:type %)) (:primary-key %)) attributes)))}
+    {:target-column (helper/build-index-of :target-column (filter #(= :join (:type %)) attributes))}
+    {:source-column (helper/build-index-of :source-column (filter #(= :join (:type %)) attributes))}
+    {:merge-sub-entities (helper/build-index-of :merge-sub-entities (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
+    {:query-multiplier (helper/build-index-of :query-multiplier (filter :query-multiplier attributes))}
+    {:join-statement (helper/build-index-of :join-statement (filter :join-statement attributes))}
+    {:compiled-join-selection (helper/build-index-of :compiled-join-selection (filter :compiled-join-selection attributes))}
+    {:compiled-join-aggregator-selection (helper/build-index-of :compiled-join-aggregator-selection (filter :compiled-join-aggregator-selection attributes))}
+    {:keyword-type (helper/build-index-of :traverse-scheme (filter #(#{:root :join :true-column :pseudo-column} (:type %)) attributes))} 
+    {:compiled-pagination-fallbacks (helper/build-index-of :compiled-pagination-fallbacks (filter :compiled-pagination-fallbacks attributes))}
+    {:return (helper/build-index-of :return (filter #(or (#{:root :join} (:type %)) (:primary-key %)) attributes))}
     {:aggregator-keywords (into #{} (comp (filter #(:aggregate %)) (map :key)) attributes)}
-    {:compiled-variable-getter (build-index-of :compiled-variable-getter (filter :compiled-variable-getter attributes))}
-    {:all-filters (build-index-of :all-filters (filter :all-filters attributes))}
-    {:compiled-having (build-index-of :compiled-having (filter :compiled-having attributes))}
-    {:compiled-group-by (build-index-of :compiled-group-by (filter :compiled-group-by attributes))}
+    {:compiled-variable-getter (helper/build-index-of :compiled-variable-getter (filter :compiled-variable-getter attributes))}
+    {:all-filters (helper/build-index-of :all-filters (filter :all-filters attributes))}
+    {:compiled-having (helper/build-index-of :compiled-having (filter :compiled-having attributes))}
+    {:compiled-group-by (helper/build-index-of :compiled-group-by (filter :compiled-group-by attributes))}
     {:ident-keywords (into #{} (comp (filter #(:primary-key %)) (map :key)) attributes)}
-    {:compiled-selection (build-index-of :compiled-selection (filter :compiled-selection attributes))}))
+    {:compiled-selection (helper/build-index-of :compiled-selection (filter :compiled-selection attributes))}))
 
 (defn compact [registry]
   {:floor-plan (merge (select-keys registry [:emitter :operators :join-filter-subqueries :batch-query :compiled-formulas :clojuric-names])
@@ -1092,4 +808,3 @@
   (->> flat-attributes
     (compile-floor-plan*)
     (compact)))
-
