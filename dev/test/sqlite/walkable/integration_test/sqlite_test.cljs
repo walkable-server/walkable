@@ -6,15 +6,11 @@
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
             [walkable.core-async :as walkable]
-            [walkable.sql-query-builder.emitter :as emitter]
             ["sqlite3" :as sqlite3]))
-
-(def db-specific-emitter
-  {:sqlite emitter/sqlite-emitter})
 
 (defn walkable-parser
   [db-type registry]
-  (p/parser
+  (p/async-parser
     {::p/env {::p/reader [p/map-reader
                           pc/reader3
                           pc/open-ident-reader
@@ -38,21 +34,20 @@
 
 (defn run-scenario-tests*
   [db db-type scenarios]
-  (into []
-    (for [[scenario {:keys [:registry :test-suite]}] scenarios
-          {:keys [:message :env :query :expected]} test-suite]
-      {:msg (str "In scenario " scenario " for " db-type ", testing " message) 
-       :expected expected
-       :result
-       (let [parser (walkable-parser db-type registry)]
-         (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
-           query))})))
+  (for [[scenario {:keys [:registry :test-suite]}] scenarios
+        {:keys [:message :env :query :expected]} test-suite]
+    {:msg (str "In scenario " scenario " for " db-type ", testing " message) 
+     :expected expected
+     :result
+     (let [parser (walkable-parser db-type registry)]
+       (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
+         query))}))
 
 (defn run-scenario-tests
   [db db-type scenarios]
   (t/async done
            (go
-             (doseq [{:keys [msg result expected]}
+             (doseq [{:keys [:msg :expected :result]}
                      (run-scenario-tests* db db-type scenarios)]
                (testing msg
                  (is (= expected (<! result)))))
