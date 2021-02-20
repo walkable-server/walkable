@@ -7,11 +7,11 @@
   [{:key :farmers/farmers
     :type :root
     :table "farmer"
-    :output [:farmer/number :farmer/name :farmer/house-index]}
+    :output [:farmer/number :farmer/name :farmer/house]}
    {:key :farmer/number
     :type :true-column
     :primary-key true
-    :output [:farmer/name :farmer/house-plus :farmer/house-count :farmer/house-index]}
+    :output [:farmer/name :farmer/house-plus :farmer/house-count :farmer/house]}
    {:key :farmer/house
     :type :join
     :join-path [:farmer/house-index :house/index]
@@ -20,7 +20,7 @@
    {:key :house/owner
     :type :join
     :join-path [:house/index :farmer/house-index]
-    :output [:farmer/number :farmer/name]
+    :output [:farmer/number]
     :cardinality :one}])
 
 (def kid-toy-registry
@@ -57,10 +57,7 @@
   [{:key :people/people
     :type :root
     :table "person"
-    :output [:person/number
-             :person/name
-             :person/yob
-             :person/age]
+    :output [:person/number]
     :filter
     [:or [:= :person/hidden true]
      [:= :person/hidden false]]}
@@ -96,7 +93,7 @@
     :type :join
     :join-path
     [:pet/index :person-pet/pet-index :person-pet/person-number :person/number]
-    :output [:person/number :person/age :person/yob :person/name]}
+    :output [:person/number]}
    {:key :person/pet-count
     :type :join
     :join-path
