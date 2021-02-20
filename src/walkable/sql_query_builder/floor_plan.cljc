@@ -115,6 +115,43 @@
     (fn [attr] (= :join (:type attr)))
     (fn [attr] (compile-join registry attr))))
 
+(defn replace-join-with-source-column-in-outputs
+  [{:keys [:attributes] :as registry}]
+  (let [join->source-column
+        (->> attributes
+          (filter #(= :join (:type %)))
+          (helper/build-index-of :source-column))
+
+        plain-join-keys
+        (->> attributes
+          (filter #(and (= :join (:type %)) (not (:aggregate %))))
+          (map :key)
+          set)
+
+        join-keys
+        (set (keys join->source-column))]
+    (update registry :attributes
+      conditionally-update
+      :output
+      (fn [{:keys [:output] :as attr}]
+        (let [joins-in-output
+              (filter join-keys output)
+
+              source-column-is-ident?
+              (if (:primary-key attr)
+                #{(:key attr)}
+                (constantly false))
+
+              source-columns
+              (->> (mapv join->source-column joins-in-output)
+                (remove source-column-is-ident?)
+                set)
+
+              new-output
+              (set/union source-columns
+                (set (remove plain-join-keys output)))]
+          (assoc attr :output (vec new-output)))))))
+
 (defn check-duplicate-keys [attrs]
   ;; TODO: implement with loop/recur to
   ;; tell which key is duplicated 
@@ -696,7 +733,6 @@
 
 (defn inputs-outputs
   [{:keys [:attributes]}]
-  ;; TODO: expand joins in outputs to their source column
   (let [plain-roots
         (->> attributes
           (filter #(and (= :root (:type %)) (not (:aggregate %))))
@@ -776,6 +812,7 @@
       (expand-nested-pseudo-columns)
       (expand-pseudo-columns-in-aggregators)
       (compile-joins)
+      (replace-join-with-source-column-in-outputs)
       (derive-ident-table)
       (join-filter-subqueries)
       (derive-ident-filters)
