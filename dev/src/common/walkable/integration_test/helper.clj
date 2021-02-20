@@ -13,7 +13,9 @@
                           pc/open-ident-reader
                           p/env-placeholder-reader]}
      ::p/plugins [(pc/connect-plugin {::pc/register []})
-                  (walkable/connect-plugin {:db-type db-type :registry registry})
+                  (walkable/connect-plugin {:db-type db-type
+                                            :registry registry
+                                            :query-env #(jdbc/query (:db %1) %2)})
                   p/elide-special-outputs-plugin
                   p/error-handler-plugin
                   p/trace-plugin]}))
@@ -26,5 +28,5 @@
       (testing (str "In scenario " scenario " for " db-type ", testing " message)
         (is (= expected
               (let [parser (walkable-parser db-type registry)]
-                (parser (assoc env ::walkable/db db ::walkable/run jdbc/query)
+                (parser (assoc env :db db)
                   query))))))))
