@@ -3,7 +3,6 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.connect.planner :as pcp]))
