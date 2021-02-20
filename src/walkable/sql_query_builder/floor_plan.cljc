@@ -6,8 +6,7 @@
             [com.wsscode.pathom.core :as p]
             [walkable.sql-query-builder.emitter :as emitter]
             [walkable.sql-query-builder.expressions :as expressions]
-            [walkable.sql-query-builder.helper :as helper
-             :refer [check-circular-dependency!]]
+            [walkable.sql-query-builder.helper :as helper]
             [walkable.sql-query-builder.pagination :as pagination]))
 
 (s/def ::without-join-table
