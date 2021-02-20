@@ -8,19 +8,6 @@
             [walkable.core-async :as walkable]
             ["sqlite3" :as sqlite3]))
 
-(defn walkable-parser
-  [db-type registry]
-  (p/async-parser
-    {::p/env {::p/reader [p/map-reader
-                          pc/reader3
-                          pc/open-ident-reader
-                          p/env-placeholder-reader]}
-     ::p/plugins [(pc/connect-plugin {::pc/register []})
-                  (walkable/connect-plugin {:db-type db-type :registry registry})
-                  p/elide-special-outputs-plugin
-                  p/error-handler-plugin
-                  p/trace-plugin]}))
-
 (defn async-run-query
   [db [q & params]]
   (let [c (promise-chan)]
@@ -29,6 +16,21 @@
         (let [x (js->clj r :keywordize-keys true)]
           (put! c x))))
     c))
+
+(defn walkable-parser
+  [db-type registry]
+  (p/async-parser
+    {::p/env {::p/reader [p/map-reader
+                          pc/reader3
+                          pc/open-ident-reader
+                          p/env-placeholder-reader]}
+     ::p/plugins [(pc/connect-plugin {::pc/register []})
+                  (walkable/connect-plugin {:db-type db-type
+                                            :registry registry
+                                            :query-env #(async-run-query (:sqlite-db %1) %2)})
+                  p/elide-special-outputs-plugin
+                  p/error-handler-plugin
+                  p/trace-plugin]}))
 
 (def db (sqlite3/Database. "walkable_dev.sqlite"))
 
@@ -40,7 +42,7 @@
      :expected expected
      :result
      (let [parser (walkable-parser db-type registry)]
-       (parser (assoc env ::walkable/db db ::walkable/run async-run-query)
+       (parser (assoc env :sqlite-db db)
          query))}))
 
 (defn run-scenario-tests
