@@ -11,7 +11,6 @@
             [com.wsscode.pathom.profile :as pp]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.connect.planner :as pcp]
-            [clojure.spec.alpha :as s]
             [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async :refer [go-loop >! <! put! promise-chan]]
             [integrant.repl :refer [clear halt go init prep reset]]
@@ -20,7 +19,8 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [walkable.core :as walkable]))
+            [walkable.integration-test.helper :refer [walkable-parser]]
+            [walkable.integration-test.common :as common :refer [farmer-house-registry]]))
 
 ;; <<< Beginning of Duct framework helpers
 
@@ -54,12 +54,12 @@
   (jdbc/execute! (db) sql))
 
 (comment
-;; make changes to database right from your editor
+  ;; make changes to database right from your editor
   (e "CREATE TABLE `foo` (`id` INTEGER)")
   (e "INSERT INTO `foo` (`id`) VALUES (1)")
   (q "SELECT * from foo")
-  (e "DROP TABLE `foo`")
-  )
+  (e "DROP TABLE `foo`"))
+
 
 ;; End of Duct framework helpers >>>
 
@@ -87,46 +87,35 @@
 (defn now []
   (.format (java.text.SimpleDateFormat. "HH:mm") (java.util.Date.)))
 
-(require '[walkable.integration-test.helper :refer [walkable-parser]])
-
-(require '[walkable.integration-test.common :as common :refer [farmer-house-registry]])
-
-(def reg (floor-plan/conditionally-update
-           farmer-house-registry
-           #(= :farmers/farmers (:key %))
-           #(merge % {:default-order-by [:farmer/name :desc]
-                      :validate-order-by #{:farmer/name :farmer/number}})))
-
-(def w* (walkable-parser :postgres common/person-pet-registry))
-
-(defn w [q]
-  (w* {::walkable/db (db) ::walkable/run run-print-query}
-    q))
-
 (comment
   (->> (floor-plan/compile-floor-plan* common/person-pet-registry)
     :attributes
     (filter #(= :people/count (:key %)))
-    first
-    )
-    
-  (let [f (->> (floor-plan/compile-floor-plan* reg)
+    first)
+
+  (let [reg (floor-plan/conditionally-update
+              farmer-house-registry
+              #(= :farmers/farmers (:key %))
+              #(merge % {:default-order-by [:farmer/name :desc]
+                         :validate-order-by #{:farmer/name :farmer/number}}))
+        f (->> (floor-plan/compile-floor-plan* reg)
             :attributes
             (filter #(= :farmers/farmers (:key %)))
             first
             :compiled-pagination-fallbacks
             :limit-fallback)]
-    (f 2))
-  
-  (w `[{:farmers/farmers
-        [:farmer/number :farmer/name
-         {:farmer/house [:house/index :house/color]}]}])
+    (f 2)))
 
-  (w `[{(:farmers/farmers {:limit 1})
-        [:farmer/number :farmer/name
-         {:farmer/house [:house/index :house/color]}]}])
+(def w* (walkable-parser :postgres common/person-pet-registry))
+
+(defn w
+  [q]
+  (w* {:db (db)} q))
+
+(comment
+  (w `[{(:pets/by-color {:order-by [:pet/color :desc]})
+        [:pet/color]}])
 
   (w `[(:people/count {:filter [:and {:person/pet [:or [:= :pet/color "white"]
                                                    [:= :pet/color "yellow"]]}
-                                [:< :person/number 10]]})])
-  )
+                                [:< :person/number 10]]})]))
