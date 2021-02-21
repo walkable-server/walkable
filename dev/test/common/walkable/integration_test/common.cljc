@@ -1,174 +1,123 @@
 (ns walkable.integration-test.common
   (:require [com.wsscode.pathom.core :as p]
-            [com.wsscode.pathom.connect :as pc]
-            [plumbing.core :refer [fnk defnk sum]]))
+            [walkable.sql-query-builder.floor-plan :as floor-plan]
+            [plumbing.core :refer [fnk sum]]))
 
-(def farmer-house-floor-plan
-  {:true-columns     [:house/color
-                      :farmer/number
-                      :farmer/name]
-   :roots            {:farmers/farmers "farmer"}
-   :extra-conditions {}
-   :joins            {:farmer/house [:farmer/house-index :house/index]}
-   :reversed-joins   {:house/owner :farmer/house}
-   :cardinality      {:house/owner  :one
-                      :farmer/house :one}})
+(def farmer-house-registry
+  [{:key :farmers/farmers
+    :type :root
+    :table "farmer"
+    :output [:farmer/number :farmer/name :farmer/house]}
+   {:key :farmer/number
+    :type :true-column
+    :primary-key true
+    :output [:farmer/name :farmer/house-plus :farmer/house-count :farmer/house]}
+   {:key :farmer/house
+    :type :join
+    :join-path [:farmer/house-index :house/index]
+    :output [:house/color]
+    :cardinality :one}
+   {:key :house/owner
+    :type :join
+    :join-path [:house/index :farmer/house-index]
+    :output [:farmer/number]
+    :cardinality :one}])
 
-;; core-configs
-(def farmer-house-config
-  {:inputs-outputs
-   (let [farmer-out [:farmer/number
-                     :farmer/name
-                     :farmer/house-index
-                     :farmer/house
-                     :farmer/house-count]
-         house-out  [:house/index
-                     :house/color
-                     :house/owner]]
-     [{::pc/output [{:farmers/farmers farmer-out}]}
+(def kid-toy-registry
+  [{:key :kids/kids
+    :type :root
+    :table "kid"
+    :output [:kid/name]}
+   {:key :toy/owner
+    :type :join
+    :join-path [:toy/owner-number :kid/number]
+    :output [:kid/name :kid/number]
+    :cardinality :one}
+   {:key :kid/toy
+    :type :join
+    :join-path [:kid/number :toy/owner-number]
+    :output [:toy/color :toy/index]
+    :cardinality :one}
+   {:key :kid/number
+    :type :true-column
+    :primary-key true
+    :output [:kid/name]}])
 
-      {::pc/input  #{:farmer/number}
-       ::pc/output farmer-out}
+(def human-follow-registry
+  [{:key :humans/humans
+    :type :root
+    :table "human"
+    :output [:human/number :human/name :human/yob :human/age]}
+   {:key :human/follow
+    :type :join
+    :join-path [:human/number :follow/human-1 :follow/human-2 :human/number]
+    :output [:human/number :human/name :human/yob :human/age]}])
 
-      {::pc/output [{:house/owner farmer-out}]}
-
-      {::pc/output [{:houses/houses house-out}]}
-
-      {::pc/output [{:farmer/house house-out}]}
-
-      {::pc/input  #{:house/index}
-       ::pc/output house-out}])})
-
-(def kid-toy-config
-  {:inputs-outputs
-   (let [kid-out [:kid/number
-                  :kid/name
-                  :kid/toy]
-         toy-out [:toy/index
-                  :toy/color
-                  :toy/owner]]
-     [{::pc/output [{:kids/kids kid-out}]}
-
-      {::pc/output [{:toy/owner kid-out}]}
-
-      {::pc/output [{:toys/toys toy-out}]}
-
-      {::pc/output [{:kid/toy toy-out}]}
-
-      {::pc/input  #{:kid/number}
-       ::pc/output kid-out}
-
-      {::pc/input  #{:toy/index}
-       ::pc/output toy-out}])})
-
-(def human-follow-config
-  {:inputs-outputs
-   (let [human-out [:human/number
-                    :human/name
-                    :human/yob
-                    :human/follow
-                    :human/follow-stats
-                    :human/age
-                    :human/stats]]
-     [{::pc/output [{:humans/humans human-out}]}
-
-      {::pc/input  #{:human/number}
-       ::pc/output human-out}
-
-      {::pc/output {:human/follow human-out}}])})
-
-(def person-pet-config
-  {:inputs-outputs
-   (let [person-out [:person/number
-                     :person/name
-                     :person/age
-                     :person/yob
-                     :person/hidden
-                     :person/pet
-                     :person/pet-count]
-         pet-out    [:pet/index
-                     :pet/yob
-                     :pet/color
-                     :pet/owner]]
-     [{::pc/output [{:people/people person-out}]}
-
-      {::pc/output [{:pets/by-color [:pet/color :color/pet-count]}]}
-
-      {::pc/output [:people/count]}
-
-      {::pc/input  #{:person/number}
-       ::pc/output person-out}
-
-      {::pc/output [{:pet/owner (into person-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
-
-      {::pc/output [{:pets/pets pet-out}]}
-
-      {::pc/output [{:person/pet (into pet-out [:person-pet/pet-index :person-pet/person-number :person-pet/adoption-year])}]}
-
-      {::pc/input  #{:pet/index}
-       ::pc/output pet-out}])})
-
-;; ends core-configs
-
-(def kid-toy-floor-plan
-  {:true-columns     [:kid/name :toy/index :toy/color]
-   :roots            {:kids/kids "kid"}
-   :extra-conditions {}
-   :joins            {:toy/owner [:toy/owner-number :kid/number]}
-   :reversed-joins   {:kid/toy :toy/owner}
-   :cardinality      {:kid/toy   :one
-                      :toy/owner :one}})
-
-(def human-follow-floor-plan
-  {:true-columns     [:human/number :human/name :human/yob]
-   :required-columns {}
-   :roots            {:humans/humans "human"}
-   :extra-conditions {}
-   :joins            {:human/follow
-                      [:human/number :follow/human-1 :follow/human-2 :human/number]}
-   :reversed-joins   {}
-   :cardinality      {:human/follow-stats :one
-                      :human/follow       :many}})
-
-(def person-pet-floor-plan
-  {:true-columns     [:person/name
-                      :person/yob
-                      :person/hidden
-                      :person-pet/adoption-year
-                      :pet/name
-                      :pet/yob
-                      :pet/color]
-   ;; Extra columns required when an attribute is being asked for.
-   ;; Can be input to derive attributes, or parameters to other
-   ;; attribute resolvers that will run SQL queries themselves
-   :required-columns {:pet/age    #{:pet/yob}
-                      :person/age #{:person/yob}}
-   :roots            {:pets/by-color "pet"
-                      [:people/people :people/count] "person"}
-   :extra-conditions {[:person/number :people/people :people/count]
-                      [:or [:= :person/hidden true]
-                       [:= :person/hidden false]]}
-   :joins            {[:person/pet :person/pet-count]
-                      [:person/number :person-pet/person-number
-                       :person-pet/pet-index :pet/index]}
-   :reversed-joins   {:pet/owner :person/pet}
-   :pseudo-columns   {:person/age      [:- 2018 :person/yob]
-                      :color/pet-count [:count :pet/index]}
-   :aggregators      {[:people/count :person/pet-count]
-                      [:count-*]}
-   :grouping         {:pets/by-color
-                      {:group-by [:pet/color]
-                       :having   [:< 1 [:color/pet-count]]}}
-   :cardinality      {:person/pet :many}})
+(def person-pet-registry
+  [{:key :people/people
+    :type :root
+    :table "person"
+    :output [:person/number]
+    :filter
+    [:or [:= :person/hidden true]
+     [:= :person/hidden false]]}
+   {:key :person/age
+    :type :pseudo-column
+    :formula [:- 2018 :person/yob]}
+   {:key :person/number
+    :type :true-column
+    :primary-key true
+    :output [:person/name :person/yob :person/age]
+    :filter
+    [:or [:= :person/hidden true]
+     [:= :person/hidden false]]}
+   {:key :people/count
+    :type :root
+    :aggregate true
+    :table "person"
+    :formula [:count-*]
+    :filter
+    [:or [:= :person/hidden true]
+     [:= :person/hidden false]]}
+   {:key :person/pet
+    :type :join
+    :join-path
+    [:person/number :person-pet/person-number
+     :person-pet/pet-index :pet/index]
+    :output [:pet/index
+             :person-pet/adoption-year
+             :pet/name
+             :pet/yob
+             :pet/color]}
+   {:key :pet/owner
+    :type :join
+    :join-path
+    [:pet/index :person-pet/pet-index :person-pet/person-number :person/number]
+    :output [:person/number]}
+   {:key :person/pet-count
+    :type :join
+    :join-path
+    [:person/number :person-pet/person-number
+     :person-pet/pet-index :pet/index]
+    :aggregate true
+    :formula [:count-*]}
+   {:key :pets/by-color
+    :type :root
+    :table "pet"
+    :output [:pet/color :color/pet-count]
+    :group-by [:pet/color]
+    :having [:< 1 :color/pet-count]}
+   {:key :color/pet-count
+    :type :pseudo-column
+    :formula [:count :pet/index]}])
 
 (def common-scenarios
   {:farmer-house
-   {:core-floor-plan farmer-house-floor-plan
-    :core-config     farmer-house-config
+   {:registry farmer-house-registry
     :test-suite
     [{:message "filters should work"
       :query
-      `[{(:farmers/farmers {:filters {:farmer/house [{:house/owner [:= :farmer/name "mary"]}]}})
+      `[{(:farmers/farmers {:filter {:farmer/house {:house/owner [:= :farmer/name "mary"]}}})
          [:farmer/number :farmer/name
           {:farmer/house [:house/index :house/color]}]}]
       :expected
@@ -183,12 +132,11 @@
                            #:farmer{:number 2, :name "mary", :house #:house {:index "20", :color "brown"}}
                            #:farmer{:number 3, :name "homeless", :house #:house {}}]}}]}
    :farmer-house-paginated
-   {:core-config     farmer-house-config
-    :core-floor-plan (assoc farmer-house-floor-plan
-                       :pagination-fallbacks
-                       {:farmers/farmers
-                        {:order-by {:default  [:farmer/name :desc]
-                                    :validate #{:farmer/name :farmer/number}}}})
+   {:registry (floor-plan/conditionally-update
+                farmer-house-registry
+                #(=  :farmers/farmers (:key %))
+                #(merge % {:default-order-by [:farmer/name :desc]
+                           :validate-order-by #{:farmer/name :farmer/number}}))
     :test-suite
     [{:message "pagination fallbacks"
       :query
@@ -213,9 +161,9 @@
           {:farmer/house [:house/index :house/color]}]}]
       :expected
       #:farmers{:farmers [#:farmer{:number 2, :house #:house {:index "20", :color "brown"}}]}}]}
+  
    :kid-toy
-   {:core-floor-plan kid-toy-floor-plan
-    :core-config     kid-toy-config
+   {:registry kid-toy-registry
     :test-suite
     [{:message "idents should work"
       :query
@@ -225,8 +173,7 @@
       {[:kid/number 1] #:kid {:number 1, :name "jon", :toy #:toy {:index 10, :color "yellow"}}}}]}
 
    :human-follow
-   {:core-floor-plan human-follow-floor-plan
-    :core-config     human-follow-config
+   {:registry human-follow-registry
     :test-suite
     [{:message "self-join should work"
       :query
@@ -248,24 +195,28 @@
                        #:human{:number 4, :name "sandra", :follow []}]}}]}
 
    :human-follow-variable-getters
-   {:core-config     human-follow-config
-    :core-floor-plan (merge human-follow-floor-plan
-                       {:pseudo-columns
-                        {:human/age   [:- 'current-year :human/yob]
-                         :human/stats [:str 'stats-header
-                                       ", m: " 'm
-                                       ", v: " 'v]}}
-                       {:variable-getters
-                        [{:key 'current-year
-                          :fn  (fn [env] (:current-year env))}]
-                        :variable-getter-graphs
-                        [{:graph
-                          {:xs           (fnk [env] (get-in env [:xs]))
-                           :n            (fnk [xs] (count xs))
-                           :m            (fnk [xs n] (/ (sum identity xs) n))
-                           :m2           (fnk [xs n] (/ (sum #(* % %) xs) n))
-                           :v            (fnk [m m2] (str (- m2 (* m m))))
-                           :stats-header (fnk [xs] (str "stats for xs =" (pr-str xs)))}}]})
+   {:registry (concat human-follow-registry
+                [{:key :human/age
+                  :type :pseudo-column
+                  :formula [:- 'current-year :human/yob]}
+                 {:key :human/stats
+                  :type :pseudo-column
+                  :formula [:str 'stats-header
+                            ", m: " 'm
+                            ", v: " 'v]}
+                 {:key 'current-year
+                  :type :variable
+                  :compute (fn [env] (:current-year env))}
+                 ;; TODO: convention for variable-graph's :key
+                 {:key [:graph :hello]
+                  :type :variable-graph
+                  :graph
+                  {:xs (fnk [env] (get-in env [:xs]))
+                   :n (fnk [xs] (count xs))
+                   :m (fnk [xs n] (/ (sum identity xs) n))
+                   :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
+                   :v (fnk [m m2] (str (- m2 (* m m))))
+                   :stats-header (fnk [xs] (str "stats for xs =" (pr-str xs)))}}]) 
     :test-suite
     [{:message "variable-getters should work"
       :env     {:current-year 2019}
@@ -286,7 +237,7 @@
                                         #:human{:number 3, :name "peter", :age 30}]}
                        #:human{:number 3, :name "peter", :age 30, :follow []}
                        #:human{:number 4, :name "sandra", :age 49, :follow []}]}}
-     {:message "variable-getter-graphs should work"
+     #_{:message "variable-getter-graphs should work"
       ;; choose this sequence so stats values are integers
       ;; therefore the output string is the same in all sql dbs
       :env     {:xs [2 4 6 8]}
@@ -303,8 +254,7 @@
                         #:human{:number 4, :name "sandra",
                                 :stats  "stats for xs =[2 4 6 8], m: 5, v: 5"}]}}]}
    :person-pet
-   {:core-floor-plan person-pet-floor-plan
-    :core-config     person-pet-config
+   {:registry person-pet-registry
     :test-suite
     [{:message "join-table should work"
       :query
@@ -346,17 +296,17 @@
 
      {:message "aggregate should work"
       :query
-      `[(:people/count {:filters [:and {:person/pet [:or [:= :pet/color "white"]
-                                                     [:= :pet/color "yellow"]]}
-                                  [:< :person/number 10]]})]
+      `[(:people/count {:filter [:and {:person/pet [:or [:= :pet/color "white"]
+                                                    [:= :pet/color "yellow"]]}
+                                 [:< :person/number 10]]})]
       :expected
       #:people {:count 1}}
 
      {:message "filters should work"
       :query
-      `[{(:people/people {:filters  [:and {:person/pet [:or [:= :pet/color "white"]
-                                                        [:= :pet/color "yellow"]]}
-                                     [:< :person/number 10]]
+      `[{(:people/people {:filter [:and {:person/pet [:or [:= :pet/color "white"]
+                                                      [:= :pet/color "yellow"]]}
+                                   [:< :person/number 10]]
                           :order-by [:person/name]})
          [:person/number :person/name
           :person/pet-count

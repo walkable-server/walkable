@@ -1,5 +1,6 @@
 (ns walkable.sql-query-builder.emitter
   (:require [clojure.spec.alpha :as s]
+            [clojure.string :as string]
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.pagination :as pagination]))
 
@@ -13,7 +14,7 @@
   (repeat 2 "'"))
 
 (defn dash-to-underscore [s]
-  (clojure.string/replace s #"-" "_"))
+  (string/replace s #"-" "_"))
 
 (defn with-quote-marks [this s]
   (let [[quote-open quote-close] (:quote-marks this)]
@@ -106,7 +107,7 @@
                  :with-ties (s/? #(= :with-ties %))))))
 
 (defn oracle-stringify-limit
-  [{:keys [limit percent with-ties] :as conformed-limit}]
+  [{:keys [limit percent with-ties]}]
   (str " FETCH FIRST " limit
     (when percent " PERCENT")
     " ROWS"
@@ -118,6 +119,18 @@
      :stringify-limit     oracle-stringify-limit
 
      :stringify-offset #(str " OFFSET " % " ROWS")}))
+
+(def predefined-emitters
+  {:mysql mysql-emitter
+   :postgres postgres-emitter
+   :sqlite sqlite-emitter
+   :oracle oracle-emitter})
+
+(defn build-emitter
+  [{:keys [:base] :or {base :postgres} :as attr}]
+  (let [custom-props (select-keys attr (keys default-emitter))]
+    (merge (get predefined-emitters base)
+      custom-props)))
 
 (s/def ::target-table string?)
 

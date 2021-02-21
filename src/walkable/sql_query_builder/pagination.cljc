@@ -77,14 +77,14 @@
 
 (defn number-fallback
   [{:keys [stringify conform wrap-validate]}
-   {:keys [default validate throw?] :or {validate (constantly true)}}]
+   {:keys [default validate throw?]}]
   (let [default
         (when default
           (let [conformed (conform default)]
             (assert (not (s/invalid? conformed))
               "Malformed default value")
             (stringify conformed)))
-        validate (wrap-validate validate)]
+        validate (wrap-validate (or validate (constantly true)))]
     (if throw?
       (fn aggressive-fallback [supplied]
         (let [conformed (conform supplied)]
@@ -115,30 +115,9 @@
                     :wrap-validate (:wrap-validate-limit emitter)}
     limit-config))
 
-(defn compile-fallbacks*
-  [emitter clojuric-names pagination-fallbacks]
-  (reduce (fn [acc [k {offset-config   :offset
-                       limit-config    :limit
-                       order-by-config :order-by}]]
-            (let [v {:offset-fallback
-                     (offset-fallback emitter offset-config)
-
-                     :limit-fallback
-                     (limit-fallback emitter limit-config)
-
-                     :order-by-fallback
-                     (order-by-fallback emitter clojuric-names order-by-config)}]
-              (assoc acc k v)))
-    {}
-    pagination-fallbacks))
-
-(defn compile-fallbacks
-  [emitter clojuric-names pagination-fallbacks]
-  (->> (clojure.set/rename-keys pagination-fallbacks {:default `default-fallbacks})
-    (merge {`default-fallbacks {:offset   {}
-                                :limit    {}
-                                :order-by {}}})
-    (compile-fallbacks* emitter clojuric-names)))
+(def default-fallbacks
+  "Key for default of defaults."
+  `default-fallbacks)
 
 (defn merge-pagination
   [default-fallbacks
@@ -148,8 +127,8 @@
         limit-fallback    (or limit-fallback (get default-fallbacks :limit-fallback))
         order-by-fallback (or order-by-fallback (get default-fallbacks :order-by-fallback))
 
-        {:keys [string columns]} (order-by-fallback order-by)]
-    {:offset           (offset-fallback offset)
-     :limit            (limit-fallback limit)
+        {:keys [string columns]} (when order-by-fallback (order-by-fallback order-by))]
+    {:offset           (when offset-fallback (offset-fallback offset))
+     :limit            (when limit-fallback (limit-fallback limit))
      :order-by         string
      :order-by-columns columns}))

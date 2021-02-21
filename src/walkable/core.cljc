@@ -3,7 +3,6 @@
             [walkable.sql-query-builder.expressions :as expressions]
             [walkable.sql-query-builder.ast :as ast]
             [walkable.sql-query-builder.floor-plan :as floor-plan]
-            [clojure.spec.alpha :as s]
             [com.wsscode.pathom.core :as p]
             [com.wsscode.pathom.connect :as pc]
             [com.wsscode.pathom.connect.planner :as pcp]))
@@ -19,12 +18,14 @@
             loc
             (f loc))))))))
 
-(defn build-and-run-query
-  [env entities prepared-query]
-  (let [q (->> entities
-               (prepared-query env)
-               (expressions/build-parameterized-sql-query))]
-    ((::run env) (::db env) q)))
+(defn ->build-and-run-query
+  [query-env]
+  (fn [env entities prepared-query]
+    (let [q (-> (prepared-query env entities)
+              (expressions/build-parameterized-sql-query))]
+      (if q
+        (query-env env q)
+        []))))
 
 ;; top-down process
 (defn fetch-data
@@ -95,28 +96,28 @@
        (merge-data wrap-merge)))
 
 (defn query-resolver*
-  [{:keys [build-and-run-query floor-plan env resolver query]}]
+  [{:keys [floor-plan env resolver query]}]
   (resolver floor-plan env (p/query->ast query)))
 
 (defn ast-resolver
-  [floor-plan env ast]
+  [floor-plan query-env env ast]
   (ast-resolver* {:floor-plan floor-plan
-                  :build-and-run-query build-and-run-query
+                  :build-and-run-query (->build-and-run-query query-env)
                   :env env
                   :wrap-merge identity
                   :ast ast}))
 
 (defn prepared-ast-resolver
-  [env prepared-ast]
+  [query-env env prepared-ast]
   (prepared-ast-resolver* {:env env
-                           :build-and-run-query build-and-run-query
+                           :build-and-run-query (->build-and-run-query query-env)
                            :wrap-merge identity
                            :prepared-ast prepared-ast}))
 
 (defn query-resolver
-  [floor-plan env query]
+  [floor-plan query-env env query]
   (query-resolver* {:floor-plan floor-plan
-                    :build-and-run-query build-and-run-query
+                    :build-and-run-query (->build-and-run-query query-env)
                     :env env
                     :resolver ast-resolver
                     :query query}))
@@ -142,11 +143,11 @@
   [{[:x/i 1] [:x/a :x/b #:x{:c [:c/d]}]}])
 
 (defn dynamic-resolver
-  [floor-plan env]
+  [floor-plan query-env env]
   (let [i (ident env)
         ast (-> env ::pcp/node ::pcp/foreign-ast
                 (wrap-with-ident i))
-        result (ast-resolver floor-plan env ast)]
+        result (ast-resolver floor-plan query-env env ast)]
     (if i
       (get result i)
       result)))
@@ -168,28 +169,25 @@
       dynamic-resolver)))
 
 (defn connect-plugin
-  [{:keys [resolver-sym floor-plan
-           inputs-outputs autocomplete-ignore
-           resolver]
-    :or   {resolver     dynamic-resolver
+  [{:keys [:resolver-sym :registry :resolver :autocomplete-ignore :db-type :query-env]
+    :or   {resolver dynamic-resolver
+           ;; query-env (->query-env :db)
            resolver-sym `walkable-resolver}}]
-  (let [provided-indexes    (compute-indexes resolver-sym inputs-outputs)
-        compiled-floor-plan (floor-plan/compile-floor-plan
-                             (assoc floor-plan :idents (::pc/idents provided-indexes)))
-        config              {::resolver-sym resolver-sym
-                             ::floor-plan   compiled-floor-plan}]
-    {::p/intercept-output (fn [_env v] v)
-     ::p/wrap-parser2
+  (let [{:keys [:inputs-outputs] compiled-floor-plan :floor-plan}
+        (floor-plan/compile-floor-plan (if db-type
+                                         (floor-plan/with-db-type db-type registry)
+                                         registry))]
+    {::p/wrap-parser2
      (fn [parser {::p/keys [plugins]}]
-       (let [resolve-fn  (fn [env _] (resolver compiled-floor-plan env))
-             all-indexes (-> provided-indexes
-                             (internalize-indexes
-                              {::config               config
-                               ::pc/sym               (gensym resolver-sym)
-                               ::pc/cache?            false
-                               ::pc/dynamic-resolver? true
-                               ::pc/resolve           resolve-fn})
-                             (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
+       (let [resolve-fn  (fn [env _]
+                           (resolver compiled-floor-plan query-env env))
+             all-indexes (-> (compute-indexes resolver-sym inputs-outputs)
+                           (internalize-indexes
+                             {::pc/sym               (gensym resolver-sym)
+                              ::pc/cache?            false
+                              ::pc/dynamic-resolver? true
+                              ::pc/resolve           resolve-fn})
+                           (merge {::pc/autocomplete-ignore (or autocomplete-ignore #{})}))
              idx-atoms   (keep ::pc/indexes plugins)]
          (doseq [idx* idx-atoms]
            (swap! idx* pc/merge-indexes all-indexes))
