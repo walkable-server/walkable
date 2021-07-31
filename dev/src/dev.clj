@@ -36,7 +36,7 @@
   (-> (duct/read-config (config-by-db db))
     (duct/prep-config profiles)))
 
-(integrant.repl/set-prep! #(prepare-system :postgres))
+(integrant.repl/set-prep! #(prepare-system :sqlite))
 
 (defn test []
   (eftest/run-tests (eftest/find-tests "test")))
@@ -106,7 +106,7 @@
             :limit-fallback)]
     (f 2)))
 
-(def w* (walkable-parser :postgres common/person-pet-registry))
+(def w* (walkable-parser :sqlite common/person-pet-registry))
 
 (defn w
   [q]
