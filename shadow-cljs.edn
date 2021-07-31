@@ -7,7 +7,7 @@
   [org.clojure/spec.alpha "0.2.187"]]
 
  :source-paths
- ["src" "dev/src/common" "dev/test/common" "dev/test/sqlite" "test"]
+ ["src" "dev/src" "test" "dev/test"]
 
  :builds
  {:app  {:target    :node-script

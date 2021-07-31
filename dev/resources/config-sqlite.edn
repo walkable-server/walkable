@@ -13,15 +13,15 @@
                 #ig/ref :walkable-demo.migration.scenario-3/create-person_pet-table
                 #ig/ref :walkable-demo.migration.scenario-4/create-human-table
                 #ig/ref :walkable-demo.migration.scenario-4/create-follow-table
-                ;; mysql-specific scenarios (starting from 100)
+                ;; sqlite-specific scenarios (starting from 100)
                 ]}
   }
 
- :duct.profile/common #duct/include "common"
+ :duct.profile/common #duct/include "core-sqlite"
  :duct.profile/local #duct/include "local"
  :duct.profile/prod  {}
 
  :duct.module/logging {}
 
- :duct.module/sql {:database-url "jdbc:mysql://localhost:3306/walkable_dev?user=root"}
+ :duct.module/sql {:database-url "jdbc:sqlite:walkable_dev.sqlite"}
  }

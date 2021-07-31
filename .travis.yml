@@ -1,4 +1,6 @@
-dist: cosmic
+os: linux
+arch: amd64
+dist: focal
 language: clojure
 cache:
   directories:
@@ -6,12 +8,13 @@ cache:
   - $HOME/.m2
 services:
   - postgresql
+  - mysql
 addons:
-  mariadb: '10.2'
   apt:
     packages:
       - nodejs
-matrix:
+      - leiningen
+jobs:
   include:
   - name: "unit tests"
     env: TEST_SUITE=unit

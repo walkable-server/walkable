@@ -1,25 +1,27 @@
 (ns walkable.integration-test.postgres-test
-  {:integration true}
+  {:integration true :postgres true}
   (:require [walkable.integration-test.helper :refer [run-scenario-tests]]
             [walkable.integration-test.common :refer [common-scenarios]]
             [clojure.java.io :as io]
             [integrant.core :as ig]
             [duct.core :as duct]
-            [com.wsscode.pathom.connect :as pc]
-            [clojure.test :as t :refer [deftest]]))
+            [clojure.test :as t :refer [deftest use-fixtures]]))
 
-(duct/load-hierarchy)
+(def ^:dynamic *db* :not-initialized)
 
-(def system
-  (-> (duct/read-config (io/resource "config-postgres.edn"))
-    (duct/prep-config)
-    (ig/init)))
+(defn setup [f]
+  (duct/load-hierarchy)
+  (let [system (-> (duct/read-config (io/resource "config-postgres.edn"))
+                   (duct/prep-config)
+                   (ig/init))]
+    (binding [*db* (-> system (ig/find-derived-1 :duct.database/sql) val :spec)]
+      (f)
+      (ig/halt! system))))
 
-(def db
-  (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
+(use-fixtures :once setup)
 
 (deftest common-scenarios-test
-  (run-scenario-tests db :postgres common-scenarios))
+  (run-scenario-tests *db* :postgres common-scenarios))
 
 (def planet-inhabitant-registry
   [{:key :land.animal/animals
@@ -54,4 +56,4 @@
        [:land.animal/id 1] #:land.animal{:id 1, :name "elephant"}}}]}})
 
 (deftest postgres-specific-scenarios-test
-  (run-scenario-tests db :postgres postgres-scenarios))
+  (run-scenario-tests *db* :postgres postgres-scenarios))

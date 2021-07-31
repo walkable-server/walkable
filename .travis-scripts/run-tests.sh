@@ -6,15 +6,15 @@ case "$1" in
         lein test
         ;;
     sqlite)
-        lein with-profile sqlite test :integration
+        lein with-profile dev test :sqlite
         ./node_modules/.bin/shadow-cljs compile test
         node test.js
         ;;
     postgres)
-        lein with-profile postgres test :integration
+        lein with-profile dev test :postgres
         ;;
     mysql)
-        lein with-profile mysql test :integration
+        lein with-profile dev test :mysql
         ;;
     *)
         echo $"Usage: $0 {unit|sqlite|mysql|postgres}"
