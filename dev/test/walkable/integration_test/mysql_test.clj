@@ -1,5 +1,5 @@
 (ns walkable.integration-test.mysql-test
-  {:integration true}
+  {:integration true :mysql true}
   (:require [walkable.integration-test.helper :refer [run-scenario-tests]]
             [walkable.integration-test.common :refer [common-scenarios]]
             [clojure.java.io :as io]
