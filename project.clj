@@ -15,7 +15,10 @@
                  [org.clojure/core.async "1.2.603" :scope "provided"]]
   :resource-paths ["resources"]
   :test-selectors {:default     (complement :integration)
-                   :integration :integration}
+                   :integration :integration
+                   :sqlite      :sqlite
+                   :postgres    :postgres
+                   :mysql       :mysql}
   :profiles
   {:dev         [:project/dev]
    :repl        {:prep-tasks   ^:replace ["javac" "compile"]
