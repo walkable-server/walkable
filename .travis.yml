@@ -7,8 +7,8 @@ cache:
   - $HOME/.m2
 services:
   - postgresql
+  - mysql
 addons:
-  mariadb: '10.2'
   apt:
     packages:
       - nodejs
