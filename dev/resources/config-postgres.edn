@@ -34,7 +34,7 @@
                 ]}
   }
 
- :duct.profile/common #duct/include "common"
+ :duct.profile/common #duct/include "core-postgres"
  :duct.profile/local #duct/include "local"
  :duct.profile/prod  {}
 

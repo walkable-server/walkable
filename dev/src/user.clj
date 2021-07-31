@@ -9,15 +9,15 @@
   (let [config-unpatched (slurp (io/resource "common_unpatched.edn"))]
     ;; the sql code in common_unpatched.edn is for mysql
     ;; therefore no patch is needed for it
-    (spit "dev/resources/mysql/common.edn" config-unpatched)
+    (spit "dev/resources/core-mysql.edn" config-unpatched)
     ;; replace all mysql's backticks with quotation marks
     ;; and you get postgres version
-    (spit "dev/resources/postgres/common.edn"
+    (spit "dev/resources/core-postgres.edn"
       (-> config-unpatched (clojure.string/replace #"`" "\\\\\\\"")))
     ;; sqlite can work with backticks, but it doesn't have
     ;; boolean type, so all `true`s must be replaced with `1`
     ;; and all `false`s with 0.
-    (spit "dev/resources/sqlite/common.edn"
+    (spit "dev/resources/core-sqlite.edn"
       (-> config-unpatched
         (clojure.string/replace #"true" "1")
         (clojure.string/replace #"false" "0")))))

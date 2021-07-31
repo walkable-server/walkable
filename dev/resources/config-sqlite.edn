@@ -17,7 +17,7 @@
                 ]}
   }
 
- :duct.profile/common #duct/include "common"
+ :duct.profile/common #duct/include "core-sqlite"
  :duct.profile/local #duct/include "local"
  :duct.profile/prod  {}
 
