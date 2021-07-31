@@ -6,16 +6,16 @@ case "$1" in
         lein install
         ;;
     sqlite)
-        lein with-profile sqlite install
+        lein with-profile dev install
         npm install
         ;;
     postgres)
         psql -c 'create database walkable_dev;' -U postgres
-        lein with-profile postgres install
+        lein with-profile dev install
         ;;
     mysql)
         mysql -e 'CREATE DATABASE IF NOT EXISTS walkable_dev;'
-        lein with-profile mysql install
+        lein with-profile dev install
         ;;
     *)
         echo $"Usage: $0 {unit|sqlite|mysql|postgres}"
