@@ -1,5 +1,5 @@
 os: linux
-arch: arm64
+arch: amd64
 dist: focal
 language: clojure
 cache:
