@@ -1,6 +1,6 @@
 os: linux
 arch: arm64
-dist: bionic
+dist: focal
 language: clojure
 cache:
   directories:
@@ -13,6 +13,7 @@ addons:
   apt:
     packages:
       - nodejs
+      - leiningen
 jobs:
   include:
   - name: "unit tests"
