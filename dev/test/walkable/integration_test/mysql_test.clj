@@ -5,20 +5,23 @@
             [clojure.java.io :as io]
             [integrant.core :as ig]
             [duct.core :as duct]
-            [clojure.test :as t :refer [deftest]]))
+            [clojure.test :as t :refer [deftest use-fixtures]]))
 
-(duct/load-hierarchy)
+(def ^:dynamic *db* :not-initialized)
 
-(def system
-  (-> (duct/read-config (io/resource "config-mysql.edn"))
-    (duct/prep-config)
-    (ig/init)))
+(defn setup [f]
+  (duct/load-hierarchy)
+  (let [system (-> (duct/read-config (io/resource "config-postgres.edn"))
+                   (duct/prep-config)
+                   (ig/init))]
+    (binding [*db* (-> system (ig/find-derived-1 :duct.database/sql) val :spec)]
+      (f)
+      (ig/halt! system))))
 
-(def db
-  (-> system (ig/find-derived-1 :duct.database/sql) val :spec))
+(use-fixtures :once setup)
 
 (deftest common-scenarios-test
-  (run-scenario-tests db :mysql common-scenarios))
+  (run-scenario-tests *db* :mysql common-scenarios))
 
 (deftest mysql-specific-scenarios-test
-  (run-scenario-tests db :mysql {}))
+  (run-scenario-tests *db* :mysql {}))
