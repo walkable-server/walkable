@@ -1,5 +1,6 @@
 (ns user
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io]
+            [clojure.string]))
 
 (defn patch-common-edn-files
   "Produce multiple versions of common.edn for each database type.
