@@ -521,9 +521,9 @@
             :compile-args true
             :compile-fn
             (fn [_env [_operator [json]]]
-             (let [json-string (generate-string json)]
-               {:raw-string "?::json"
-                :params [json-string]}))}
+              (let [json-string (generate-string json)]
+                {:raw-string "?::json"
+                 :params [json-string]}))}
 
            {:key :jsonb
             :type :operator
