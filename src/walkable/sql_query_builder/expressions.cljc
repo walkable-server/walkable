@@ -247,11 +247,6 @@
                        (repeat (count params) "(?)"))
          :params     params}))}
 
-   {:key :cast
-    :type :operator
-    :compile-args false
-    :compile-fn (compile-cast-type common-cast-type->string)}
-
    {:key :=
     :type :operator
     :compile-args true
