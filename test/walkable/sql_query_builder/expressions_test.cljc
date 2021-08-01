@@ -57,9 +57,25 @@
         {:params     [(sut/av :a/foo) "meh" (sut/av :b/bar) "mere"]
          :raw-string "((x.a_id IN (SELECT a.id FROM a WHERE (?)=(?)))) OR ((x.id IN (SELECT x_b.x_id FROM x_b JOIN b ON b.id = x_b.b_id WHERE (?)=(?))))"}))
   (is (= (->> [:cast :a/c :text]
-           (sut/compile-to-string {:operators (helper/build-index :key sut/common-operators)}))
-        {:params [(sut/av :a/c)]
-         :raw-string "CAST (? AS text)"})))
+              (sut/compile-to-string {:operators (helper/build-index :key (concat sut/common-operators
+                                                                                  sut/sqlite-operator-set))}))
+         {:params [(sut/av :a/c)]
+          :raw-string "CAST (? AS text)"}))
+  (is (= (->> [:cast "{\"foo\": 1}" :json]
+              (sut/compile-to-string {:operators (helper/build-index :key (concat sut/common-operators
+                                                                                  sut/postgres-operator-set))}))
+         {:params ["{\"foo\": 1}"],
+          :raw-string "CAST (? AS json)"}))
+  (is (= (->> [:json {:foo "bar"}]
+              (sut/compile-to-string {:operators (helper/build-index :key (concat sut/common-operators
+                                                                                  sut/postgres-operator-set))}))
+         {:raw-string "?::json",
+          :params ["{\"foo\":\"bar\"}"]}))
+  (is (= (->> [:json-text {:foo "bar"}]
+              (sut/compile-to-string {:operators (helper/build-index :key (concat sut/common-operators
+                                                                                  sut/postgres-operator-set))}))
+         {:raw-string "?",
+          :params ["{\"foo\":\"bar\"}"]})))
 
 (deftest substitute-atomic-variables-test
   (is (= (let [registry {:operators (helper/build-index :key sut/common-operators)}]
