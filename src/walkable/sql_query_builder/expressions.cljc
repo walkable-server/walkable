@@ -532,7 +532,15 @@
             (fn [_env [_operator [json]]]
               (let [json-string (generate-string json)]
                 {:raw-string "?::jsonb"
-                 :params [json-string]}))}]))
+                 :params [json-string]}))}
+
+           {:key :cast
+            :type :operator
+            :compile-args false
+            :compile-fn (compile-cast-type
+                         (merge common-cast-type->string
+                                {:json "json"
+                                 :jsonb "jsonb"}))}]))
 
 (def predefined-operator-sets
   ;; TODO: different :cast operators
