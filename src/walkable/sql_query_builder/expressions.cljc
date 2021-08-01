@@ -57,6 +57,9 @@
   #?(:clj String :cljs string)
   (emit [string]
     (single-raw-string string))
+  #?(:clj java.util.UUID :cljs UUID)
+  (emit [uuid]
+    (single-raw-string uuid))
   nil
   (emit [a-nil] conformed-nil))
 
