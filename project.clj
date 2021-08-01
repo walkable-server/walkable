@@ -7,6 +7,7 @@
             :comments     "same as Clojure"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
+                 [cheshire "5.10.1"]
                  [org.clojure/clojurescript "1.10.764" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.187"]
                  [com.wsscode/pathom "2.3.0"]

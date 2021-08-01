@@ -1,4 +1,5 @@
 {:deps {org.clojure/spec.alpha {:mvn/version "0.2.187"}
+        cheshire/cheshire {:mvn/version "5.10.1"}
         com.wsscode/pathom {:mvn/version "2.3.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
         prismatic/plumbing {:mvn/version "0.5.5"}
