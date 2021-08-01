@@ -502,9 +502,9 @@
                                 "]")
                :params params})}
 
-           {:key :json*
+           {:key :json-text
             :type :operator
-            :compile-args true
+            :compile-args false
             :compile-fn
             (fn [_env [_operator [json]]]
               (let [json-string (generate-string json)]
@@ -513,7 +513,7 @@
 
            {:key :json
             :type :operator
-            :compile-args true
+            :compile-args false
             :compile-fn
             (fn [_env [_operator [json]]]
               (let [json-string (generate-string json)]
@@ -522,7 +522,7 @@
 
            {:key :jsonb
             :type :operator
-            :compile-args true
+            :compile-args false
             :compile-fn
             (fn [_env [_operator [json]]]
               (let [json-string (generate-string json)]
