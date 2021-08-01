@@ -7,6 +7,7 @@
             :comments     "same as Clojure"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
+                 [cheshire "5.10.1"]
                  [org.clojure/clojurescript "1.10.764" :scope "provided"]
                  [org.clojure/spec.alpha "0.2.187"]
                  [com.wsscode/pathom "2.3.0"]
@@ -29,14 +30,14 @@
                  :test-paths     ["dev/test"]
                  :resource-paths ["dev/resources"]
                  :dependencies   [[duct/core "0.8.0"]
-                                [duct/module.logging "0.5.0"]
-                                [duct/module.sql "0.6.0"]
-                                [org.clojure/test.check "1.0.0"]
-                                [cheshire "5.10.0"]
-                                [integrant/repl "0.3.1"]
-                                [eftest "0.5.9"]
-                                [kerodon "0.9.1"]
-                                ;; sql flavors
-                                [org.xerial/sqlite-jdbc "3.31.1"]
-                                [org.postgresql/postgresql "42.2.12"]
-                                [mysql/mysql-connector-java "8.0.20"]]}})
+                                  [duct/module.logging "0.5.0"]
+                                  [duct/module.sql "0.6.0"]
+                                  [org.clojure/test.check "1.0.0"]
+                                  [cheshire "5.10.0"]
+                                  [integrant/repl "0.3.1"]
+                                  [eftest "0.5.9"]
+                                  [kerodon "0.9.1"]
+                                  ;; sql flavors
+                                  [org.xerial/sqlite-jdbc "3.31.1"]
+                                  [org.postgresql/postgresql "42.2.12"]
+                                  [mysql/mysql-connector-java "8.0.20"]]}})

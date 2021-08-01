@@ -11,7 +11,7 @@
 
 (defn setup [f]
   (duct/load-hierarchy)
-  (let [system (-> (duct/read-config (io/resource "config-postgres.edn"))
+  (let [system (-> (duct/read-config (io/resource "config-mysql.edn"))
                    (duct/prep-config)
                    (ig/init))]
     (binding [*db* (-> system (ig/find-derived-1 :duct.database/sql) val :spec)]

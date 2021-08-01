@@ -1,6 +1,13 @@
 (ns walkable.sql-query-builder.expressions
-  (:require [clojure.spec.alpha :as s]
+  (:require #?(:clj [cheshire.core :refer [generate-string]])
+            [clojure.spec.alpha :as s]
             [clojure.string :as string]))
+
+#?(:cljs
+   (defn generate-string
+     "Equivalent of cheshire.core/generate-string for Clojurescript"
+     [ds]
+     (.stringify js/JSON (clj->js ds))))
 
 (defrecord AtomicVariable [name])
 
@@ -57,30 +64,33 @@
   #?(:clj String :cljs string)
   (emit [string]
     (single-raw-string string))
+  #?(:clj java.util.UUID :cljs UUID)
+  (emit [uuid]
+    (single-raw-string uuid))
   nil
   (emit [a-nil] conformed-nil))
 
 (s/def ::expression
   (s/or
-    :atomic-variable atomic-variable?
-    :symbol symbol?
+   :atomic-variable atomic-variable?
+   :symbol symbol?
 
-    :emittable-atom emittable-atom?
+   :emittable-atom emittable-atom?
 
-    :column ::namespaced-keyword
+   :column ::namespaced-keyword
 
-    :expression
-    (s/and vector?
-      (s/cat :operator ::unnamespaced-keyword
-        :params (s/* (constantly true))))
-    :join-filters
-    (s/coll-of
-      (s/or :join-filter
-        (s/cat :join-key ::namespaced-keyword
-          :expression ::expression))
-      :min-count 1
-      :kind map?
-      :into [])))
+   :expression
+   (s/and vector?
+          (s/cat :operator ::unnamespaced-keyword
+                 :params (s/* (constantly true))))
+   :join-filters
+   (s/coll-of
+    (s/or :join-filter
+          (s/cat :join-key ::namespaced-keyword
+                 :expression ::expression))
+    :min-count 1
+    :kind map?
+    :into [])))
 
 ;; the rule for parentheses in :raw-string
 ;; outer raw string should provide them
@@ -236,11 +246,6 @@
         {:raw-string (string/join " OR "
                        (repeat (count params) "(?)"))
          :params     params}))}
-
-   {:key :cast
-    :type :operator
-    :compile-args false
-    :compile-fn (compile-cast-type common-cast-type->string)}
 
    {:key :=
     :type :operator
@@ -443,11 +448,118 @@
                     :params-position :infix
                     :sql-name ">>"})])
 
+(def postgres-operator-set
+  (concat (mapv #(plain-operator {:key %})
+                [:array-append
+                 :array-cat
+                 :array-fill
+                 :array-length
+                 :array-lower
+                 :array-position
+                 :array-positions
+                 :array-prepend
+                 :array-remove
+                 :array-replace
+                 :array-to-string
+                 :array-upper
+                 :cardinality
+                 :string-to-array
+                 :unnest])
+          ;; Use long names instead of "?", "?|"
+          ;; Source: https://stackoverflow.com/questions/30629076/how-to-escape-the-question-mark-operator-to-query-postgresql-jsonb-type-in-r
+          (mapv #(plain-operator {:key %})
+                [:to-char :to-date :to-number :to-timestamp
+                 :iso-timestamp :json-agg :jsonb-contains
+                 :jsonb-exists :jsonb-exists-any :jsonb-exists-all :jsonb-delete-path])
+          (mapv #(plain-operator {:key % :arity 1})
+                [:array-ndims :array-dims])
+
+          ;; Source:
+          ;; https://www.postgresql.org/docs/current/static/functions-json.html
+          (for [[k sql-name]
+                {:get "->"
+                 :get-as-text "->>"
+                 :get-in "#>"
+                 :get-in-as-text "#>>"
+                 :contains "@>"
+                 :overlap "&&"}]
+            (plain-operator {:key k
+                             :arity 2
+                             :params-position :infix
+                             :sql-name sql-name}))
+          [(plain-operator {:key :concat
+                            :params-position :infix
+                            :sql-name "||"})
+
+           {:key :array
+            :type :operator
+            :compile-args true
+            :compile-fn
+            (fn [_env [_operator params]]
+              {:raw-string (str "ARRAY["
+                                (string/join ", "
+                                             (repeat (count params) "?"))
+                                "]")
+               :params params})}
+
+           {:key :json-text
+            :type :operator
+            :compile-args false
+            :compile-fn
+            (fn [_env [_operator [json]]]
+              (let [json-string (generate-string json)]
+                {:raw-string "?"
+                 :params [json-string]}))}
+
+           {:key :json
+            :type :operator
+            :compile-args false
+            :compile-fn
+            (fn [_env [_operator [json]]]
+              (let [json-string (generate-string json)]
+                {:raw-string "?::json"
+                 :params [json-string]}))}
+
+           {:key :jsonb
+            :type :operator
+            :compile-args false
+            :compile-fn
+            (fn [_env [_operator [json]]]
+              (let [json-string (generate-string json)]
+                {:raw-string "?::jsonb"
+                 :params [json-string]}))}
+
+           {:key :cast
+            :type :operator
+            :compile-args false
+            :compile-fn (compile-cast-type
+                         (merge common-cast-type->string
+                                {:json "json"
+                                 :jsonb "jsonb"}))}]))
+
+;; TODO: more cast types here
+(def mysql-operator-set
+  [{:key :cast
+    :type :operator
+    :compile-args false
+    :compile-fn (compile-cast-type
+                 common-cast-type->string)}])
+
+(def sqlite-operator-set
+  [{:key :cast
+    :type :operator
+    :compile-args false
+    :compile-fn (compile-cast-type
+                 common-cast-type->string)}])
+
 (def predefined-operator-sets
-  ;; TODO: should be slightly different
-  {:postgres common-operators
-   :mysql common-operators
-   :sqlite common-operators})
+  ;; TODO: different :cast operators
+  {:postgres
+   (into common-operators postgres-operator-set)
+   :mysql
+   (into common-operators mysql-operator-set)
+   :sqlite
+   (into common-operators sqlite-operator-set)})
 
 (defn build-operator-set
   [{:keys [:base :except] :or {base :postgres}}]
