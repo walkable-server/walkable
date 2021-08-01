@@ -453,6 +453,87 @@
                     :params-position :infix
                     :sql-name ">>"})])
 
+(def postgres-operator-set
+  (concat (mapv #(plain-operator {:key %})
+                [:array-append
+                 :array-cat
+                 :array-fill
+                 :array-length
+                 :array-lower
+                 :array-position
+                 :array-positions
+                 :array-prepend
+                 :array-remove
+                 :array-replace
+                 :array-to-string
+                 :array-upper
+                 :cardinality
+                 :string-to-array
+                 :unnest])
+          ;; Use long names instead of "?", "?|"
+          ;; Source: https://stackoverflow.com/questions/30629076/how-to-escape-the-question-mark-operator-to-query-postgresql-jsonb-type-in-r
+          (mapv #(plain-operator {:key %})
+                [:to-char :to-date :to-number :to-timestamp
+                 :iso-timestamp :json-agg :jsonb-contains
+                 :jsonb-exists :jsonb-exists-any :jsonb-exists-all :jsonb-delete-path])
+          (mapv #(plain-operator {:key % :arity 1})
+                [:array-ndims :array-dims])
+
+          ;; Source:
+          ;; https://www.postgresql.org/docs/current/static/functions-json.html
+          (for [[k sql-name]
+                {:get "->"
+                 :get-as-text "->>"
+                 :get-in "#>"
+                 :get-in-as-text "#>>"
+                 :contains "@>"
+                 :overlap "&&"}]
+            (plain-operator {:key k
+                             :arity 2
+                             :params-position :infix
+                             :sql-name sql-name}))
+          [(plain-operator {:key :concat
+                            :params-position :infix
+                            :sql-name "||"})
+
+           {:key :array
+            :type :operator
+            :compile-args true
+            :compile-fn
+            (fn [_env [_operator params]]
+              {:raw-string (str "ARRAY["
+                                (string/join ", "
+                                             (repeat (count params) "?"))
+                                "]")
+               :params params})}
+
+           {:key :json*
+            :type :operator
+            :compile-args true
+            :compile-fn
+            (fn [_env [_operator [json]]]
+              (let [json-string (generate-string json)]
+                {:raw-string "?"
+                 :params [json-string]}))}
+
+           {:key :json
+            :type :operator
+            :compile-args true
+            :compile-fn
+            (fn [_env [_operator [json]]]
+             (let [json-string (generate-string json)]
+               {:raw-string "?::json"
+                :params [json-string]}))}
+
+           {:key :jsonb
+            :type :operator
+            :compile-args true
+            :compile-fn
+            (fn [_env [_operator [json]]]
+              (let [json-string (generate-string json)]
+                {:raw-string "?::jsonb"
+                 :params [json-string]}))}]))
+
 (def predefined-operator-sets
   ;; TODO: should be slightly different
   {:postgres common-operators
