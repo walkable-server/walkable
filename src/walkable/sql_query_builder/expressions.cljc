@@ -535,8 +535,8 @@
                  :params [json-string]}))}]))
 
 (def predefined-operator-sets
-  ;; TODO: should be slightly different
-  {:postgres common-operators
+  ;; TODO: different :cast operators
+  {:postgres (into common-operators postgres-operator-set)
    :mysql common-operators
    :sqlite common-operators})
 
