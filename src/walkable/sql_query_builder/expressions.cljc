@@ -1,6 +1,13 @@
 (ns walkable.sql-query-builder.expressions
-  (:require [clojure.spec.alpha :as s]
+  (:require #?(:clj [cheshire.core :refer [generate-string]])
+            [clojure.spec.alpha :as s]
             [clojure.string :as string]))
+
+#?(:cljs
+   (defn generate-string
+     "Equivalent of cheshire.core/generate-string for Clojurescript"
+     [ds]
+     (.stringify js/JSON (clj->js ds))))
 
 (defrecord AtomicVariable [name])
 
