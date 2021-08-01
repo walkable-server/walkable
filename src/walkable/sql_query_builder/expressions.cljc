@@ -72,25 +72,25 @@
 
 (s/def ::expression
   (s/or
-    :atomic-variable atomic-variable?
-    :symbol symbol?
+   :atomic-variable atomic-variable?
+   :symbol symbol?
 
-    :emittable-atom emittable-atom?
+   :emittable-atom emittable-atom?
 
-    :column ::namespaced-keyword
+   :column ::namespaced-keyword
 
-    :expression
-    (s/and vector?
-      (s/cat :operator ::unnamespaced-keyword
-        :params (s/* (constantly true))))
-    :join-filters
-    (s/coll-of
-      (s/or :join-filter
-        (s/cat :join-key ::namespaced-keyword
-          :expression ::expression))
-      :min-count 1
-      :kind map?
-      :into [])))
+   :expression
+   (s/and vector?
+          (s/cat :operator ::unnamespaced-keyword
+                 :params (s/* (constantly true))))
+   :join-filters
+   (s/coll-of
+    (s/or :join-filter
+          (s/cat :join-key ::namespaced-keyword
+                 :expression ::expression))
+    :min-count 1
+    :kind map?
+    :into [])))
 
 ;; the rule for parentheses in :raw-string
 ;; outer raw string should provide them
