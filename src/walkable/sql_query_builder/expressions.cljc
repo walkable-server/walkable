@@ -537,11 +537,29 @@
                                 {:json "json"
                                  :jsonb "jsonb"}))}]))
 
+;; TODO: more cast types here
+(def mysql-operator-set
+  [{:key :cast
+    :type :operator
+    :compile-args false
+    :compile-fn (compile-cast-type
+                 common-cast-type->string)}])
+
+(def sqlite-operator-set
+  [{:key :cast
+    :type :operator
+    :compile-args false
+    :compile-fn (compile-cast-type
+                 common-cast-type->string)}])
+
 (def predefined-operator-sets
   ;; TODO: different :cast operators
-  {:postgres (into common-operators postgres-operator-set)
-   :mysql common-operators
-   :sqlite common-operators})
+  {:postgres
+   (into common-operators postgres-operator-set)
+   :mysql
+   (into common-operators mysql-operator-set)
+   :sqlite
+   (into common-operators sqlite-operator-set)})
 
 (defn build-operator-set
   [{:keys [:base :except] :or {base :postgres}}]
