@@ -29,6 +29,6 @@
 (defn dev
   "Load and switch to the 'dev' namespace."
   []
-  (require 'dev)
+  (require 'dev :reload-all true)
   (in-ns 'dev)
   :loaded)
