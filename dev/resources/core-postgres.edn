@@ -67,7 +67,7 @@
          "INSERT INTO \"article\" (\"id\", \"title\", \"current_revision\") VALUES (1, 'introduction', 2), (2, 'hello world', 1)" ]
   :down ["DROP TABLE \"article\""]}
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-5/create-revision-table]
- {:up   ["CREATE TABLE \"revision\" (\"id\" SERIAL, \"content\" TEXT, \"revision\" INTEGER)"
+ {:up   ["CREATE TABLE \"revision\" (\"id\" INTEGER, \"content\" TEXT, \"revision\" INTEGER)"
          "INSERT INTO \"revision\" (\"id\", \"content\", \"revision\") VALUES (1, 'tbd', 1), (1, 'this is sparta', 2), (2, 'welcome to my site', 1)" ]
   :down ["DROP TABLE \"revision\""]}
  }
