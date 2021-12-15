@@ -491,15 +491,33 @@
     #(or (#{:root :join} (:type %)) (:primary-key %))
     compile-return-function))
 
+(defn add-except [m ks]
+  (update m :except (comp set #(clojure.set/union % ks))))
+
+(comment
+  (add-except {} [:a :b])
+  =>
+  {:except #{:b :a}}
+
+  (add-except {:except [:c :d]} [:a :b])
+  =>
+  {:except #{:c :b :d :a}})
+
+(defn operator-set [flat-registry new-operator-keys]
+  (some #(and (= `operator-set (:key %))
+              (expressions/build-operator-set (add-except % new-operator-keys))) flat-registry))
+
 (defn group-registry
   [flat-registry]
   (let [emitter (or (some #(and (= `emitter (:key %)) (emitter/build-emitter %)) flat-registry)
-                  emitter/default-emitter)
-        operator-set (or (some #(and (= `operator-set (:key %)) (expressions/build-operator-set %)) flat-registry)
-                       expressions/common-operators)]
+                    emitter/default-emitter)
+        new-operators (filter #(= :operator (:type %)) flat-registry)
+        new-operator-keys (into #{} (map :key) new-operators)]
     {:emitter emitter
      :batch-query (emitter/emitter->batch-query emitter)
-     :operators (helper/build-index :key operator-set)
+     :operators (helper/build-index :key (concat (or (operator-set flat-registry new-operator-keys)
+                                                     expressions/common-operators)
+                                                 new-operators))
      :attributes flat-registry}))
 
 (defn collect-outputs [attrs]
