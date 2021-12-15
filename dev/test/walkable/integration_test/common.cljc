@@ -14,12 +14,12 @@
     :output [:farmer/name :farmer/house-plus :farmer/house-count :farmer/house]}
    {:key :farmer/house
     :type :join
-    :join-path [:farmer/house-index :house/index]
+    :join-path [{:farmer/house-index :house/index}]
     :output [:house/color]
     :cardinality :one}
    {:key :house/owner
     :type :join
-    :join-path [:house/index :farmer/house-index]
+    :join-path [{:house/index :farmer/house-index}]
     :output [:farmer/number]
     :cardinality :one}])
 
@@ -30,12 +30,12 @@
     :output [:kid/name]}
    {:key :toy/owner
     :type :join
-    :join-path [:toy/owner-number :kid/number]
+    :join-path [{:toy/owner-number :kid/number}]
     :output [:kid/name :kid/number]
     :cardinality :one}
    {:key :kid/toy
     :type :join
-    :join-path [:kid/number :toy/owner-number]
+    :join-path [{:kid/number :toy/owner-number}]
     :output [:toy/color :toy/index]
     :cardinality :one}
    {:key :kid/number
@@ -50,7 +50,8 @@
     :output [:human/number :human/name :human/yob :human/age]}
    {:key :human/follow
     :type :join
-    :join-path [:human/number :follow/human-1 :follow/human-2 :human/number]
+    :join-path [{:human/number :follow/human-1}
+                {:follow/human-2 :human/number}]
     :output [:human/number :human/name :human/yob :human/age]}])
 
 (def person-pet-registry
@@ -82,8 +83,8 @@
    {:key :person/pet
     :type :join
     :join-path
-    [:person/number :person-pet/person-number
-     :person-pet/pet-index :pet/index]
+    [{:person/number :person-pet/person-number}
+     {:person-pet/pet-index :pet/index}]
     :output [:pet/index
              :person-pet/adoption-year
              :pet/name
@@ -92,13 +93,14 @@
    {:key :pet/owner
     :type :join
     :join-path
-    [:pet/index :person-pet/pet-index :person-pet/person-number :person/number]
+    [{:pet/index :person-pet/pet-index}
+     {:person-pet/person-number :person/number}]
     :output [:person/number]}
    {:key :person/pet-count
     :type :join
     :join-path
-    [:person/number :person-pet/person-number
-     :person-pet/pet-index :pet/index]
+    [{:person/number :person-pet/person-number}
+     {:person-pet/pet-index :pet/index}]
     :aggregate true
     :formula [:count-*]}
    {:key :pets/by-color
@@ -110,6 +112,18 @@
    {:key :color/pet-count
     :type :pseudo-column
     :formula [:count :pet/index]}])
+
+(def article-revision-registry
+  [{:key :articles/list
+    :type :root
+    :table "article"
+    :output [:article/id :article/title :article/current-revision]}
+   {:key :article/revision
+    :type :join
+    :cardinality :one
+    :output [:revision/content]
+    :join-path [{:article/id :revision/id
+                 :article/current-revision :revision/revision}]}])
 
 (def common-scenarios
   {:farmer-house
@@ -161,7 +175,7 @@
           {:farmer/house [:house/index :house/color]}]}]
       :expected
       #:farmers{:farmers [#:farmer{:number 2, :house #:house {:index "20", :color "brown"}}]}}]}
-  
+
    :kid-toy
    {:registry kid-toy-registry
     :test-suite
@@ -418,4 +432,21 @@
                          :person/age]}]
       :expected
       #:people {:people [#:person{:number 1, :name "jon", :yob 1980, :age 38}
-                         #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}})
+                         #:person{:number 2, :name "mary", :yob 1992, :age 26}]}}]}
+
+   :article-revision
+   {:registry article-revision-registry
+    :test-suite
+    [{:message "join with multiple column pairs should work"
+      :query `[{:articles/list [:article/id :article/title
+                                {:article/revision [:revision/content]}]}]
+      :expected
+      #:articles{:list
+                 [#:article{:id 1,
+                            :title "introduction",
+                            :revision
+                            #:revision{:content "this is sparta"}}
+                  #:article{:id 2,
+                            :title "hello world",
+                            :revision
+                            #:revision{:content "welcome to my site"}}]}}]}})

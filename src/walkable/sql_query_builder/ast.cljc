@@ -10,13 +10,13 @@
   [floor-plan {:keys [dispatch-key]}]
   (get-in floor-plan [:target-table dispatch-key]))
 
-(defn target-column
+(defn target-columns
   [floor-plan {:keys [dispatch-key]}]
-  (get-in floor-plan [:target-column dispatch-key]))
+  (get-in floor-plan [:target-columns dispatch-key]))
 
-(defn source-column
+(defn source-columns
   [floor-plan {:keys [dispatch-key]}]
-  (get-in floor-plan [:source-column dispatch-key]))
+  (get-in floor-plan [:source-columns dispatch-key]))
 
 (defn result-key [ast]
   (let [k (:pathom/as (:params ast))]
@@ -138,9 +138,9 @@
 
 (defn process-children*
   "Infers which columns to include in SQL query from child keys in ast"
-  [floor-plan ast] 
+  [floor-plan ast]
   (let [all-children (:children ast)
-        
+
         {:keys [columns joins]}
         (group-by #(keyword-type floor-plan %) all-children)
 
@@ -148,7 +148,7 @@
         (into #{} (map :dispatch-key) columns)
 
         child-source-columns
-        (into #{} (map #(source-column floor-plan %)) joins)]
+        (into #{} (mapcat #(source-columns floor-plan %)) joins)]
     {:columns-to-query (set/union child-column-keys child-source-columns)}))
 
 (defn process-children
@@ -184,16 +184,16 @@
 (defn individual-query-template
   [{:keys [floor-plan ast pagination]}]
   (let [ident? (vector? (:key ast))
-        
+
         {:keys [:columns-to-query]} (process-children floor-plan ast)
-        target-column (target-column floor-plan ast)
+
+        target-columns (target-columns floor-plan ast)
 
         {:keys [:offset :limit :order-by :order-by-columns]}
         (when-not ident? pagination)
 
         columns-to-query
-        (-> (clojure.set/union columns-to-query order-by-columns)
-          (conj-some target-column))
+        (clojure.set/union columns-to-query order-by-columns (set target-columns))
 
         selection
         (process-selection floor-plan columns-to-query)
@@ -204,17 +204,17 @@
 
         sql-query {:raw-string
                    (emitter/->query-string
-                     {:target-table (target-table floor-plan ast)
-                      :join-statement (join-statement floor-plan ast)
-                      :selection (:raw-string selection)
-                      :conditions (:raw-string conditions)
-                      ;; TODO:
-                      ;; use :raw-string/:params here in case there are variables in group-by columns
-                      :group-by (compiled-group-by floor-plan ast)
-                      :having (:raw-string having)
-                      :offset offset
-                      :limit limit
-                      :order-by order-by})
+                    {:target-table (target-table floor-plan ast)
+                     :join-statement (join-statement floor-plan ast)
+                     :selection (:raw-string selection)
+                     :conditions (:raw-string conditions)
+                     ;; TODO:
+                     ;; use :raw-string/:params here in case there are variables in group-by columns
+                     :group-by (compiled-group-by floor-plan ast)
+                     :having (:raw-string having)
+                     :offset offset
+                     :limit limit
+                     :order-by order-by})
                    :params (expressions/combine-params selection conditions having)}]
     sql-query))
 
@@ -223,12 +223,7 @@
                            [shared-query batched-individuals]))
 
 #_(defn combine-without-cte [{:keys [batched-individuals]}]
-  batched-individuals)
-
-(defn source-column-variable-values
-  [v]
-  {:variable-values {`floor-plan/source-column-value
-                     (expressions/compile-to-string {} v)}})
+    batched-individuals)
 
 (defn compute-graphs [floor-plan env variables]
   (let [variable->graph-index (variable->graph-index floor-plan)
@@ -327,8 +322,8 @@
       (let [q (batched-individuals env entities)]
         (when (not-empty (:raw-string q))
           (->> q
-            (process-query floor-plan env)
-            eliminate-unknown-variables))))))
+               (process-query floor-plan env)
+               eliminate-unknown-variables))))))
 
 (defn prepare-query
   [floor-plan ast]

@@ -26,6 +26,8 @@
                 #ig/ref :walkable-demo.migration.scenario-3/create-person_pet-table
                 #ig/ref :walkable-demo.migration.scenario-4/create-human-table
                 #ig/ref :walkable-demo.migration.scenario-4/create-follow-table
+                #ig/ref :walkable-demo.migration.scenario-5/create-article-table
+                #ig/ref :walkable-demo.migration.scenario-5/create-revision-table
                 ;; postgres-specific scenarios (starting from 100)
 
                 #ig/ref :walkable-demo.migration.scenario-100/create-land-animal-table

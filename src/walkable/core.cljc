@@ -32,7 +32,7 @@
   [build-and-run-query env ast]
   (->> ast
        (ast-map-loc (fn [loc]
-                      (let [{::ast/keys [prepared-query]} (z/node loc)]
+                      (let [{:keys [::ast/prepared-query]} (z/node loc)]
                         (if prepared-query
                           (let [parent (last (z/path loc))
                                 ;; TODO: partition entities and concat back
@@ -54,8 +54,8 @@
       (z/root loc)
       (recur
        (z/next
-        (let [{:keys [children] :as node} (z/node loc)
-              {::ast/keys [prepared-merge-sub-entities]} node]
+        (let [{:keys [:children] :as node} (z/node loc)
+              {:keys [::ast/prepared-merge-sub-entities]} node]
           (if (or (not prepared-merge-sub-entities) ;; node can be nil
                   (not-empty children))
             loc
@@ -78,25 +78,25 @@
 
 (defn merge-data
   [wrap-merge ast]
-  (loop [{:keys [children] :as root} ast]
+  (loop [{:keys [:children] :as root} ast]
     (if (empty? children)
       (:entities root)
       (recur (merge-data-in-bottom-branches wrap-merge root)))))
 
 (defn ast-resolver*
-  [{:keys [build-and-run-query floor-plan env wrap-merge ast]}]
+  [{:keys [:build-and-run-query :floor-plan :env :wrap-merge :ast]}]
   (->> (ast/prepare-ast floor-plan ast)
        (fetch-data build-and-run-query env)
        (merge-data wrap-merge)))
 
 (defn prepared-ast-resolver*
-  [{:keys [build-and-run-query env wrap-merge prepared-ast]}]
+  [{:keys [:build-and-run-query :env :wrap-merge :prepared-ast]}]
   (->> prepared-ast
        (fetch-data build-and-run-query env)
        (merge-data wrap-merge)))
 
 (defn query-resolver*
-  [{:keys [floor-plan env resolver query]}]
+  [{:keys [:floor-plan :env :resolver :query]}]
   (resolver floor-plan env (p/query->ast query)))
 
 (defn ast-resolver
@@ -158,7 +158,7 @@
           ios))
 
 (defn internalize-indexes
-  [indexes {::pc/keys [sym] :as dynamic-resolver}]
+  [indexes {:keys [::pc/sym] :as dynamic-resolver}]
   (-> indexes
     (update ::pc/index-resolvers
       (fn [resolvers]
@@ -178,7 +178,7 @@
                                          (floor-plan/with-db-type db-type registry)
                                          registry))]
     {::p/wrap-parser2
-     (fn [parser {::p/keys [plugins]}]
+     (fn [parser {:keys [::p/plugins]}]
        (let [resolve-fn  (fn [env _]
                            (resolver compiled-floor-plan query-env env))
              all-indexes (-> (compute-indexes resolver-sym inputs-outputs)

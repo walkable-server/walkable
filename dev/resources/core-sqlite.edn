@@ -1,4 +1,4 @@
-{;; scenario 1 migrations
+{ ;; scenario 1 migrations
  [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-1/create-house-table]
  {:up   ["CREATE TABLE `house` (`index` VARCHAR(32) PRIMARY KEY, `color` TEXT)"
          "INSERT INTO `house` (`index`, `color`) VALUES ('10', 'black'), ('20', 'brown')"]
@@ -61,4 +61,13 @@
  {:up   ["CREATE TABLE `follow` (`human_1` INTEGER REFERENCES `human`(`number`), `human_2` INTEGER REFERENCES `human`(`number`), `year` INTEGER)"
          "INSERT INTO `follow` (`human_1`, `human_2`, `year`) VALUES (1, 2, 2015), (1, 3, 2017), (2, 1, 2014), (2, 3, 2015), (1, 4, 2012)"]
   :down ["DROP TABLE `follow`"]}
+ ;; scenario 5 migrations
+ [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-5/create-article-table]
+ {:up   ["CREATE TABLE `article` (`id` SERIAL PRIMARY KEY, `title` TEXT, `current_revision` INTEGER)"
+         "INSERT INTO `article` (`id`, `title`, `current_revision`) VALUES (1, 'introduction', 2), (2, 'hello world', 1)" ]
+  :down ["DROP TABLE `article`"]}
+ [:duct.migrator.ragtime/sql :walkable-demo.migration.scenario-5/create-revision-table]
+ {:up   ["CREATE TABLE `revision` (`id` INTEGER, `content` TEXT, `revision` INTEGER)"
+         "INSERT INTO `revision` (`id`, `content`, `revision`) VALUES (1, 'tbd', 1), (1, 'this is sparta', 2), (2, 'welcome to my site', 1)" ]
+  :down ["DROP TABLE `revision`"]}
  }
