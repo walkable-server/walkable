@@ -426,6 +426,9 @@
    (plain-operator {:key :format})
    (plain-operator {:key :min})
    (plain-operator {:key :max})
+
+   (plain-operator {:key :length})
+
    (plain-operator {:key :str
                     :sql-name "CONCAT"})
    (plain-operator {:key :nil?
